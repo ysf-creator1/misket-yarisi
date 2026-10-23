@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0e1630">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Misket Yarışı">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="ikon-180.png">
+<title>Misket Yarışı</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0e1630; --panel:rgba(12,19,40,.9); --panel2:rgba(255,255,255,.07);
+    --line:rgba(255,255,255,.15); --text:#f3f6ff; --muted:#a3b2d9;
+    --accent:#ffc23d; --accent2:#45c8ff; --good:#4cd964; --bad:#ff5a5a; --self:#3ddc84; --attack:#ff5c7a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+    font-family:"Nunito","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;user-select:none}
+  #c{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+  .hidden{display:none!important}
+  button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);
+    border-radius:12px;padding:10px 16px;font-weight:800;transition:transform .08s,background .15s,border-color .15s}
+  button:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.32)}
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.main{background:linear-gradient(180deg,#ffd166,#ff9f1c);color:#2b1700;border:none;font-size:18px;padding:13px 22px}
+  button.main:hover{filter:brightness(1.07)}
+  button.sm{padding:6px 10px;font-size:13px;border-radius:10px}
+  input{font:inherit;color:var(--text);background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none;width:100%}
+  input:focus{border-color:var(--accent)}
+  input[type=range]{padding:0;accent-color:var(--accent)}
+
+  .screen{position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;z-index:20;
+    background:radial-gradient(ellipse at 50% 15%,rgba(30,55,120,.35),rgba(5,10,25,.72));padding:16px;overflow:auto}
+  .screen.clear{background:rgba(5,10,25,.35)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px 26px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);max-width:100%;margin:auto;backdrop-filter:blur(8px)}
+  h1{margin:0 0 4px;font-size:46px;letter-spacing:.5px;text-align:center;
+    background:linear-gradient(90deg,#ffd166,#ff6b6b,#45c8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  h2{margin:0 0 12px;font-size:26px;text-align:center}
+  h3{margin:18px 0 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px}
+  .sub{text-align:center;color:var(--muted);margin:0 0 16px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
+  .muted{color:var(--muted)}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,194,61,.14);border:1px solid rgba(255,194,61,.4);
+    color:#ffd77a;border-radius:999px;padding:4px 12px;font-weight:800}
+  .lvl{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:14px}
+  .lvlbar{width:120px;height:8px;border-radius:4px;background:rgba(255,255,255,.15);overflow:hidden}
+  .lvlbar i{display:block;height:100%;background:linear-gradient(90deg,#45c8ff,#7b5cff)}
+
+  .plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;min-width:min(580px,86vw);margin:6px 0 14px}
+  .pcard{position:relative;text-align:left;padding:14px;border-radius:16px}
+  .pcard b{display:block;font-size:18px}
+  .pcard small{color:var(--muted);font-weight:700;display:block}
+  .pcard .del{position:absolute;top:6px;right:6px;padding:2px 8px;border-radius:8px;font-size:12px;opacity:.6}
+  .pcard .del:hover{opacity:1;background:rgba(255,90,90,.25)}
+
+  .menu{display:grid;grid-template-columns:repeat(2,minmax(190px,1fr));gap:12px;margin:14px 0}
+  .menu button{padding:18px 12px;font-size:18px;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .menu button span{font-size:30px}
+  .menu button small{font-size:12px;color:var(--muted);font-weight:700}
+  .savestatus{font-size:12px;text-align:center;margin-top:8px;color:var(--muted)}
+  .savestatus.s-err,.savestatus.s-off{color:#ffcf6b}
+  .settings{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+
+  .cuphead{display:flex;align-items:center;gap:8px;font-weight:900;font-size:16px;margin:14px 0 8px}
+  .tgrid{display:grid;grid-template-columns:repeat(3,minmax(170px,1fr));gap:10px}
+  .tcard{text-align:left;padding:12px 14px;border-radius:14px;min-height:96px;display:flex;flex-direction:column;gap:3px}
+  .tcard .num{font-size:12px;color:var(--muted);font-weight:900}
+  .tcard b{font-size:17px}
+  .tcard small{color:var(--muted);font-weight:700}
+  .tcard.locked{opacity:.45}
+  .wtabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:6px}
+  .wtab{padding:7px 6px;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:12px}
+  .wtab span{font-size:22px}
+  .wtab b{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .wtab small{color:var(--muted);font-weight:800;font-size:11px}
+  .wtab.on{border-color:var(--accent);background:rgba(255,194,61,.16)}
+  .wtab.locked{opacity:.4}
+  .tcard .best{color:#ffd77a}
+  .cupcard{text-align:left;padding:16px;border-radius:16px;display:flex;gap:14px;align-items:center;width:100%}
+  .cupcard .ic{font-size:42px}
+  .cupcard b{font-size:19px;display:block}
+  .cupcard small{color:var(--muted);font-weight:700;display:block}
+
+  .mgrid{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:12px;margin:10px 0 12px}
+  .mcard{padding:12px 10px;border-radius:18px;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .mcard.sel{border-color:var(--accent);background:rgba(255,194,61,.14);box-shadow:0 0 0 2px var(--accent) inset}
+  .ball{width:58px;height:58px;border-radius:50%;box-shadow:inset -8px -10px 18px rgba(0,0,0,.35),inset 8px 8px 14px rgba(255,255,255,.45),0 6px 14px rgba(0,0,0,.4)}
+  .bet{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin:6px 0 14px}
+  .bet .row{justify-content:flex-start}
+  .bet select{font:inherit;color:var(--text);background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
+  .seg{display:inline-flex;background:rgba(0,0,0,.3);border-radius:12px;padding:4px;gap:4px}
+  .seg button{border:none;padding:6px 12px;font-size:13px}
+  .seg button.on{background:var(--accent);color:#2b1700}
+
+  /* yarış HUD */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+  #hud .box{background:rgba(10,16,36,.66);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(6px)}
+  #stand{position:absolute;left:14px;top:70px;width:250px;padding:8px}
+  .srow{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:9px;font-weight:800;font-size:14px}
+  .srow .rk{width:20px;text-align:center;color:var(--muted)}
+  .srow .dot{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:inset -2px -2px 3px rgba(0,0,0,.35)}
+  .srow .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .srow .fx{font-size:12px;letter-spacing:-1px}
+  .srow .tm{font-size:12px;color:#9ff0b0}
+  .srow.me{background:rgba(255,194,61,.2)}
+  .srow .tag{font-size:10px;background:var(--accent);color:#2b1700;border-radius:6px;padding:1px 5px}
+  #prog{position:absolute;left:50%;top:14px;transform:translateX(-50%);width:min(560px,56vw);height:42px;padding:0 18px}
+  #prog .bar{position:absolute;left:18px;right:18px;top:19px;height:5px;border-radius:3px;background:rgba(255,255,255,.18)}
+  #prog .flag{position:absolute;right:4px;top:9px;font-size:18px}
+  #prog .pd{position:absolute;top:13px;width:16px;height:16px;margin-left:-8px;border-radius:50%;border:2px solid rgba(0,0,0,.4);transition:left .15s linear}
+  #prog .pd.me{width:20px;height:20px;top:11px;margin-left:-10px;border:3px solid #fff;z-index:2}
+  #topright{position:absolute;right:14px;top:14px;display:flex;gap:8px;pointer-events:auto}
+  #topright .box{padding:8px 12px;font-weight:900}
+  #topright button{padding:8px 12px;border-radius:12px;background:rgba(10,16,36,.66)}
+  #timer{min-width:74px;text-align:center;font-variant-numeric:tabular-nums}
+  #cupBadge{position:absolute;left:14px;top:14px;padding:8px 12px;font-weight:900}
+  #count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:150px;font-weight:900;color:#fff;text-shadow:0 8px 30px rgba(0,0,0,.6)}
+  #count.pop{animation:pop .9s ease-out}
+  @keyframes pop{0%{transform:scale(1.6);opacity:0}25%{transform:scale(1);opacity:1}100%{transform:scale(.9);opacity:.85}}
+  #toasts{position:absolute;left:50%;top:70px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;width:min(560px,70vw)}
+  .toast{padding:7px 14px;border-radius:12px;background:rgba(10,16,36,.82);border:1px solid var(--line);font-weight:800;font-size:14px;animation:tin .25s ease-out;text-align:center}
+  .toast.gold{border-color:var(--accent);color:#ffe199}
+  .toast.bad{border-color:var(--attack);color:#ffc2cd}
+  @keyframes tin{from{transform:translateY(-8px);opacity:0}to{transform:none;opacity:1}}
+  #slowmo{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-weight:900;letter-spacing:3px;color:#ffe199;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+  #help{position:absolute;bottom:14px;right:14px;font-size:12px;color:rgba(255,255,255,.75);text-shadow:0 1px 4px #000}
+
+  /* güç kartları */
+  #cards{position:absolute;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;pointer-events:auto;width:230px}
+  .card{position:relative;text-align:left;padding:10px 12px 14px;border-radius:16px;background:rgba(12,19,40,.88);border:2px solid var(--line);display:flex;gap:10px;align-items:center;animation:cin .3s ease-out both}
+  .card:hover{transform:translateX(-4px)}
+  .card.self{border-color:rgba(61,220,132,.7)}
+  .card.attack{border-color:rgba(255,92,122,.75)}
+  .card .ic{font-size:30px;width:38px;text-align:center}
+  .card b{display:block;font-size:15px}
+  .card small{display:block;font-size:11.5px;color:var(--muted);font-weight:700;line-height:1.25}
+  .card .key{position:absolute;top:6px;right:8px;font-size:11px;font-weight:900;color:#2b1700;background:var(--accent);border-radius:6px;padding:0 6px}
+  .card .typ{font-size:10px;font-weight:900;letter-spacing:1px}
+  .card.self .typ{color:var(--self)} .card.attack .typ{color:var(--attack)}
+  #cardTime{height:5px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
+  #cardTime i{display:block;height:100%;background:var(--accent)}
+  #cardsHead{font-weight:900;font-size:13px;text-align:center;color:#ffe199;text-shadow:0 1px 6px #000}
+  @keyframes cin{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+
+  /* tekrar */
+  #replayBar{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:15;display:flex;gap:12px;align-items:center;
+    background:rgba(10,16,36,.75);border:1px solid var(--line);border-radius:14px;padding:8px 14px;font-weight:900;letter-spacing:2px}
+  #replayBar .rec{width:12px;height:12px;border-radius:50%;background:#ff3355;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.2}}
+  .letterbox:before,.letterbox:after{content:"";position:fixed;left:0;right:0;height:9vh;background:#000;z-index:9}
+  .letterbox:before{top:0}.letterbox:after{bottom:0}
+
+  /* sonuç */
+  .rtable{width:min(540px,86vw);border-collapse:collapse;margin:8px 0 12px}
+  .rtable td{padding:7px 10px;border-bottom:1px solid var(--line);font-weight:800}
+  .rtable tr.me td{background:rgba(255,194,61,.14)}
+  .rtable .medal{font-size:22px;width:40px;text-align:center}
+  .gain{font-size:28px;font-weight:900;text-align:center;margin:6px 0}
+  .gain.good{color:#ffd77a}
+  .notes{display:flex;flex-direction:column;gap:6px;align-items:center;margin:4px 0 12px}
+  .note{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-weight:800;font-size:14px}
+  .note.ach{border-color:rgba(255,194,61,.6);color:#ffe199}
+
+  /* mağaza */
+  #scrShop{justify-content:flex-end;background:linear-gradient(90deg,rgba(5,10,25,0) 0%,rgba(5,10,25,0) 38%,rgba(5,10,25,.55) 55%)}
+  #scrShop .panel{margin:0;width:min(640px,60vw);max-height:calc(100vh - 32px);overflow:auto}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+  .tabs button{padding:7px 12px;font-size:14px}
+  .tabs button.on{background:var(--accent);color:#2b1700;border-color:var(--accent)}
+  .sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .item{padding:10px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;cursor:pointer}
+  .item:hover{border-color:rgba(255,255,255,.35)}
+  .item.eq{border-color:var(--good);box-shadow:0 0 0 1px var(--good) inset}
+  .item.try{border-color:var(--accent2)}
+  .item .ic{font-size:30px;height:40px;display:flex;align-items:center;justify-content:center}
+  .item .sw{width:34px;height:34px;border-radius:50%;box-shadow:inset -5px -6px 10px rgba(0,0,0,.35),inset 4px 4px 8px rgba(255,255,255,.4)}
+  .item b{font-size:14px}
+  .item .pr{font-size:13px;font-weight:900;color:#ffd77a}
+  .item .pr.no{color:#ff9a9a}
+  #shopHint{position:fixed;left:2vw;bottom:20px;z-index:21;font-weight:800;color:#fff;text-shadow:0 2px 8px #000;max-width:34vw}
+
+  .alist{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:10px;min-width:min(600px,86vw)}
+  .ach{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .ach .ic{font-size:28px;filter:grayscale(1);opacity:.5}
+  .ach.done{border-color:rgba(255,194,61,.55);background:rgba(255,194,61,.08)}
+  .ach.done .ic{filter:none;opacity:1}
+  .ach b{display:block;font-size:14px}
+  .ach small{color:var(--muted);font-weight:700;font-size:12px}
+  .ach .rw{margin-left:auto;font-weight:900;color:#ffd77a;font-size:13px;white-space:nowrap}
+
+  #loading{z-index:50}
+  .spinner{width:48px;height:48px;border-radius:50%;border:5px solid rgba(255,255,255,.2);border-top-color:var(--accent);animation:spin 1s linear infinite;margin:18px auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- telefon ve tablet ---------- */
+  html.mobil,html.mobil body{touch-action:manipulation;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;-webkit-user-select:none}
+  #c{touch-action:none}
+  html.mobil #help{display:none}
+  html.mobil #shopHint{display:none!important}
+  html.mobil button{min-height:40px}
+  /* dikey telefon */
+  @media (max-width:760px){
+    .screen{padding:calc(10px + env(safe-area-inset-top)) 8px calc(10px + env(safe-area-inset-bottom))}
+    .panel{padding:14px 12px;border-radius:18px;width:100%!important;min-width:0!important}
+    h1{font-size:30px} h2{font-size:20px} .sub{font-size:13px;margin-bottom:10px}
+    .menu{gap:8px;grid-template-columns:repeat(2,1fr)} .menu button{padding:12px 6px;font-size:15px} .menu button span{font-size:24px}
+    .plist{min-width:0;grid-template-columns:1fr 1fr}
+    .wtabs{grid-template-columns:repeat(4,1fr);gap:4px} .wtab{padding:5px 2px} .wtab span{font-size:18px} .wtab b{font-size:9.5px}
+    .tgrid{grid-template-columns:1fr 1fr;gap:8px} .tcard{min-height:76px;padding:9px 10px} .tcard b{font-size:14px} .tcard small{font-size:11px}
+    .cuphead{flex-wrap:wrap;font-size:14px}
+    .mgrid{grid-template-columns:repeat(3,1fr);gap:8px} .mcard{padding:8px 4px;font-size:12px} .ball{width:44px;height:44px}
+    .bet .row{gap:6px} .bet select{max-width:46vw}
+    .cupcard{padding:12px} .cupcard .ic{font-size:32px} .cupcard b{font-size:16px}
+    .sgrid{grid-template-columns:repeat(3,1fr);gap:6px} .item{padding:7px 4px} .item b{font-size:11.5px} .item .ic{font-size:24px;height:30px}
+    .alist{grid-template-columns:1fr;min-width:0}
+    .rtable{width:100%} .rtable td{padding:5px 6px;font-size:13px} .rtable .medal{width:30px;font-size:18px}
+    #scrShop{align-items:flex-end;background:linear-gradient(180deg,rgba(5,10,25,0) 0%,rgba(5,10,25,0) 40%,rgba(5,10,25,.6) 60%)}
+    #scrShop .panel{width:100%;max-height:58vh}
+    /* yarış göstergeleri */
+    #prog{left:8px;right:8px;top:calc(6px + env(safe-area-inset-top));width:auto;transform:none;height:34px}
+    #prog .bar{top:15px} #prog .flag{top:5px} #prog .pd{top:9px;width:14px;height:14px;margin-left:-7px} #prog .pd.me{top:7px;width:18px;height:18px;margin-left:-9px}
+    #stand{left:8px;top:calc(48px + env(safe-area-inset-top));width:150px;padding:4px}
+    .srow{font-size:11px;padding:2px 4px;gap:4px} .srow .rk{width:13px} .srow .dot{width:10px;height:10px} .srow .tag{font-size:8px;padding:0 3px} .srow .tm{font-size:10px}
+    #topright{top:calc(48px + env(safe-area-inset-top));right:8px;gap:5px} #topright .box,#topright button{padding:6px 8px;font-size:12px;min-height:0}
+    #camName{display:none}
+    #cupBadge{display:none}
+    #toasts{top:calc(226px + env(safe-area-inset-top));width:92vw} .toast{font-size:12px;padding:5px 10px}
+    #cards{left:8px;right:8px;top:auto;bottom:calc(10px + env(safe-area-inset-bottom));transform:none;width:auto;flex-direction:row;flex-wrap:wrap;gap:6px}
+    #cardsHead{flex-basis:100%;font-size:12px}
+    .card{flex:1;flex-direction:column;gap:2px;padding:8px 4px 10px;text-align:center;align-items:center;min-width:0}
+    .card:hover{transform:none} .card .ic{font-size:28px;width:auto} .card b{font-size:12px} .card small{display:none} .card .key{display:none} .card .typ{font-size:9px}
+    #cardTime{flex-basis:100%}
+    #count{font-size:96px}
+    #slowmo{display:none}
+  }
+  /* yatay telefon (alçak ekran) */
+  @media (max-height:500px) and (orientation:landscape){
+    .screen{padding:8px calc(8px + env(safe-area-inset-right)) 8px calc(8px + env(safe-area-inset-left))}
+    .panel{padding:12px 14px}
+    h1{font-size:26px} .menu button{padding:8px 6px;font-size:14px} .menu button span{font-size:20px}
+    #stand{top:56px;width:170px;padding:4px} .srow{font-size:11px;padding:2px 4px}
+    #prog{left:12px;transform:none;width:calc(100vw - 330px)} #camName{display:none}
+    #toasts{top:8px;left:auto;right:12px;transform:none;width:300px;align-items:flex-end;top:56px} .toast{font-size:12px;padding:5px 10px}
+    #cards{width:200px;gap:6px} .card{padding:6px 10px 10px} .card small{display:none} .card .ic{font-size:24px}
+    #prog{height:34px} #count{font-size:90px}
+    #scrShop .panel{max-height:calc(100vh - 16px)}
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="loading" class="screen"><div class="panel"><h1>Misket Yarışı</h1><div class="spinner"></div><p class="sub" id="loadMsg">Yükleniyor…</p><p class="sub" style="font-size:12px">İlk açılış biraz sürebilir (gökyüzü ve dokular yükleniyor)</p></div></div>
+
+<!-- Profil -->
+<div id="scrProfile" class="screen hidden"><div class="panel">
+  <h1>Misket Yarışı</h1>
+  <p class="sub">Kim oynuyor?</p>
+  <div class="plist" id="plist"></div>
+  <h3>Yeni oyuncu</h3>
+  <div class="row" style="flex-wrap:nowrap"><input id="newName" maxlength="16" placeholder="Adını yaz…" autocomplete="off"><button class="main" id="btnCreate">Ekle</button></div>
+  <div class="savestatus" id="saveStatus1"></div>
+</div></div>
+
+<!-- Ana menü -->
+<div id="scrMenu" class="screen hidden"><div class="panel" style="min-width:min(540px,92vw)">
+  <h1>Misket Yarışı</h1>
+  <p class="sub">Merhaba <b id="mName"></b>! <span class="pill">⭐ <span id="mPoints">0</span> puan</span></p>
+  <div class="row"><span class="lvl">Seviye <span id="mLevel">1</span> <span class="lvlbar"><i id="mLevelBar" style="width:0"></i></span></span></div>
+  <div class="menu">
+    <button id="btnRace"><span>🏁</span>Yarış<small>Parkur seç ve yarış</small></button>
+    <button id="btnCups"><span>🏆</span>Kupalar<small>3 parkurluk turnuva</small></button>
+    <button id="btnShop"><span>🛒</span>Mağaza<small>Kostüm ve iz satın al</small></button>
+    <button id="btnAch"><span>🏅</span>Başarımlar<small id="mAch">0 / 0</small></button>
+  </div>
+  <div class="row muted" id="mStats" style="font-size:14px;font-weight:700"></div>
+  <div class="settings">
+    <button class="sm" id="btnSound">🔊 Ses: Açık</button>
+    <button class="sm" id="btnGfx">🖥️ Grafik: Yüksek</button>
+    <button class="sm" id="btnSwitch">👤 Oyuncu değiştir</button>
+  </div>
+  <div class="savestatus" id="saveStatus2"></div>
+</div></div>
+
+<!-- Parkurlar -->
+<div id="scrTracks" class="screen hidden"><div class="panel" style="width:min(780px,96vw)">
+  <h2>Parkur Seç</h2>
+  <p class="sub">200 parkur, 20 dünya. Bir parkurda ilk 3'e girersen sonraki açılır; parkurlar giderek uzar ve zorlaşır.</p>
+  <div id="tlist"></div>
+  <div class="row" style="margin-top:16px"><button id="btnTracksBack">← Geri</button></div>
+</div></div>
+
+<!-- Kupalar -->
+<div id="scrCups" class="screen hidden"><div class="panel" style="width:min(620px,96vw)">
+  <h2>🏆 Kupalar</h2>
+  <p class="sub">Her dünyanın son 3 parkuru o dünyanın kupasıdır. Her yarışta sıraya göre kupa puanı toplanır (1.: 10, 2.: 7, 3.: 5, 4.: 3, 5.: 2, 6.: 1). En çok puanı toplayan misket şampiyon olur.</p>
+  <div id="clist" style="display:flex;flex-direction:column;gap:10px"></div>
+  <div class="row" style="margin-top:16px"><button id="btnCupsBack">← Geri</button></div>
+</div></div>
+
+<!-- Misket seçimi + bahis -->
+<div id="scrPick" class="screen clear hidden"><div class="panel" style="width:min(640px,96vw)">
+  <h2 id="pickTitle">Misketini Seç</h2>
+  <p class="sub">Misketleri kimse sürmez, fizik karar verir. Yarışta çıkan güç kartlarıyla misketine yardım edersin.</p>
+  <div class="mgrid" id="mgrid"></div>
+  <div class="bet" id="betBox">
+    <div class="row" style="justify-content:space-between"><b>🎲 Bahis (isteğe bağlı)</b><span class="muted" style="font-size:13px">Kazanır ×3 · İlk 3 ×1,5</span></div>
+    <div class="row" style="margin-top:8px">
+      <select id="betMarble"></select>
+      <span class="seg" id="betType"><button data-bt="win" class="on">Kazanır</button><button data-bt="top3">İlk 3</button></span>
+      <input type="range" id="betAmt" min="0" max="100" step="5" value="0" style="flex:1;min-width:120px">
+      <b id="betAmtTxt" style="min-width:90px;text-align:right">Bahis yok</b>
+    </div>
+  </div>
+  <div class="row"><button id="btnPickBack">← Geri</button><button class="main" id="btnGo">Yarışı Başlat ▶</button></div>
+</div></div>
+
+<!-- Yarış göstergeleri -->
+<div id="hud" class="hidden">
+  <div id="cupBadge" class="box hidden"></div>
+  <div id="prog" class="box"><div class="bar"></div><div class="flag">🏁</div><div id="progDots"></div></div>
+  <div id="stand" class="box"></div>
+  <div id="topright"><div class="box" id="timer">0.0</div><button id="btnCam">🎥 <span id="camName">Benim misketim</span></button><button id="btnQuit">✕</button></div>
+  <div id="toasts"></div>
+  <div id="cards" class="hidden"></div>
+  <div id="count" class="hidden"></div>
+  <div id="slowmo" class="hidden">◉ YAVAŞ ÇEKİM</div>
+  <div id="help">1 · 2 · 3: güç seç · C: kamera · Esc: çık</div>
+</div>
+<div id="replayBar" class="hidden"><span class="rec"></span>TEKRAR<button class="sm" id="btnSkip" style="letter-spacing:0">Geç ⏭</button></div>
+
+<!-- Sonuç -->
+<div id="scrResult" class="screen clear hidden"><div class="panel">
+  <h2 id="resTitle">Yarış Bitti</h2>
+  <div class="gain" id="resGain"></div>
+  <div class="notes" id="resNotes"></div>
+  <table class="rtable" id="resTable"></table>
+  <p class="sub" id="resNote"></p>
+  <div class="row" id="resButtons"><button id="btnResMenu">Ana Menü</button><button id="btnResTracks">Parkurlar</button><button class="main" id="btnResAgain">Tekrar Yarış ↻</button></div>
+</div></div>
+
+<!-- Mağaza -->
+<div id="scrShop" class="screen hidden"><div class="panel">
+  <h2>🛒 Mağaza <span class="pill" style="font-size:15px;vertical-align:4px">⭐ <span id="shopPoints">0</span></span></h2>
+  <div class="tabs" id="shopTabs"></div>
+  <div class="sgrid" id="shopGrid"></div>
+  <div class="row" style="margin-top:14px"><button id="btnShopBack">← Geri</button></div>
+</div></div>
+<div id="shopHint" class="hidden">Bir ürüne tıklayınca misketinde nasıl duracağını görürsün. Senin misketin hangisini seçersen seç bu kostümü giyer.</div>
+
+<!-- Başarımlar -->
+<div id="scrAch" class="screen hidden"><div class="panel">
+  <h2>🏅 Başarımlar</h2>
+  <p class="sub" id="achSub"></p>
+  <div class="alist" id="alist"></div>
+  <div class="row" style="margin-top:16px"><button id="btnAchBack">← Geri</button></div>
+</div></div>
+
+<script>
+  // açılışta bir hata olursa yükleme ekranında göster (sessizce takılı kalmasın)
+  window.addEventListener('error', function (e) {
+    var l = document.getElementById('loading'), m = document.getElementById('loadMsg');
+    if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
+  });
+</script>
+<script src="kayit/kayit.js"></script>
+<script src="three.min.js"></script>
+<script src="varliklar/RGBELoader.js"></script>
+<script src="varliklar/dokular.js"></script>
+<script src="rapier.js"></script>
+<script src="js/parcalar.js"></script>
+<script src="js/parkurlar.js"></script>
+<script src="js/dunyalar.js"></script>
+<script src="js/fizik.js"></script>
+<script src="js/guclar.js"></script>
+<script src="js/kayit-sistemi.js"></script>
+<script src="js/magaza.js"></script>
+<script src="js/ses.js"></script>
+<script src="js/cevre.js"></script>
+<script src="js/grafik.js"></script>
+<script src="js/oyun.js"></script>
+</body>
+</html>

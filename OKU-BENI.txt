@@ -1,0 +1,25 @@
+MİSKET YARIŞI — NASIL AÇILIR?
+
+▶ Oyunu "Misket Yarışı" uygulamasına çift tıklayarak aç.
+  Böylece oyuncular, puanlar, kostümler, açılan parkurlar ve başarımlar bu klasördeki kayit/kayit.json dosyasına kaydedilir.
+  Tarayıcının geçmişi/önbelleği silinse bile kayıtlar kaybolmaz.
+
+• İlk açılışta macOS "doğrulanamadı" derse: uygulamaya sağ tıkla → Aç → Aç.
+• index.html dosyasına çift tıklayarak da oynanabilir, ama o zaman kayıtlar sadece tarayıcıda tutulur (menüde sarı uyarı görünür).
+• Yedekler: kayit/yedekler klasöründe (en fazla 10 dakikada bir, son 50 yedek).
+• kayit klasörünü silme ve içindeki dosyaları elle değiştirme.
+• Bilgisayar yavaşsa ana menüden "Grafik: Orta" seç.
+
+NASIL OYNANIR?
+• Parkur seç, 6 misketten birini kendi misketin olarak seç. İstersen bahis yap (kazanır ×3, ilk 3 ×1,5).
+• Misketleri kimse sürmez: gerçek fizik kurallarıyla yuvarlanırlar.
+• Yarışta 15–20 saniyede bir sağda 3 güç kartı çıkar. Tıkla ya da 1 / 2 / 3 tuşuna bas (6 saniyen var).
+  Yeşil kartlar seni güçlendirir, kırmızı kartlar önündeki rakibe tuzak kurar. Rakipler de güç kullanır!
+• 1. olan P puan, 2. P/2, 3. P/4 alır (P parkur 1'de 100, parkur 200'de 265).
+• 200 parkur, 20 dünya var (ev odaları, şehir, lunapark, dünyanın ilginç yerleri…). İlk 3'e girdiğin parkurdan sonraki açılır.
+• Her dünyanın son 3 parkuru o dünyanın kupasıdır; 3 parkuru da açınca kupayı oynayabilirsin.
+• Puanlarla mağazadan renk, desen, forma, gözlük, şapka ve iz al. Senin misketin hangisi olursa olsun kostümü giyer.
+• Tuşlar: 1/2/3 güç seç, C kamera (benim misketim / lider / genel), Esc yarıştan çık.
+
+Oyun internetsiz çalışır.
+Dokular ve gökyüzü: Poly Haven (CC0). Fizik: Rapier (Apache-2.0). Görüntü: three.js (MIT).

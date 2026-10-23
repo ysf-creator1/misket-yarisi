@@ -1,0 +1,4 @@
+# kişisel kayıtlar (oyuncular, puanlar) paylaşılmaz
+kayit/
+.DS_Store
+node_modules/
