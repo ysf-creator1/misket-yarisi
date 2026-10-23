@@ -19,7 +19,7 @@ const TICK = 1000 / 60;            // döngü: 60 Hz (her turda 2 fizik adımı)
 const SNAP_EVERY = 3;              // 20 Hz anlık görüntü
 const INTRO = 5.6;                 // istemcideki giriş animasyonu + 3-2-1 (js/oyun.js INTRO ile aynı)
 const QUICK_WAIT = 20;             // hızlı oyunda en fazla bekleme (sn)
-const MAX_ROOMS = +process.env.MAX_ROOMS || 60, MAX_PER_IP = 16, MAX_MSG = 4096, MAX_RATE = 40; // koruma sınırları
+const MAX_ROOMS = +process.env.MAX_ROOMS || 16, MAX_PER_IP = 16, MAX_MSG = 4096, MAX_RATE = 40; // koruma sınırları
 const ROOM_IDLE = 10 * 60 * 1000;  // boş oda silinme süresi
 const LEAVE_GRACE = 30 * 1000;     // lobide bağlantısı kopanın yeri bu süre tutulur
 
