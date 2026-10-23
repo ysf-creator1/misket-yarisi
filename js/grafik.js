@@ -343,7 +343,7 @@
     else if (skyTex) scene.background = skyTex;
 
     trackStyle = th.trackMat || 'tahta';
-    const belts = [];
+    const belts = [], parts = [];
     for (const m of track.meshes) {
       if (m.kind === 'belt') { // hareketli bant: akan ok dokusu
         const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(m.v, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2)); g.setIndex(m.i); g.computeVertexNormals();
@@ -360,6 +360,10 @@
       mesh.castShadow = m.kind !== 'rim'; mesh.receiveShadow = m.kind !== 'rim';
       if (m.kind === 'rim') mesh.renderOrder = 2;
       grp.add(mesh);
+      // yan kamerada saydamlaştırmak için: parçanın seyreltilmiş köşe noktaları
+      const step = Math.max(1, Math.floor(m.v.length / 3 / 240)), pts = [];
+      for (let q = 0; q < m.v.length; q += 3 * step) pts.push(m.v[q], m.v[q + 1], m.v[q + 2]);
+      parts.push({ mesh, base: mat, pts, f: 0, fm: null });
     }
     const gates = [], spinners = [], movers = [], kins = [];
     for (const pr of track.prims) {
@@ -459,7 +463,7 @@
     if (belts.length) updaters.push(t => { for (const b of belts) b.tx.offset.y = (t * 0.9) % 1; });
     // yarış yokken (menüde) hareketli engeller kendi saatleriyle oynasın
     if (kins.length) updaters.push(t => { if (!Grafik.kinAuto) return; kins.forEach(km => { const P = window.MF.kinPose(km.userData.pr, t); Grafik.syncKin(km, { x: P.p[0], y: P.p[1], z: P.p[2] }, P.q); }); });
-    return { grp, gates, spinners, movers, kins, terr, patches: [], updaters, room: cctx.room };
+    return { grp, gates, spinners, movers, kins, terr, patches: [], updaters, room: cctx.room, parts };
   };
   // hareketli süsler (dönme dolap, balonlar, kuzey ışıkları…)
   Grafik.updateView = function (v, t) { if (v && v.updaters) for (const u of v.updaters) u(t); };
@@ -498,8 +502,24 @@
       if (g.userData.frame && !g.userData.frame.parent) g.parent.add(g.userData.frame);
     }
   };
+  // yan kamerada misketin 5 m yakınındaki parkur parçaları (oluk, duvar, cam kenar) saydamlaşır; P yoksa eski hâline döner
+  Grafik.fadeTrack = function (v, P, dt) {
+    if (!v || !v.parts) return;
+    const k = 1 - Math.exp(-9 * dt), D2 = 5 * 5;
+    for (const e of v.parts) {
+      let want = 0;
+      if (P) { const a = e.pts; for (let q = 0; q < a.length; q += 3) { const dx = a[q] - P.x, dy = a[q + 1] - P.y, dz = a[q + 2] - P.z; if (dx * dx + dy * dy + dz * dz < D2) { want = 1; break; } } }
+      if (!want && e.f === 0) continue;
+      e.f += (want - e.f) * k;
+      if (!want && e.f < 0.02) { e.f = 0; e.mesh.material = e.base; continue; }
+      if (!e.fm) { e.fm = e.base.clone(); e.fm.transparent = true; e.fm.depthWrite = false; }
+      e.fm.opacity = (e.base.transparent ? e.base.opacity : 1) * (1 - 0.8 * e.f);
+      e.mesh.material = e.fm;
+    }
+  };
   Grafik.disposeView = function (v) {
     if (!v) return;
+    for (const e of v.parts || []) { e.mesh.material = e.base; if (e.fm) e.fm.dispose(); }
     scene.remove(v.grp);
     v.grp.traverse(o => {
       if (o.geometry) o.geometry.dispose();

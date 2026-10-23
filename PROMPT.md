@@ -110,3 +110,26 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Yeni engeller (`node test/yeni-engel-testi.js`): takılma ve düşme ≤ 0,13/yarış.
 - Geri kayma ölçümü parkur testine eklendi; huni ilerlemesi geri gitmiyor, atlama inişi rampanın altından başlıyor, bu bölgelerde düşen misket kaldığı yere konuyor.
 - Mağaza: 144 ürün, toplam 38.155 puan (≈490 yarış).
+
+## 4. Güncelleme (oyuncu geri bildirimi)
+
+### Prompt
+> (1) Yarış başında kamera önden değil arkadan baksın; animasyonlu giriş olsun. (2) Güç kartları 10 sn görünsün ve seçilebilsin. (3) Süper Zıplama daha yükseğe ve daha ileri sıçrasın. (4) Delik/atlamadaki yan görüşte duvarlar misketleri kapatmasın: o bölümler saydamlaşsın; kamera tam yandan değil yandan-yukarıdan baksın ve kısa sürede normal görünüme dönsün.
+
+### Yapılanlar ve ölçümler
+- Giriş: geri sayım 5,6 sn; ilk ≈3 sn kamera yüksekten yan-arkadan parkuru gösterip dönerek misketlerin arkasına iner (hiç önden bakmaz), sonra 3-2-1.
+- Kart süresi 6 → 10 sn (final kart turundan sonraki dağıtım da buna göre ertelenir).
+- Zıplama: dikey hız 8,4 → 10,2 (tepe ≈2,4 m), ileri 8,5–11 → 10,5–13,5 m/sn. Önünde 18 m içinde huni varsa huninin girişinin önüne inecek kadar kısa zıplar (huninin üstünden aşıp düşmesin); zıplama misketi hiç yavaşlatmaz.
+  Senaryo: 1,4 sn'de 13,8 m ilerleme (zıplamadan 2,8 m), yandan düşme 0/16. Parkur 1 (40 yarış): ortalama sıra 4,08 → 3,48, zıpladıktan sonra düşme 0,17 → 0,13/yarış.
+- Yan kamera: 7 m yandan/2,2 m yukarıdan → 5 m yandan/5,2 m yukarıdan, süre 2,5 → 1,6 sn. Yan görüşte misketin 5 m yakınındaki parkur parçaları %80 saydamlaşır, sonra yumuşakça eski hâline döner (`Grafik.fadeTrack`).
+
+## 5. Güncelleme (oyuncu geri bildirimi)
+
+### Prompt
+> (1) Bölüm bitince sonraki bölüme geçme butonu olsun. (2) Tuzaklar sadece en öndekine değil, bana yakın öndeki ya da arkadakilere kurulabilsin; şartlara göre otomatik karar versin. (3) Menülere, mağazaya vb. geçiş için en üstte butonlar olsun.
+
+### Yapılanlar ve ölçümler
+- Sonuç ekranında **Sonraki Parkur ▶** (kupada yok). Sonraki parkur kilitliyse "🔒 ilk 3 gerekli" yazar ve basılamaz.
+- Tuzak hedefi `PowerSystem.trapTargets(m, güç, n)`: öndekiler (30 m) ve arkadakiler (10 m) puanlanır. Arkadan yakından ve hızlı gelen rakip, hemen öndeki rakip ve 15 m+ kaçan lider öne çıkar; kalkanlı/hayalet (duvar ve balçıkta kalkan sayılmaz) ve zaten etkilenmiş rakip geri planda kalır. Bomba rakiplerin kümelendiği yeri seçer; rüzgâr öndekilere ve 8 m içinden kovalayanlara eser.
+  Ölçüm (botlar, 18 yarış): hedeflerin %76'sı önde, %24'ü arkada (eskiden arkadaki yalnızca lider tuzak kurunca). Denge (`denge-testi 25,75,125 16`): yarı yolda lider kazandı %44 (eski kodla aynı ölçümde %53).
+- Üst menü çubuğu (`#topnav`): Menü · Parkurlar · Kupalar · Mağaza · Başarımlar + puan; menü ekranlarında hep görünür, yarışta gizli. Telefonda simge + kısa yazı.

@@ -168,6 +168,16 @@
   .note{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-weight:800;font-size:14px}
   .note.ach{border-color:rgba(255,194,61,.6);color:#ffe199}
 
+  /* üst menü çubuğu */
+  #topnav{position:fixed;left:0;right:0;top:0;z-index:30;display:flex;gap:6px;align-items:center;justify-content:center;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;background:rgba(8,14,32,.82);border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
+  #topnav button{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:15px;border-radius:12px}
+  #topnav button span{font-size:18px}
+  #topnav button.on{background:var(--accent);color:#2b1700;border-color:var(--accent)}
+  #topnav .navpts{margin-left:8px;white-space:nowrap}
+  body.navon .screen{padding-top:calc(72px + env(safe-area-inset-top))}
+  body.navon #scrShop .panel{max-height:calc(100vh - 92px)}
+
   /* mağaza */
   #scrShop{justify-content:flex-end;background:linear-gradient(90deg,rgba(5,10,25,0) 0%,rgba(5,10,25,0) 38%,rgba(5,10,25,.55) 55%)}
   #scrShop .panel{margin:0;width:min(640px,60vw);max-height:calc(100vh - 32px);overflow:auto}
@@ -221,6 +231,10 @@
     .sgrid{grid-template-columns:repeat(3,1fr);gap:6px} .item{padding:7px 4px} .item b{font-size:11.5px} .item .ic{font-size:24px;height:30px}
     .alist{grid-template-columns:1fr;min-width:0}
     .rtable{width:100%} .rtable td{padding:5px 6px;font-size:13px} .rtable .medal{width:30px;font-size:18px}
+    #topnav{gap:3px;padding:calc(6px + env(safe-area-inset-top)) 4px 6px;justify-content:space-between}
+    #topnav button{flex:1;flex-direction:column;gap:1px;padding:5px 2px;font-size:10px;min-width:0;min-height:0}
+    #topnav button span{font-size:19px} #topnav .navpts{display:none}
+    body.navon .screen{padding-top:calc(66px + env(safe-area-inset-top))}
     #scrShop{align-items:flex-end;background:linear-gradient(180deg,rgba(5,10,25,0) 0%,rgba(5,10,25,0) 40%,rgba(5,10,25,.6) 60%)}
     #scrShop .panel{width:100%;max-height:58vh}
     /* yarış göstergeleri */
@@ -251,6 +265,9 @@
     #cards{width:200px;gap:6px} .card{padding:6px 10px 10px} .card small{display:none} .card .ic{font-size:24px}
     #prog{height:34px} #count{font-size:90px}
     #scrShop .panel{max-height:calc(100vh - 16px)}
+    #topnav{padding-top:4px;padding-bottom:4px} #topnav button{padding:4px 10px;font-size:13px;min-height:0}
+    body.navon .screen{padding-top:52px}
+    body.navon #scrShop .panel{max-height:calc(100vh - 60px)}
   }
 </style>
 </head>
@@ -258,6 +275,16 @@
 <canvas id="c"></canvas>
 
 <div id="loading" class="screen"><div class="panel"><h1>Misket Yarışı</h1><div class="spinner"></div><p class="sub" id="loadMsg">Yükleniyor…</p><p class="sub" style="font-size:12px">İlk açılış biraz sürebilir (gökyüzü ve dokular yükleniyor)</p></div></div>
+
+<!-- Üst menü çubuğu (menü ekranlarında her zaman görünür) -->
+<nav id="topnav" class="hidden">
+  <button data-nav="menu"><span>🏠</span><b>Menü</b></button>
+  <button data-nav="tracks"><span>🏁</span><b>Parkurlar</b></button>
+  <button data-nav="cups"><span>🏆</span><b>Kupalar</b></button>
+  <button data-nav="shop"><span>🛒</span><b>Mağaza</b></button>
+  <button data-nav="ach"><span>🏅</span><b>Başarımlar</b></button>
+  <span class="navpts pill">⭐ <span id="navPoints">0</span></span>
+</nav>
 
 <!-- Profil -->
 <div id="scrProfile" class="screen hidden"><div class="panel">
@@ -343,7 +370,7 @@
   <div class="notes" id="resNotes"></div>
   <table class="rtable" id="resTable"></table>
   <p class="sub" id="resNote"></p>
-  <div class="row" id="resButtons"><button id="btnResMenu">Ana Menü</button><button id="btnResTracks">Parkurlar</button><button class="main" id="btnResAgain">Tekrar Yarış ↻</button></div>
+  <div class="row" id="resButtons"><button id="btnResMenu">Ana Menü</button><button id="btnResTracks">Parkurlar</button><button class="main" id="btnResAgain">Tekrar Yarış ↻</button><button class="main hidden" id="btnResNext">Sonraki Parkur ▶</button></div>
 </div></div>
 
 <!-- Mağaza -->

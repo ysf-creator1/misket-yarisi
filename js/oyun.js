@@ -12,6 +12,7 @@
   };
   const CAMS = ['Benim misketim', 'Lider', 'Genel bakış'];
   const SIDE_KINDS = ['jump', 'tramp', 'funnelExit', 'drop'];
+  const INTRO = 5.6; // giriş animasyonu (≈2,4 sn) + 3-2-1 geri sayımı
   const MEDAL = ['🥇', '🥈', '🥉'];
   const CUP_POINTS = [10, 7, 5, 3, 2, 1];
   const pointsFor = id => MP.pointsFor(id); // 1. olana verilen puan (P): 100 → 265; 2. P/2, 3. P/4
@@ -88,14 +89,25 @@
     const nowS = performance.now() / 1000, vy = tgt.body.linvel().y;
     if (state.phase !== 'countdown' && state.cam !== 2 && ((sm && SIDE_KINDS.includes(sm.kind)) || (vy < -4 && !tgt.inZone))) {
       if (!(nowS < (state.sideUntil || 0))) state.sideSign = 1;
-      state.sideUntil = nowS + 2.5;
+      state.sideUntil = nowS + 1.6;
     }
     const sideView = nowS < (state.sideUntil || 0) && state.phase !== 'countdown' && state.cam !== 2;
     if (sideView && !tgt.inZone) {
       const R = sm ? new THREE.Vector3(sm.R[0], 0, sm.R[2]).normalize() : new THREE.Vector3(1, 0, 0);
-      want.copy(P).addScaledVector(R, 7 * (state.sideSign || 1)).addScaledVector(fwdS, -1.5).add(new THREE.Vector3(0, 2.2, 0)); look.copy(P).addScaledVector(fwdS, 1.5);
+      // tam yandan değil: yandan ve yukarıdan (duvarların üstünden) bak
+      want.copy(P).addScaledVector(R, 5 * (state.sideSign || 1)).addScaledVector(fwdS, -1.8).add(new THREE.Vector3(0, 5.2, 0)); look.copy(P).addScaledVector(fwdS, 1.2);
     } else if (state.phase === 'countdown') {
-      const c = center(r); want.copy(c).addScaledVector(fwdS, -4.8).add(new THREE.Vector3(0, 5.2, 0)); look.copy(c).addScaledVector(fwdS, 5);
+      // giriş animasyonu: önce yukarıdan parkura bakar, sonra dönerek misketlerin arkasına iner
+      const c = center(r), st = state.track.samples.find(q => q.lane === 0) || state.track.samples[0];
+      const T = new THREE.Vector3(st.T[0], 0, st.T[2]).normalize(), Rv = new THREE.Vector3(st.R[0], 0, st.R[2]).normalize();
+      fwdS.copy(T);
+      const u = Math.min(1, Math.max(0, (INTRO - state.countdown) / (INTRO - 2.4))), e = u * u * (3 - 2 * u);
+      // hiç önden bakmaz: yandan-arkadan yüksekte başlar, dönerek tam arkaya alçalır
+      const a = 2.0 + (Math.PI - 2.0) * e, rad = 20 + (4.8 - 20) * e, hgt = 15 + (5.2 - 15) * e;
+      want.copy(c).addScaledVector(T, Math.cos(a) * rad).addScaledVector(Rv, Math.sin(a) * rad).add(new THREE.Vector3(0, hgt, 0));
+      const room = state.view && state.view.room; if (room) want.y = Math.min(want.y, room.y0 + room.H - 6);
+      look.copy(c).addScaledVector(T, 12 + (5 - 12) * e);
+      camPos.copy(want); camLook.copy(look); camInit = true;
     } else if (state.cam === 2) {
       const c = center(r).lerp(P, 0.4); want.copy(c).addScaledVector(fwdS, -16).add(new THREE.Vector3(0, 17, 0)); look.copy(c);
     } else if (tgt.inZone) {
@@ -104,6 +116,7 @@
     } else {
       want.copy(P).addScaledVector(fwdS, -7.2).add(new THREE.Vector3(0, 3.9, 0)); look.copy(P).addScaledVector(fwdS, 3);
     }
+    Grafik.fadeTrack(state.view, sideView && !tgt.inZone ? P : null, dt); // yan bakışta yakındaki duvarlar saydamlaşır
     if (!camInit) { camPos.copy(want); camLook.copy(look); camInit = true; }
     else { camPos.lerp(want, 1 - Math.exp(-3.5 * dt)); camLook.lerp(look, 1 - Math.exp(-6 * dt)); }
     camera.position.copy(camPos); camera.lookAt(camLook);
@@ -184,7 +197,7 @@
       p.points -= state.bet.amount; Kayit.persist(); state.betActive = Object.assign({}, state.bet);
     }
     state.view.gates.forEach(g => { g.mesh.visible = true; g.mesh.position.y = g.y0; g.opening = false; });
-    state.phase = 'countdown'; state.countdown = 3.2; state.endTimer = 0; state.slowDone = false; state.slowT = 0; state.wasLast = false;
+    state.phase = 'countdown'; state.countdown = INTRO; state.endTimer = 0; state.slowDone = false; state.slowT = 0; state.wasLast = false;
     camInit = false;
     show(null); $('hud').classList.remove('hidden'); $('toasts').innerHTML = ''; $('slowmo').classList.add('hidden'); hideCards();
     buildHud(); updateHud(true);
@@ -194,6 +207,7 @@
   function countdownTick(dt) {
     state.countdown -= dt;
     const n = Math.ceil(state.countdown - 0.2), el = $('count'), txt = n > 0 ? String(n) : 'BAŞLA!';
+    if (n > 3) return; // giriş animasyonu sürerken geri sayım yok
     if (txt !== lastCount) { lastCount = txt; el.textContent = txt; el.classList.remove('hidden', 'pop'); void el.offsetWidth; el.classList.add('pop'); Ses.beep(n); }
     if (state.countdown <= 0.2 && state.phase === 'countdown') {
       state.phase = 'race'; state.race.openGate(); Ses.gate();
@@ -388,6 +402,11 @@
       $('resNote').textContent = `Toplam puanın: ${p.points}`;
       $('btnResAgain').textContent = 'Tekrar Yarış ↻';
     }
+    // sonraki parkura geç (açıksa); kupada gösterilmez
+    const nb = $('btnResNext'), hasNext = !state.cup && id < MP.TRACKS.length, nextOpen = hasNext && p.unlocked >= id + 1;
+    nb.classList.toggle('hidden', !hasNext); nb.disabled = !nextOpen;
+    nb.textContent = nextOpen ? 'Sonraki Parkur ▶' : '🔒 Sonraki Parkur (ilk 3 gerekli)';
+    $('btnResAgain').classList.toggle('main', !nextOpen);
     state.cupDone = cupDone;
     show('scrResult');
     state.phase = 'result';
@@ -428,7 +447,24 @@
 
   // ================= EKRANLAR =================
   const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch'];
-  function show(id) { SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id)); $('shopHint').classList.toggle('hidden', id !== 'scrShop'); }
+  const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach' };
+  function show(id) {
+    SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id)); $('shopHint').classList.toggle('hidden', id !== 'scrShop');
+    const navOn = id in NAV_OF && !!state.player;
+    $('topnav').classList.toggle('hidden', !navOn); document.body.classList.toggle('navon', navOn);
+    if (navOn) { document.querySelectorAll('#topnav [data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === NAV_OF[id])); $('navPoints').textContent = state.player.points; }
+  }
+  // üst menü: her ekrandan doğrudan geçiş
+  $('topnav').addEventListener('click', e => {
+    const b = e.target.closest('[data-nav]'); if (!b) return;
+    const to = b.dataset.nav;
+    if (state.phase === 'shop' && to !== 'shop') leaveShop();
+    if (to === 'menu') showMenu();
+    else if (to === 'tracks') { state.cup = null; showTracks(); }
+    else if (to === 'cups') { state.cup = null; showCups(); }
+    else if (to === 'shop') { if (state.phase !== 'shop') { state.cup = null; showShop(); } }
+    else if (to === 'ach') { state.cup = null; toMenuScene(); showAch(); }
+  });
   document.addEventListener('click', e => { if (e.target.closest('button')) Ses.click(); });
 
   function saveStatusText() {
@@ -557,6 +593,7 @@
     else showPick();
   };
   $('btnResTracks').onclick = () => { state.cup = null; showTracks(); };
+  $('btnResNext').onclick = () => { if (state.cup || state.trackId >= MP.TRACKS.length || state.player.unlocked < state.trackId + 1) return; state.trackId++; state.world = null; showPick(); };
   $('btnResMenu').onclick = showMenu;
   function cycleCam() { state.cam = (state.cam + 1) % CAMS.length; $('camName').textContent = CAMS[state.cam]; }
   $('btnCam').onclick = cycleCam;
@@ -603,10 +640,11 @@
     state.shop.ped.visible = true;
     rebuildPreview(); renderShop(); show('scrShop');
   }
-  function closeShop() {
+  function leaveShop() {
     const S = state.shop; if (S.mv) { Grafik.disposeMarble(S.mv); S.mv = null; } if (S.ped) S.ped.visible = false;
-    Grafik.Particles.clear(); showMenu();
+    Grafik.Particles.clear();
   }
+  function closeShop() { leaveShop(); showMenu(); }
   function shopTick(dt, now) {
     const S = state.shop; if (!S.mv) return;
     const c = shopSpot(), mv = S.mv;
@@ -627,7 +665,7 @@
   }
   function renderShop() {
     const p = state.player, S = state.shop;
-    $('shopPoints').textContent = p.points;
+    $('shopPoints').textContent = p.points; $('navPoints').textContent = p.points;
     $('shopTabs').innerHTML = Magaza.CATS.map(c => `<button data-cat="${c.id}" class="${c.id === S.cat ? 'on' : ''}">${c.icon} ${c.name}</button>`).join('');
     const cat = Magaza.CATS.find(c => c.id === S.cat), eqId = p.eq[S.cat];
     const tryId = S.tryItem && S.tryItem.cat === S.cat ? (S.tryItem.item || '') : null;
