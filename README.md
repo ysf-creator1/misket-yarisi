@@ -12,6 +12,26 @@ Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam
 - **Güç kartları:** 15–20 saniyede bir 3 kart çıkar; kendini güçlendir (Turbo, Kalkan, Işınlanma…) ya da öndeki rakiplere tuzak kur (Yavaşlatma, Bomba, Duvar…). Botlar da güç kullanır.
 - **Mağaza:** renk, desen, forma, gözlük, şapka ve iz (144 ürün). **Kupalar**, **bahis**, **başarımlar**, **seviye**.
 
+## 👥 Çok oyunculu
+Menüdeki **Çok Oyunculu** düğmesinden:
+- **Hızlı Oyun:** bekleyen oyuncularla eşleşirsin (en fazla 20 sn bekler), eksik koltuklarda bot yarışır.
+- **Oda Kur:** 5 harfli oda kodu ya da **davet linki** (`…/misket-yarisi/?oda=KOD`) ile arkadaşların katılır; kurucu parkuru seçer ve başlatır.
+- En fazla 6 kişi; boş koltuklarda ve bağlantısı kopanın yerinde bot oynar, geri gelen oyuncu misketini geri alır.
+- Puanlar ve başarımlar normal yarış gibi profiline eklenir (kupa ve bahis tek oyunculu modda).
+
+Fizik sunucuda çalışır (`sunucu/oyun-sunucusu.js`, Node.js + ws); telefonlar sadece görüntüyü çizer.
+Sunucu: Azure (İsveç), `wss://misket-yarisi.swedencentral.cloudapp.azure.com/ws`.
+
+### Sunucu yönetimi
+```
+bash sunucu/guncelle.sh                       # GitHub'daki son sürümü sunucuya kur ve yeniden başlat
+curl https://misket-yarisi.swedencentral.cloudapp.azure.com/durum   # oda/oyuncu sayısı, bellek
+node test/cok-oyunculu-testi.js               # yerel sunucu + sahte oyuncularla test
+node test/yuk-testi.js 20 90                  # yük testi (sunucunun içinde çalıştırılır)
+```
+Yerelde denemek için: `PORT=8790 node sunucu/oyun-sunucusu.js` ve oyunu `index.html?sunucu=ws://127.0.0.1:8790/ws` ile aç.
+İlk kurulum: `sudo bash sunucu/kur.sh` (Ubuntu 24.04; Node 22, Caddy ile otomatik HTTPS).
+
 ## Bilgisayarda kalıcı kayıtla oynamak
 - **Mac:** klasördeki **Misket Yarışı** uygulamasına çift tıkla (ilk seferde sağ tık → Aç). Kayıtlar `kayit/kayit.json` dosyasına yazılır.
 - **Windows / diğer:** `python3 sunucu.py` çalıştır ya da `index.html` dosyasını aç (o zaman kayıtlar tarayıcıda tutulur).

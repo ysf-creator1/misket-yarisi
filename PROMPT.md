@@ -133,3 +133,15 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Tuzak hedefi `PowerSystem.trapTargets(m, güç, n)`: öndekiler (30 m) ve arkadakiler (10 m) puanlanır. Arkadan yakından ve hızlı gelen rakip, hemen öndeki rakip ve 15 m+ kaçan lider öne çıkar; kalkanlı/hayalet (duvar ve balçıkta kalkan sayılmaz) ve zaten etkilenmiş rakip geri planda kalır. Bomba rakiplerin kümelendiği yeri seçer; rüzgâr öndekilere ve 8 m içinden kovalayanlara eser.
   Ölçüm (botlar, 18 yarış): hedeflerin %76'sı önde, %24'ü arkada (eskiden arkadaki yalnızca lider tuzak kurunca). Denge (`denge-testi 25,75,125 16`): yarı yolda lider kazandı %44 (eski kodla aynı ölçümde %53).
 - Üst menü çubuğu (`#topnav`): Menü · Parkurlar · Kupalar · Mağaza · Başarımlar + puan; menü ekranlarında hep görünür, yarışta gizli. Telefonda simge + kısa yazı.
+
+## 6. Güncelleme: çok oyunculu (Azure)
+
+### Prompt
+> Oyunu 6 kişilik çok oyunculu yap; katılamayanların yerine bot olsun. Sunucu Azure'da (ücretsiz hesap), fatura riskine karşı en düşük alarm. Arkadaşlar oda kodu/davet linki ve hızlı eşleşmeyle katılsın; çok oyunculu puanlar profile eklensin; kupa ve bahis şimdilik tek oyunculuda kalsın. Performanslı çalışsın.
+
+### Yapılanlar ve ölçümler
+- Azure: `rg-misket` (swedencentral), `misket-sunucu` Standard_B2ats_v2 (12 ay ücretsiz pakette), Ubuntu 24.04, 64 GB P6 disk, Caddy + Let's Encrypt, fail2ban, otomatik güncellemeler. Bütçe alarmı 1 $/ay (%50, %100, tahmini %100).
+- Sunucu `sunucu/oyun-sunucusu.js`: tarayıcıdaki fizik/güç dosyalarını aynen kullanır; 120 Hz fizik, 20 Hz ikili anlık görüntü (oyuncu başına ≈6 KB/sn), olaylar fizik saatiyle damgalı. Odalar (5 harfli kod), hızlı oyun (20 sn), kopan oyuncunun misketi bota geçer, aynı anahtarla dönen geri alır. Koruma: mesaj boyutu/sıklık, IP başına 16 bağlantı, en fazla 16 oda.
+- `js/guclar.js`: `PowerSystem` birden çok insan oyuncu (`humans`), duvarlara numara.
+- İstemci `js/ag.js`: bağlantı + `RemoteRace` (Race arayüzünü taklit eder, 120 ms tampon + ara değer) → kamera, HUD, kartlar, efektler değişmeden çalışır. Lobi ekranı `scrMp`, üst çubukta 👥.
+- Testler: `test/cok-oyunculu-testi.js` 21/21; tarayıcıda iki profil (bilgisayar + telefon) yerel ve canlı sunucuyla uçtan uca; yük testi Azure'da 20 oda: CPU %69 (tek çekirdek), döngü 10,6 ms / 16,7 ms, bellek 342 MB. Canlı gecikme ≈74 ms.
