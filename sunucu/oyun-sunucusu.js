@@ -19,7 +19,7 @@ const TICK = 1000 / 60;            // döngü: 60 Hz (her turda 2 fizik adımı)
 const SNAP_EVERY = 3;              // 20 Hz anlık görüntü
 const INTRO = 5.6;                 // istemcideki giriş animasyonu + 3-2-1 (js/oyun.js INTRO ile aynı)
 const QUICK_WAIT = 20;             // hızlı oyunda en fazla bekleme (sn)
-const MAX_ROOMS = 60, MAX_PER_IP = 8, MAX_MSG = 4096, MAX_RATE = 40; // koruma sınırları
+const MAX_ROOMS = +process.env.MAX_ROOMS || 60, MAX_PER_IP = 16, MAX_MSG = 4096, MAX_RATE = 40; // koruma sınırları
 const ROOM_IDLE = 10 * 60 * 1000;  // boş oda silinme süresi
 const LEAVE_GRACE = 30 * 1000;     // lobide bağlantısı kopanın yeri bu süre tutulur
 
@@ -247,8 +247,10 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_MSG, perMessageDeflate: false });
 server.on('upgrade', (req, sock, head) => {
   if (!req.url.startsWith('/ws')) return sock.destroy();
-  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-  if ((ipCount.get(ip) || 0) >= MAX_PER_IP) return sock.destroy();
+  const xff = req.headers['x-forwarded-for']; // Caddy gerçek istemci IP'sini yazar (dışarıdan gelen başlığı ezer)
+  const ip = (xff || req.socket.remoteAddress || '').split(',')[0].trim();
+  const local = !xff && /^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress || ''); // sunucu içi testler
+  if (!local && (ipCount.get(ip) || 0) >= MAX_PER_IP) return sock.destroy();
   wss.handleUpgrade(req, sock, head, ws => onConnect(ws, req, ip));
 });
 function onConnect(ws, req, ip) {
