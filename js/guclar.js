@@ -8,17 +8,17 @@
 
   MG.POWERS = [
     { id: 'turbo', name: 'Turbo', icon: '🚀', type: 'self', tier: 1, value: 1.0, desc: '3 sn boyunca ileri fırlarsın' },
-    { id: 'zipla', name: 'Süper Zıplama', icon: '🦘', type: 'self', tier: 1, value: 0.6, desc: 'İleri sıçrayıp önündekilerin üstünden geçersin' },
-    { id: 'kalkan', name: 'Kalkan', icon: '🛡️', type: 'self', tier: 1, value: 0.8, desc: '8 sn boyunca tuzaklar sana işlemez' },
-    { id: 'demir', name: 'Demir Misket', icon: '⚙️', type: 'self', tier: 2, value: 0.75, desc: '6 sn ağırlaşıp hızlanırsın, çarptığını itersin' },
-    { id: 'hayalet', name: 'Hayalet', icon: '👻', type: 'self', tier: 2, value: 0.65, desc: '4 sn misketlerin içinden geçersin, saldırılar işlemez' },
+    { id: 'zipla', name: 'Süper Zıplama', icon: '🦘', type: 'self', tier: 1, value: 0.6, desc: 'Duvarların ve direklerin üstünden aşarsın, yoldan çıkmazsın' },
+    { id: 'kalkan', name: 'Kalkan', icon: '🛡️', type: 'self', tier: 1, value: 0.8, desc: '8 sn rüzgâr, yavaşlatma ve bomba işlemez (duvar hariç)' },
+    { id: 'demir', name: 'Demir Misket', icon: '⚙️', type: 'self', tier: 2, value: 0.75, desc: '6 sn ağırlaşıp hızlanırsın, duvara çarpınca kırarsın' },
+    { id: 'hayalet', name: 'Hayalet', icon: '👻', type: 'self', tier: 2, value: 0.65, desc: '4 sn misketlerden ve engellerden geçersin, biraz yavaşlarsın' },
     { id: 'isinlan', name: 'Işınlanma', icon: '✨', type: 'self', tier: 3, value: 1.3, desc: 'Parkurda biraz ileri ışınlanırsın' },
     { id: 'balcik', name: 'Yapışkan Balçık', icon: '🟢', type: 'attack', tier: 1, value: 0.9, desc: 'Öndeki rakibin yoluna yapışkan balçık dökülür' },
     { id: 'duvar', name: 'Engel Duvarı', icon: '🧱', type: 'attack', tier: 2, value: 1.0, desc: 'Öndeki rakibin önüne duvar düşer' },
     { id: 'yavas', name: 'Yavaşlatma', icon: '🐌', type: 'attack', tier: 1, value: 0.9, desc: 'Öndeki 2 rakip 4 sn yavaşlar, sen içlerinden geçersin' },
     { id: 'kucult', name: 'Küçült', icon: '🔻', type: 'attack', tier: 2, value: 0.7, desc: 'Öndeki 2 rakip 6 sn küçülüp yavaşlar' },
     { id: 'ruzgar', name: 'Ters Rüzgâr', icon: '🌪️', type: 'attack', tier: 3, value: 1.1, desc: 'Önündeki herkes 2,5 sn geri itilir' },
-    { id: 'bomba', name: 'Bomba', icon: '💣', type: 'attack', tier: 2, value: 1.0, desc: 'Öndeki 2 rakip geriye savrulur' },
+    { id: 'bomba', name: 'Bomba', icon: '💣', type: 'attack', tier: 2, value: 1.0, desc: 'Öndeki rakipte patlar: yakındakiler savrulup sersemler' },
   ];
   MG.byId = Object.fromEntries(MG.POWERS.map(p => [p.id, p]));
   MG.PERSONALITIES = [
@@ -30,6 +30,7 @@
   // Çarpışma grupları: parkur 0x0001, her misketin kendi biti (0x0002 << id), güç duvarları 0x0100.
   // Bir tuzağı kuran misket, o tuzağın hedefiyle ve kendi duvarıyla çarpışmaz: kendi tuzağına takılmaz.
   const WALL_BIT = 0x0100;
+  MG.OBST_BIT = 0x0200; // engeller (direk, tampon, tahta, pervane, piston…): hayalet bunlardan geçer
   const grp = (mem, filter) => ((mem & 0xFFFF) << 16) | (filter & 0xFFFF);
   const BASE_TIER = { 1: 1, 2: 0.6, 3: 0.22 }, BOOST = { 1: -0.4, 2: 0.5, 3: 3 };
 
@@ -58,12 +59,18 @@
       const r = this.race, t = r.t;
       if (!r.started || r.done) return;
       if (t >= this.next) { this._deal(); this.next = t + this.gap[0] + this.rand() * (this.gap[1] - this.gap[0]); }
+      // final kart turu: lider parkurun %70'ini geçince herkese ek kart (geridekilere güçlü kart şansı daha yüksek)
+      if (!this.finalDone && r.leader().s > r.track.finishS * 0.7) {
+        this.finalDone = true; this._deal(true); this.next = Math.max(this.next, t + 9);
+        r.events.push({ type: 'finalRound' });
+      }
       for (const id in this.hands) {
         const h = this.hands[id], m = r.marbles[id];
         if (h.used) continue;
         if (m.finished || t > h.expires) { h.used = true; if (+id === this.playerId) r.events.push({ type: 'handGone', id: +id }); continue; }
         if (+id !== this.playerId && t >= h.botAt) this.choose(+id, this._botPick(m, h.cards));
       }
+      this._ironWalls();
       // süreli duvarlar
       for (let i = this.walls.length - 1; i >= 0; i--) { const w = this.walls[i]; if (t > w.until) { r.world.removeCollider(w.col, true); this.walls.splice(i, 1); } }
       for (let i = this.slimes.length - 1; i >= 0; i--) if (t > this.slimes[i].until) this.slimes.splice(i, 1);
@@ -88,12 +95,13 @@
     _ignore(caster, target, until) { caster.ignore[target.id] = Math.max(caster.ignore[target.id] || 0, until); this._groups(caster); }
 
     // kart dağıt: sıralamada geride olana güçlü kart çıkma şansı daha yüksek
-    _deal() {
+    _deal(final) {
       const r = this.race, st = r.standings(), n = st.length;
       this.round++;
       st.forEach((m, idx) => {
         if (m.finished) return;
-        const frac = n > 1 ? idx / (n - 1) : 0, pool = MG.POWERS.map(p => ({ p, w: BASE_TIER[p.tier] * (1 + BOOST[p.tier] * frac) }));
+        const fb = final ? 1.8 : 1; // finalde geride olanın güçlü kart şansı daha da artar
+        const frac = n > 1 ? idx / (n - 1) : 0, pool = MG.POWERS.map(p => ({ p, w: BASE_TIER[p.tier] * Math.max(0.15, 1 + BOOST[p.tier] * frac * fb) }));
         const cards = [];
         while (cards.length < 3) {
           const tot = pool.reduce((a, x) => a + x.w, 0); let q = this.rand() * tot;
@@ -114,6 +122,7 @@
           v *= per.attack;
           if (idx === 0) v *= 0.6;
           if (dist > 0 && dist < 12) v *= 1.4; else if (Math.abs(dist) > 30) v *= 0.5;
+          if (this._farLeader(m) && id !== 'ruzgar') v *= 1.4; // lider kaçtı: onu yavaşlat
           if (id === 'ruzgar') v *= Math.max(0.2, r.marbles.filter(o => o !== m && !o.finished && o.s > m.s && o.s - m.s < 40).length / 2);
         } else {
           v *= id === 'kalkan' ? per.shield : per.self;
@@ -158,11 +167,13 @@
         if (pid === 'turbo') { fx.turbo = t + 3; fx.safe = t + 4; }
         else if (pid === 'zipla') {
           // alçak ve parkur yönünde ileri sıçrama; düşerse kaldığı yere geri konur (zaman kaybı yok)
-          const h = Math.hypot(T[0], T[2]) || 1, v = m.body.linvel();
-          m.body.setLinvel({ x: v.x * 0.7 + T[0] / h * 8.5, y: Math.max(0, v.y) + 4.5, z: v.z * 0.7 + T[2] / h * 8.5 }, true);
+          // tepe ≈ 1,6 m (Engel Duvarı 1,5 m), ≈6 m ileri (2 sıra çarpma direği); havada yolu takip eder
+          const h = Math.hypot(T[0], T[2]) || 1, v = m.body.linvel(), along = Math.max(0, (v.x * T[0] + v.z * T[2]) / h);
+          const fwd = Math.max(8.5, Math.min(11, along + 3));
+          m.body.setLinvel({ x: T[0] / h * fwd, y: 8.4, z: T[2] / h * fwd }, true);
           fx.jumpAt = t; fx.safe = t + 2.5;
         }
-        else if (pid === 'kalkan') fx.shield = t + 8;
+        else if (pid === 'kalkan') { fx.shield = t + 8; fx.slow = fx.stun = fx.wind = 0; if (m._small) { fx.small = 0; m.col.setRadius(r.P.r); m._small = false; } }
         else if (pid === 'demir') { fx.iron = t + 6; fx.safe = t + 6; m.body.setAdditionalMass(mass * 3, true); m._iron = true; }
         else if (pid === 'hayalet') { fx.ghost = t + 4; fx.safe = t + 4; m._ghost = true; this._groups(m); }
         else if (pid === 'isinlan') { const from = m.body.translation(); ev.from = [from.x, from.y, from.z]; this._teleport(m, 9); const to = m.body.translation(); ev.to = [to.x, to.y, to.z]; }
@@ -172,9 +183,11 @@
         ev.targets = [];
         for (const o of list) { if (o.fx.shield > t || o.fx.ghost > t) { ev.blockedIds = (ev.blockedIds || []).concat(o.id); continue; } o.fx.wind = t + 2.5; ev.targets.push(o.id); this._ignore(m, o, t + 3.5); }
       } else {
-        const tg = this.targetFor(m); if (!tg) { r.events.push(ev); return; }
+        let tg = this.targetFor(m); if (!tg) { r.events.push(ev); return; }
+        const far = this._farLeader(m); if (far && (pid === 'duvar' || pid === 'balcik') && this.rand() < 0.6) tg = far;
         ev.target = tg.id;
-        if (pid === 'yavas' || pid === 'kucult' || pid === 'bomba') { this._multi(m, pid, ev); r.events.push(ev); return; }
+        if (pid === 'bomba') { this._bomb(m, ev); r.events.push(ev); return; }
+        if (pid === 'yavas' || pid === 'kucult') { this._multi(m, pid, ev); r.events.push(ev); return; }
         if ((tg.fx.shield > t || tg.fx.ghost > t) && pid !== 'balcik' && pid !== 'duvar') { ev.blocked = true; r.events.push(ev); return; }
         const tm = tg.body.mass();
         // kuran misket, saldırdığı rakibin içinden geçer: yavaşlayan rakip önünde fren olmaz
@@ -195,7 +208,7 @@
             // duvar kuranı durdurmaz: onun için geçirgendir
             const col = r.world.createCollider(r.R.ColliderDesc.cuboid(half[0], half[1], half[2]).setTranslation(p0[0], p0[1], p0[2]).setRotation(q).setRestitution(0.3)
               .setCollisionGroups(grp(WALL_BIT, 0xFFFF & ~m.bit)));
-            const w = { col, until: t + 4, p: p0, q, half, owner: m.id }; this.walls.push(w); ev.wall = w;
+            const w = { col, until: t + 4, p: p0, q, half, owner: m.id, R: pt.R, U: pt.U, N: G.MP.v.cross(pt.R, pt.U) }; this.walls.push(w); ev.wall = w;
           }
         }
       }
@@ -205,6 +218,7 @@
     // yavaşlatma / küçültme / bomba: öndeki en yakın iki rakibe işler, kuran onların içinden geçer
     _multi(m, pid, ev) {
       const r = this.race, t = r.t, list = this.targetsFor(m, 2);
+      const lead = this._farLeader(m); if (lead && !list.includes(lead)) { if (list.length >= 2) list[1] = lead; else list.push(lead); }
       ev.targets = []; ev.blockedIds = []; ev.at = null; ev.atList = [];
       for (const tg of list) {
         if (tg.fx.shield > t || tg.fx.ghost > t) { ev.blockedIds.push(tg.id); continue; }
@@ -220,6 +234,51 @@
         }
       }
       ev.blocked = !ev.targets.length && ev.blockedIds.length > 0;
+    }
+
+    // bomba: öndeki rakibin olduğu yerde patlar; 3,5 m içindeki herkes (kuran, kalkanlı, hayalet hariç) savrulur ve 1 sn sersemler
+    _bomb(m, ev) {
+      const r = this.race, t = r.t;
+      let tg = this.targetFor(m);
+      const lead = this._farLeader(m); if (lead && this.rand() < 0.7) tg = lead; // lider çok açıldıysa bomba ona gider
+      if (!tg) return;
+      const c = tg.body.translation(), T = tg.lastSample ? tg.lastSample.T : [0, 0, 1];
+      ev.at = [c.x, c.y, c.z]; ev.atList = [ev.at]; ev.targets = []; ev.blockedIds = []; ev.target = tg.id;
+      for (const o of r.marbles) {
+        if (o === m || o.finished) continue;
+        const p = o.body.translation(), dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, p.y - c.y, dz);
+        if (d > 3.5) continue;
+        if (o.fx.shield > t || o.fx.ghost > t) { ev.blockedIds.push(o.id); continue; }
+        const hl = Math.hypot(dx, dz), ox = hl > 0.2 ? dx / hl : 0, oz = hl > 0.2 ? dz / hl : 0, k = 1 - d / 4.5, om = o.body.mass();
+        o.body.applyImpulse({ x: (ox * 3.5 - T[0] * 6) * k * om, y: 5 * k * om, z: (oz * 3.5 - T[2] * 6) * k * om }, true);
+        o.fx.stun = t + 1;
+        ev.targets.push(o.id);
+        this._ignore(m, o, t + 3);
+      }
+      ev.blocked = !ev.targets.length && ev.blockedIds.length > 0;
+    }
+    // lider 2.'den çok öndeyse (15 m+) ve m lider değilse lideri döndür: geridekilerin umudu kalsın
+    _farLeader(m) {
+      const st = this.race.standings().filter(o => !o.finished), idx = st.indexOf(m);
+      if (st.length < 2 || idx <= 0 || idx > 2) return null; // sadece kovalayan ilk 3 lidere uzanır; gerisi önündekine
+      return st[0].s - st[1].s > 15 ? st[0] : null;
+    }
+    // demir misket Engel Duvarı'na değerse duvar kırılır, demir etkisi biter
+    _ironWalls() {
+      const r = this.race, t = r.t;
+      for (const m of r.marbles) {
+        if (!(m.fx.iron > t)) continue;
+        const p = m.body.translation(), rad = m.col.radius();
+        for (let i = this.walls.length - 1; i >= 0; i--) {
+          const w = this.walls[i], d = [p.x - w.p[0], p.y - w.p[1], p.z - w.p[2]], dot = (a) => d[0] * a[0] + d[1] * a[1] + d[2] * a[2];
+          if (Math.abs(dot(w.R)) < w.half[0] + rad && Math.abs(dot(w.U)) < w.half[1] + rad && Math.abs(dot(w.N)) < w.half[2] + rad + 0.12) {
+            r.world.removeCollider(w.col, true); this.walls.splice(i, 1);
+            m.fx.iron = t; m.body.setAdditionalMass(0, true); m._iron = false;
+            r.events.push({ type: 'wallBreak', id: m.id, wall: w, at: w.p });
+            break;
+          }
+        }
+      }
     }
 
     // hedefin önündeki parkur noktası (kendi kulvarında); hunideyse çıkışından sonra
@@ -256,12 +315,30 @@
         const ox = p.x - sm.p[0], oz = p.z - sm.p[2], oa = ox * tx + oz * tz, olx = ox - tx * oa, olz = oz - tz * oa; // orta çizgiden sapma
         const k = Math.min(0.9, homing * dt);
         m.body.applyImpulse({ x: (-lx * k - olx * homing * 0.8 * dt) * mass, y: 0, z: (-lz * k - olz * homing * 0.8 * dt) * mass }, true);
+        // kenara çok yaklaşırsa (duvarın üstünden aşmak üzere) sert biçimde içeri çek: yandan düşmesin
+        const off = Math.hypot(olx, olz), lim = Math.max(0.4, (sm.hw || 2) - 0.6);
+        if (off > lim) { const vin = (lx * olx + lz * olz) / off; if (vin > 0) m.body.applyImpulse({ x: -olx / off * vin * mass, y: 0, z: -olz / off * vin * mass }, true); }
+      }
+      // rüzgâr tüneli: hemen öndeki misketin 0,8–4 m arkasındaysan hafifçe öne çekilirsin (arkadan yetişme şansı)
+      if (T && sp < 11) {
+        const p = m.body.translation();
+        for (const o of r.marbles) {
+          if (o === m || o.finished) continue;
+          const ds = o.s - m.s; if (ds < 0.8 || ds > 4) continue;
+          const q = o.body.translation(); if (Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) > 4.5) continue;
+          m.body.applyImpulse({ x: T[0] * 1.2 * mass * dt, y: 0, z: T[2] * 1.2 * mass * dt }, true); fx.draft = t + 0.2; break;
+        }
       }
       if (fx.turbo > t && T && sp < 12) m.body.applyImpulse({ x: T[0] * 9 * mass * dt, y: Math.min(0, T[1]) * 9 * mass * dt, z: T[2] * 9 * mass * dt }, true);
-      if (fx.wind > t && T && !(fx.shield > t)) m.body.applyImpulse({ x: -T[0] * 8 * mass * dt, y: 0, z: -T[2] * 8 * mass * dt }, true);
+      const shielded = fx.shield > t;
+      if (fx.wind > t && T && !shielded) m.body.applyImpulse({ x: -T[0] * 8 * mass * dt, y: 0, z: -T[2] * 8 * mass * dt }, true);
       let damp = 0;
-      if (fx.slow > t) damp += 3.0;
-      if (fx.small > t) damp += 1.8;
+      if (!shielded) {
+        if (fx.slow > t) damp += 3.0;
+        if (fx.small > t) damp += 1.8;
+        if (fx.stun > t) damp += 5.5; // sersem
+      }
+      if (fx.ghost > t) damp += 1.3; // hayalet engellerden geçtiği için çok güçlü: biraz yavaş
       fx.inSlime = false;
       if (!(fx.shield > t) && !(fx.ghost > t)) for (const s of this.slimes) {
         if (s.owner === m.id) continue; // kendi balçığı işlemez

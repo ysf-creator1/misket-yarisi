@@ -50,6 +50,8 @@ function stillTest(tr) {
   return bad;
 }
 
+const pieceOfS = (tr, sv) => { let k = '?'; for (const q of tr.pieceAt || []) if (q.s <= sv) k = q.k; return k; };
+
 RAPIER.init().then(() => {
   // hepsi | ornek (her 10. parkur + özel parkurlar) | ozel | 5 | 10-30
   const ids = arg === 'hepsi' ? MP.TRACKS.map(t => t.id)
@@ -70,14 +72,27 @@ RAPIER.init().then(() => {
     const ov = overlapCheck(tr);
     if (ov.length) console.log('  ! ÇAKIŞMA', ov.length, 'nokta, ör:', ov.slice(0, 5).map(x => x.join('/')).join('  '));
     const wins = [0, 0, 0, 0, 0, 0], slotWins = [0, 0, 0, 0, 0, 0];
-    let tW = [], t3 = [], tEnd = [], resp = { fall: 0, stuck: 0 }, respAt = {}, unfinished = 0;
+    let tW = [], t3 = [], tEnd = [], resp = { fall: 0, stuck: 0 }, respAt = {}, unfinished = 0, backTotal = 0; const backKinds = {};
     const t0 = Date.now();
     for (let r = 0; r < N; r++) {
       const race = new MF.Race(RAPIER, tr, {});
       if (withPowers) new MG.PowerSystem(race, { playerId: -1 });
       for (let k = 0; k < 120; k++) race.step(1 / 60);
       race.openGate();
-      while (!race.done) { race.step(0.1); }
+      const hist = race.marbles.map(() => []), lastResp = {};
+      while (!race.done) {
+        race.step(0.1);
+        for (const e of race.events) if (e.type === 'respawn') lastResp[e.id] = race.t;
+        // geri kayma: 1 sn içinde 3 m'den fazla geri (rüzgâr, bomba, yola geri konma hariç)
+        for (const m of race.marbles) {
+          const h = hist[m.id]; h.push(m.s); if (h.length > 10) h.shift();
+          const fx = m.fx || {}, back = Math.max(...h) - m.s;
+          if (back > 3 && !m.finished && !(fx.wind > race.t - 1.5) && !(fx.stun > race.t - 1.5) && !(race.t - (lastResp[m.id] || -9) < 1.5) && !m._backCounted) {
+            m._backCounted = true; backTotal++; const kk = ((m.lastSample && m.lastSample.kind) || pieceOfS(tr, m.s)) + '@' + Math.round(m.s / 10) * 10; backKinds[kk] = (backKinds[kk] || 0) + 1;
+          }
+          if (back < 0.5) m._backCounted = false;
+        }
+      }
       for (const e of race.events) if (e.type === 'respawn') {
         resp[e.why]++;
         const key = Math.round(e.s / 10) * 10; respAt[key] = (respAt[key] || 0) + 1;
@@ -95,6 +110,7 @@ RAPIER.init().then(() => {
     ratios.push(avg(tW) / tr.target);
     console.log(`  1. süresi ort ${avg(tW).toFixed(1)} sn (min ${Math.min(...tW).toFixed(1)}, max ${Math.max(...tW).toFixed(1)}) | 3. ort ${avg(t3).toFixed(1)} | yarış sonu ort ${avg(tEnd).toFixed(1)}`);
     console.log(`  geri dönüş / yarış: düşme ${(resp.fall / N).toFixed(2)}, takılma ${(resp.stuck / N).toFixed(2)} | bitiremeyen/yarış ${(unfinished / N).toFixed(2)}`);
+    console.log(`  geri kayma / yarış: ${(backTotal / N).toFixed(2)}`, Object.keys(backKinds).length ? JSON.stringify(backKinds) : '');
     console.log('  geri dönüş yerleri (s):', Object.entries(respAt).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => k + ':' + v).join(' '));
     if (withPowers) { console.log('  güç kullanımı / yarış:', Object.entries(powerCount).map(([k, v]) => k + ':' + (v / N).toFixed(1)).join(' ')); for (const k in powerCount) delete powerCount[k]; }
     if (ids.length > 1 && id === ids[ids.length - 1]) { const m = ratios.reduce((a, b) => a + b, 0) / ratios.length; console.log(`\nGERÇEK/HEDEF süre oranı: ort ${m.toFixed(3)}, en düşük ${Math.min(...ratios).toFixed(2)}, en yüksek ${Math.max(...ratios).toFixed(2)}`); }

@@ -19,7 +19,7 @@
     b.split({
       lanes: 2, lw: 1.2, len: 17, drop: 2.0, spread: 2.2, laneOpts: [
         { spread: 2.8 },
-        { spread: 1.0, profile: MP.humps(0.2, 0.75, 4, 0.17) },
+        { spread: 1.0, profile: MP.humps(0.2, 0.75, 4, 0.12) },
       ]
     });
     b.curve({ angle: -120, radius: 7, drop: 1.4 });
@@ -40,8 +40,8 @@
   const S = (b, len, drop) => b.straight({ len, drop: drop != null ? drop : len * 0.095 });
   const U = (b, dir, r = 8, drop) => b.curve({ angle: 180 * dir, radius: r, drop: drop != null ? drop : Math.PI * r * 0.09 });
   const SPI = (b, turns, dir, r = 6.5) => b.curve({ angle: 360 * turns * dir, radius: r, drop: 2 * Math.PI * r * turns * 0.115, bank: 12 });
-  const SPLIT2 = (b, len = 18) => b.split({ lanes: 2, lw: 1.2, len, drop: len * 0.12, spread: 2.4, laneOpts: [{ spread: 3 }, { spread: 1, profile: MP.humps(0.2, 0.75, 3, 0.15) }] });
-  const SPLIT3 = (b, len = 20) => b.split({ lanes: 3, lw: 1.15, len, drop: len * 0.12, spread: 2.4, laneOpts: [{ spread: 3.2 }, { profile: MP.humps(0.25, 0.7, 2, 0.14) }, { spread: 1.6 }] });
+  const SPLIT2 = (b, len = 18) => b.split({ lanes: 2, lw: 1.2, len, drop: len * 0.12, spread: 2.4, laneOpts: [{ spread: 3 }, { spread: 1, profile: MP.humps(0.2, 0.75, 3, 0.11) }] });
+  const SPLIT3 = (b, len = 20) => b.split({ lanes: 3, lw: 1.15, len, drop: len * 0.12, spread: 2.4, laneOpts: [{ spread: 3.2 }, { profile: MP.humps(0.25, 0.7, 2, 0.11) }, { spread: 1.6 }] });
 
   function parkur2(b) { // Kayan Vadi
     b.start(); S(b, 10, 1.5); b.slalom({ len: 14 }); U(b, 1);

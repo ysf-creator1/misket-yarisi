@@ -67,12 +67,14 @@
   const HAND_IDS = {};
   for (let k = 1; k <= 12; k++) { const T = Math.round(60 + (k - 1) * 120 / 11); HAND_IDS[Math.round(1 + (T - 60) / 120 * (NT - 1))] = k; }
 
+  // parkur malzemesi: bazı dünyalarda metal, cam ya da buz görünümlü oluk
+  const MAT = { sehir: 'metal', spor: 'metal', uzay: 'metal', lunapark: 'metal', kutup: 'buz', banyo: 'cam', venedik: 'cam', tropik: 'cam' };
   MP.TRACKS = [];
   for (let id = 1; id <= NT; id++) {
     const w = MP.worldOf(id), k = (id - 1) % PER;
     MP.TRACKS.push({
       id, world: w.id, name: w.names[k], target: MP.targetFor(id), hand: HAND_IDS[id] || null,
-      theme: { env: w.env, palette: w.pal, world: w.id }, build: true,
+      theme: { env: w.env, palette: w.pal, world: w.id, trackMat: MAT[w.env] || 'tahta' }, build: true,
     });
   }
 
@@ -87,47 +89,72 @@
     slalom: { t: 5.4, w: () => 1, f: (b, r, d) => b.slalom({ len: 12 + Math.round(r() * 4), boards: 3 + (d > 0.5 && r() < 0.5 ? 1 : 0) }) },
     tampon: { t: 5.2, w: () => 1, f: (b, r) => b.bumpers({ len: 11 + Math.round(r() * 3) }) },
     civi: { t: 5.0, w: () => 0.9, f: (b, r) => b.pegs({ len: 13 + Math.round(r() * 4), hw: 3.2 + r() * 0.4 }) },
-    catal2: { t: 6.2, w: () => 0.9, f: (b, r) => b.split({ lanes: 2, lw: 1.2, len: 16 + Math.round(r() * 4), drop: 2.1, spread: 2.4, laneOpts: [{ spread: 3 }, { spread: 1, profile: MP.humps(0.2, 0.75, 3, 0.15) }] }) },
-    catal3: { t: 6.8, w: d => 0.2 + d, f: (b, r) => b.split({ lanes: 3, lw: 1.15, len: 18 + Math.round(r() * 4), drop: 2.4, spread: 2.4, laneOpts: [{ spread: 3.2 }, { profile: MP.humps(0.25, 0.7, 2, 0.14) }, { spread: 1.6 }] }) },
+    catal2: { t: 6.2, w: () => 0.9, f: (b, r) => b.split({ lanes: 2, lw: 1.2, len: 16 + Math.round(r() * 4), drop: 2.1, spread: 2.4, laneOpts: [{ spread: 3 }, { spread: 1, profile: MP.humps(0.2, 0.75, 3, 0.11) }] }) },
+    catal3: { t: 6.8, w: d => 0.2 + d, f: (b, r) => b.split({ lanes: 3, lw: 1.15, len: 18 + Math.round(r() * 4), drop: 2.4, spread: 2.4, laneOpts: [{ spread: 3.2 }, { profile: MP.humps(0.25, 0.7, 2, 0.11) }, { spread: 1.6 }] }) },
     atlama: { t: 4.3, w: () => 0.9, f: (b, r, d) => b.jump({ run: 7, gap: 3 + d * 1.5 + r() * 0.5 }) },
     huni: { t: 11.5, w: d => 0.35 + 0.5 * d, f: (b, r) => b.funnel({ R: 5.5 + r() * 1.5, side: sign(r), depth: 3.2 + r() * 0.6 }) },
     pervane: { t: 5.0, w: d => 0.3 + 0.8 * d, f: (b, r, d) => b.spinner({ len: 11, arms: d > 0.4 && r() < 0.5 ? 3 : 2, speed: 1.3 + d * 0.6, dir: sign(r) }) },
     piston: { t: 5.8, w: d => 0.1 + 1.1 * d, f: (b, r, d) => b.pistons({ len: 14, count: 2 + (d > 0.5 && r() < 0.6 ? 1 : 0), period: 2.8 - d * 0.8 }) },
     trambolin: { t: 5.4, w: d => 0.2 + 0.8 * d, f: (b, r) => b.trampoline({ fall: 3.4 + r() * 0.7 }) },
     spiral: { t: 7.6, w: d => 0.15 + 0.6 * d, f: (b, r) => SPI(b, 1, sign(r), 6.5 + r() * 0.8) },
+    // hareketli engeller ve şelale düşüşü
+    kazik: { t: 4.6, w: d => d < 0.06 ? 0 : 0.3 + 0.8 * d, final: true, f: (b, r, d) => b.kaziklar({ len: 13 + Math.round(r() * 4), period: 2.9 - d * 0.6 }) },
+    sarkac: { t: 6.8, w: d => d < 0.1 ? 0 : 0.3 + 0.7 * d, final: true, f: (b, r, d) => b.sarkac({ len: 13 + Math.round(r() * 5), period: 2.6 - d * 0.5 }) },
+    bant: { t: 2.2, w: d => d < 0.04 ? 0 : 0.5, f: (b, r) => b.bant({ len: 11 + Math.round(r() * 5), dir: r() < 0.55 ? -1 : 1 }) },
+    tabla: { t: 3.0, w: d => d < 0.15 ? 0 : 0.25 + 0.6 * d, final: true, f: (b, r) => b.tabla({ len: 12, dir: sign(r) }) },
+    kapi: { t: 2.8, w: d => d < 0.2 ? 0 : 0.2 + 0.6 * d, final: true, f: (b, r, d) => b.kapi({ len: 12, period: 4.4 - d, phase: r() }) },
+    dusus: { t: 2.0, w: d => d < 0.08 ? 0 : 0.35, f: (b, r) => b.dusus({ fall: 4 + r() * 1.2 }) },
   };
+  // son %25: sürpriz final (bu engeller daha sık, son düzlükte atlama/trambolin)
+  ['catal2', 'atlama', 'trambolin'].forEach(k => PIECES[k].final = true);
+
+  // 5 yerleşim ailesi: koşular arasındaki dönüş ve parça ağırlıkları değişir
+  const FAMILIES = {
+    zikzak: { name: 'Zikzak', turn: (b, dir, r) => U(b, dir, 8 + Math.round(r())), t: T => T, w: {} },
+    kule: { name: 'Sarmal Kule', turn: (b, dir) => SPI(b, 1.5, dir, 7.5), t: () => 10.5, w: { spiral: 0.4 } },
+    kivrim: { name: 'Geniş Kıvrımlar', turn: (b, dir, r) => b.curve({ angle: (150 + Math.round(r() * 30)) * dir, radius: 11 + r() * 3, drop: 2.2 }), t: () => 6, w: { duz: 1.3, slalom: 1.3 } },
+    selale: { name: 'Şelale', turn: (b, dir, r) => U(b, dir, 8 + Math.round(r())), t: T => T, w: { dusus: 3.2, trambolin: 1.5 } },
+    labirent: { name: 'Labirent', turn: (b, dir, r) => U(b, dir, 9), t: T => T, w: { catal2: 2.4, catal3: 2.6, kapi: 1.8 } },
+  };
+  MP.FAMILIES = FAMILIES;
   const T_START = 5.5, T_U = 4.6, T_FINISH = 3;
   MP.PIECES = PIECES;
 
-  function pickPiece(r, d, style, recent) {
+  function pickPiece(r, d, style, recent, fam, final) {
     const keys = Object.keys(PIECES);
-    const ws = keys.map(k => Math.max(0, PIECES[k].w(d)) * (style[k] || 1) * (recent.includes(k) ? 0.25 : 1));
+    const ws = keys.map(k => Math.max(0, PIECES[k].w(d)) * (style[k] || 1) * ((fam && fam.w[k]) || 1) * (final && PIECES[k].final ? 3 : 1) * (recent.includes(k) ? 0.25 : 1));
     let q = r() * ws.reduce((a, x) => a + x, 0);
     for (let i = 0; i < keys.length; i++) { q -= ws[i]; if (q <= 0) return keys[i]; }
     return keys[keys.length - 1];
   }
-  MP.timeScale = 0.94; // gerçek/tahmini süre oranı: 21 parkurluk simülasyonla ölçüldü (test/parkur-testi.js ornek)
+  MP.timeScale = 1.0; // gerçek/tahmini süre oranı: 22 parkurluk simülasyonla ölçüldü (test/parkur-testi.js ornek)
 
   function genTrack(def, variant) {
     const r = MP.rng(def.id * 7919 + variant * 104729 + 17), d = (def.id - 1) / (NT - 1), w = MP.WORLDS[def.world];
     const pal = w.pal.slice(); for (let i = pal.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pal[i], pal[j]] = [pal[j], pal[i]]; }
-    const b = new MP.Builder({ y0: 160, palette: pal });
+    // yerleşim ailesi (ilk parkurlar hep zikzak), parkur genişliği ve duvar yüksekliği biraz değişir
+    const famKeys = Object.keys(FAMILIES), famKey = def.id <= 3 ? 'zikzak' : famKeys[Math.floor(r() * famKeys.length)], fam = FAMILIES[famKey];
+    const b = new MP.Builder({ y0: 160, palette: pal, hw: 1.95 + r() * 0.4, wh: 1.25 + r() * 0.25 });
     const goal = def.target / MP.timeScale;
-    let est = T_START + T_FINISH, dir = sign(r), recent = [], pieces = [], pieceAt = [];
+    let est = T_START + T_FINISH, dir = sign(r), recent = [], pieces = [], pieceAt = [], finals = 0;
     b.start(); S(b, 8 + Math.round(r() * 4), 1.3); est += 2.5;
     while (est < goal - 2) {
       const n = 2 + (r() < 0.45 ? 1 : 0);
       for (let k = 0; k < n && est < goal - 2; k++) {
-        const key = pickPiece(r, d, w.style, recent);
+        const final = est > goal * 0.72; // son çeyrek: sürpriz final
+        const key = pickPiece(r, d, w.style, recent, fam, final);
+        if (final && PIECES[key].final) finals++;
         pieceAt.push({ k: key, s: b.s });
         PIECES[key].f(b, r, d); est += PIECES[key].t; pieces.push(key);
         recent.push(key); if (recent.length > 3) recent.shift();
       }
-      if (est < goal - 4) { pieceAt.push({ k: 'U', s: b.s }); U(b, dir, 8 + Math.round(r())); est += T_U; dir = -dir; }
+      if (est < goal - 4) { pieceAt.push({ k: 'U', s: b.s }); fam.turn(b, dir, r); est += fam.t(T_U); dir = -dir; }
     }
+    // son düzlükte bir sürpriz daha (atlama ya da trambolin)
+    if (def.id > 5) { const k2 = r() < 0.5 ? 'atlama' : 'trambolin'; pieceAt.push({ k: k2, s: b.s }); PIECES[k2].f(b, r, d); pieces.push(k2); }
     S(b, 6); b.finish();
     const tr = b.finalize(def);
-    tr.pieces = pieces; tr.pieceAt = pieceAt; tr.est = est;
+    tr.pieces = pieces; tr.pieceAt = pieceAt; tr.est = est; tr.family = famKey; tr.finals = finals;
     return tr;
   }
 

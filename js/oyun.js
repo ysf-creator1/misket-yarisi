@@ -11,6 +11,7 @@
     rec: [], replay: null, hand: null, wasLast: false, shop: { cat: 'renk', tryItem: null, mv: null, ped: null, ang: 0 },
   };
   const CAMS = ['Benim misketim', 'Lider', 'Genel bakış'];
+  const SIDE_KINDS = ['jump', 'tramp', 'funnelExit', 'drop'];
   const MEDAL = ['🥇', '🥈', '🥉'];
   const CUP_POINTS = [10, 7, 5, 3, 2, 1];
   const pointsFor = id => MP.pointsFor(id); // 1. olana verilen puan (P): 100 → 265; 2. P/2, 3. P/4
@@ -83,7 +84,17 @@
     const f = sm ? new THREE.Vector3(sm.T[0], 0, sm.T[2]).normalize() : new THREE.Vector3(0, 0, 1);
     fwdS.lerp(f, 1 - Math.exp(-2.2 * dt)).normalize();
     const want = new THREE.Vector3(), look = new THREE.Vector3();
-    if (state.phase === 'countdown') {
+    // delikten düşerken, atlarken, trambolinde: bir süre yandan bak (arkadan bakınca pist misketi kapatıyor)
+    const nowS = performance.now() / 1000, vy = tgt.body.linvel().y;
+    if (state.phase !== 'countdown' && state.cam !== 2 && ((sm && SIDE_KINDS.includes(sm.kind)) || (vy < -4 && !tgt.inZone))) {
+      if (!(nowS < (state.sideUntil || 0))) state.sideSign = 1;
+      state.sideUntil = nowS + 2.5;
+    }
+    const sideView = nowS < (state.sideUntil || 0) && state.phase !== 'countdown' && state.cam !== 2;
+    if (sideView && !tgt.inZone) {
+      const R = sm ? new THREE.Vector3(sm.R[0], 0, sm.R[2]).normalize() : new THREE.Vector3(1, 0, 0);
+      want.copy(P).addScaledVector(R, 7 * (state.sideSign || 1)).addScaledVector(fwdS, -1.5).add(new THREE.Vector3(0, 2.2, 0)); look.copy(P).addScaledVector(fwdS, 1.5);
+    } else if (state.phase === 'countdown') {
       const c = center(r); want.copy(c).addScaledVector(fwdS, -4.8).add(new THREE.Vector3(0, 5.2, 0)); look.copy(c).addScaledVector(fwdS, 5);
     } else if (state.cam === 2) {
       const c = center(r).lerp(P, 0.4); want.copy(c).addScaledVector(fwdS, -16).add(new THREE.Vector3(0, 17, 0)); look.copy(c);
@@ -117,7 +128,7 @@
     const cb = $('cupBadge');
     if (state.cup) { const c = MP.CUPS[state.cup.id]; cb.textContent = `${c.icon} ${c.name} · Yarış ${state.cup.idx + 1}/3`; cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   }
-  const FX_ICONS = [['shield', '🛡️'], ['turbo', '🚀'], ['slow', '🐌'], ['small', '🔻'], ['ghost', '👻'], ['iron', '⚙️'], ['wind', '🌪️']];
+  const FX_ICONS = [['shield', '🛡️'], ['turbo', '🚀'], ['slow', '🐌'], ['small', '🔻'], ['ghost', '👻'], ['iron', '⚙️'], ['wind', '🌪️'], ['stun', '💫']];
   function updateHud(force) {
     const r = state.race; if (!r) return;
     if (!force && (++hudN % 6)) return;
@@ -208,6 +219,10 @@
     let msg;
     if (P.type === 'self') msg = `${P.icon} ${mine ? 'Sen' : nameOf(r, e.id)}: ${P.name}`;
     else if (e.power === 'ruzgar') msg = `${P.icon} ${mine ? 'Sen' : nameOf(r, e.id)} ters rüzgâr estirdi!` + (meHit ? ' (sana da!)' : '');
+    else if (e.power === 'bomba') {
+      const names = (e.targets || []).map(id => id === state.pick ? 'SEN' : nameOf(r, id));
+      msg = names.length ? `💣 ${mine ? 'Senin bomban' : nameOf(r, e.id) + ' bombası'} patladı: ${names.join(', ')} sersemledi!` : `🛡️ Bomba kalkanla engellendi!`;
+    }
     else if (e.targets && e.power !== 'ruzgar') {
       const names = e.targets.map(id => id === state.pick ? 'SANA' : nameOf(r, id));
       msg = names.length ? `${P.icon} ${mine ? 'Sen' : nameOf(r, e.id)} → ${names.join(' ve ')}: ${P.name}` : `🛡️ ${P.name} saldırısı kalkanla engellendi!`;
@@ -224,6 +239,8 @@
       else if (e.type === 'hand' && e.id === state.pick) showCards(e.cards, e.expires);
       else if (e.type === 'handGone' && e.id === state.pick) hideCards();
       else if (e.type === 'power') onPower(e);
+      else if (e.type === 'wallBreak') { Grafik.breakWall(e.wall); Ses.power('duvar', e.id === state.pick); toast(`⚙️ ${e.id === state.pick ? 'Demir misketin' : nameOf(r, e.id) + ' demir misketle'} duvarı kırdı!`, e.id === state.pick ? 'gold' : ''); }
+      else if (e.type === 'finalRound') toast('🔥 Final kart turu! Geridekilere güçlü kartlar', 'gold');
       else if (e.type === 'finish') {
         const m = r.marbles[e.id], me = e.id === state.pick;
         Ses.finishCross();
@@ -393,6 +410,7 @@
         r.marbles.forEach((m, i) => Grafik.syncMarble(state.mvs[i], m, dt, state.phase, r.t));
         r.spinners.forEach((sp, i) => { const q = sp.body.rotation(), m = state.view.spinners[i]; if (m) m.quaternion.set(q.x, q.y, q.z, q.w); });
         r.pistons.forEach((ps, i) => { const q = ps.body.translation(), m = state.view.movers[i]; if (m) m.position.set(q.x, q.y, q.z); });
+        r.kins.forEach((k, i) => { const m = state.view.kins && state.view.kins[i]; if (m) Grafik.syncKin(m, k.body.translation(), k.body.rotation()); });
         for (const g of state.view.gates) if (g.opening && g.mesh.visible) { g.mesh.position.y += dt * 6; if (g.mesh.position.y > g.y0 + 4) g.mesh.visible = false; }
         if (r.started) record();
         sounds();
@@ -401,6 +419,7 @@
       }
     } else if (state.phase === 'shop') shopTick(dt, now);
     else if (state.phase !== 'result') orbitCamera(now);
+    Grafik.kinAuto = !(state.race && (state.phase === 'countdown' || state.phase === 'race' || state.phase === 'ending'));
     Grafik.updateView(state.view, now / 1000);
     Grafik.updateTemps(r ? r.t : 0, dt);
     Grafik.Particles.update(dt);
@@ -601,6 +620,7 @@
     // aksesuarlar kameraya çapraz baksın, iz arkaya doğru aksın
     const toCam = Math.atan2(cam.x - c.x, cam.z - c.z) + 0.6;
     mv.acc.position.copy(c); mv.acc.rotation.set(0, toCam, 0);
+    mv.acc.traverse(o => { if (o.userData && o.userData.spin) o.rotation.y += o.userData.spin * dt; });
     mv.shield.visible = false;
     if (mv.look.iz) { mv.trailT += dt; while (mv.trailT > 0.03) { mv.trailT -= 0.03; Magaza.emitTrail(Grafik.Particles, mv.look.iz, c, { x: Math.sin(toCam) * 5, y: 0, z: Math.cos(toCam) * 5 }, now / 1000); } }
     Grafik.aimSun(c);

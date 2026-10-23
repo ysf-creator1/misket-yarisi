@@ -84,4 +84,29 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 | `varliklar/dokular.js` | HDR gökyüzü ve doku fotoğrafları (Poly Haven, CC0), base64 gömülü |
 | `sunucu.py` | Yerel sunucu: kayıtları `kayit/kayit.json`'a yazar, yedek alır |
 | `test/guc-testi.js` | Güç denge testi: her gücün ortalama sıraya etkisi ve kendine zarar |
+| `test/guc-senaryo.js` | Her gücün istenen davranışı (zıplama, bomba, kalkan, demir, hayalet) |
+| `test/denge-testi.js` | Yarı yolda lider/sonuncu kazanma oranları |
+| `test/yeni-engel-testi.js` | Kazık, sarkaç, bant, tabla, kapı, şelale düşüşü testleri |
 | `test/parkur-testi.js` | Ekransız parkur testi: `node test/parkur-testi.js 5 10 -g` (`-g`: güçler açık; `hepsi` / `ornek` / `ozel` / `10-30` aralık; `-h`: çukur testini atla) |
+
+## 3. Güncelleme (oyuncu geri bildirimi)
+
+### Prompt
+> Misket Yarışı'nı oyuncu geri bildirimine göre geliştir. Fizik gerçekçi kalsın; her değişiklikten sonra ekransız testlerle doğrula.
+> **Güçler:** (1) Süper Zıplama, önündeki Engel Duvarı'nın ve en az iki çarpma direğinin üstünden aşacak kadar yükseğe/ileriye sıçrasın; havada yolu takip etsin, yandan düşmesin (düşerse kaldığı yere konsun).
+> (2) Bomba hedefin olduğu yerde patlasın; yakındaki tüm rakipler (kuran ve kalkanlılar hariç) geriye/yana savrulsun ve 1 sn sersemlesin; sersemleyenin başında dönen yıldızlar çıksın.
+> (3) Hayalet; misketlerden, güç duvarlarından ve tüm engellerden (direk, tampon, tahta, pervane, piston, çivi) geçsin ama parkurun zemini ve yan duvarlarından geçmesin; denge için süre boyunca biraz yavaşlasın.
+> (4) Kalkan; rüzgâr, yavaşlatma, balçık, küçültme ve bombadan etkilenmesin, ama Engel Duvarı onu da durdursun.
+> (5) Demir Misket bir Engel Duvarı'na çarpınca duvarı kırsın; kırınca demir etkisi bitsin.
+> **Kamera:** Huni deliğinden düşerken, atlama boşluğunda ve trambolinde kamera birkaç saniye yandan baksın, sonra arkaya dönsün.
+> **Geriye düşme:** Delikten düşen ya da atlayan misket geriye kaymasın, sıralamada geri düşmesin; güç kullanırken düşen misket geriye konmasın.
+> **Çeşitlilik:** Parkurlar 5 farklı yerleşimle üretilsin (zikzak, sarmal kule, geniş kıvrımlar, şelale düşüşleri, labirent çatallar); yeni hareketli engeller eklensin: zeminden çıkan kazıklar, sarkaç, hareketli bant, döner tabla, açılıp kapanan kapı. Dünyaya göre engel ağırlıkları ve parkur malzemesi değişsin.
+> **Final sürprizleri (orta):** Parkurun son %25'inde sürpriz bölüm, liderin %70'i geçmesiyle herkese ek "final kart turu" (geridekilere güçlü kart), arkadan yetişene rüzgâr tüneli, lider çok açılınca kovalayanların saldırıları lideri hedefleyebilsin. Lider yine favori ama sonuç kesin olmasın.
+> **Mağaza:** Her kategoride 8 → 24 ürün (toplam 144); fiyatlar sırayla artsın, hepsini almak ~500 yarış sürsün.
+
+### Yapılanlar ve ölçümler
+- Güç senaryoları (`node test/guc-senaryo.js`): zıplama duvarı aşıyor (12/12), 2 sıra direği aşıyor, yandan düşme 0/16; bomba 3 misketi savurup sersemletiyor; kalkan yavaşlatma/rüzgâra bağışık; demir duvarı kırıp etkisi bitiyor (6/6); hayalet çivilerden düz geçiyor (8/8).
+- Yarış dengesi (`node test/denge-testi.js`): yarı yolda lider kazandı %67 → **%37**, yarı yolda sonuncu kazandı %2 → **%8**.
+- Yeni engeller (`node test/yeni-engel-testi.js`): takılma ve düşme ≤ 0,13/yarış.
+- Geri kayma ölçümü parkur testine eklendi; huni ilerlemesi geri gitmiyor, atlama inişi rampanın altından başlıyor, bu bölgelerde düşen misket kaldığı yere konuyor.
+- Mağaza: 144 ürün, toplam 38.155 puan (≈490 yarış).

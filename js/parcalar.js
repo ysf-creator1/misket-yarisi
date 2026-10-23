@@ -179,6 +179,7 @@
         this.samples.push({
           p: add(f.p, mul(f.U, 0.55)), s: sOf(k), T: f.T, R: f.R, U: f.U, hw: f.hw,
           safe: o.safe !== false && !(o.unsafe && o.unsafe(f.t)), lane: o.lane || 0,
+          kind: o.kindOf ? o.kindOf(f.t, k) : (o.kind || null), // atlama/trambolin/huni çıkışı: kamera ve kurtarma için
         });
       }
     }
@@ -297,15 +298,17 @@
       const n1 = Math.ceil(run / 0.4);
       const F1 = this._frames(n1, t => { const x = run * t; return { p: [p0[0] + d[0] * x, p0[1] + yRun(x), p0[2] + d[2] * x], hw: hw0, wh: wh0 }; });
       this._sweep(F1, o);
-      this._samples(F1, k => s0 + run * F1[k].t, o);
-      const yLip = p0[1] + yRun(run), xa = run - 1.8, xb = run + gap + land, yL0 = yLip - fall;
+      this._samples(F1, k => s0 + run * F1[k].t, Object.assign({}, o, { kindOf: t => t > 0.6 ? 'jump' : null }));
+      // iniş oluğu rampanın ucunun hemen altından başlar: düşen misket geriye kaymaz
+      const yLip = p0[1] + yRun(run), xa = run - 0.3, xb = run + gap + land, yL0 = yLip - fall;
       const n2 = Math.ceil((xb - xa) / 0.5);
       const F2 = this._frames(n2, t => {
         const x = lerp(xa, xb, t), e = smooth((t - 0.8) / 0.2);
         return { p: [p0[0] + d[0] * x, yL0 - landDrop * t, p0[2] + d[2] * x], hw: lerp(hwL, hw0, e), wh: lerp(whL, wh0, e) };
       });
       this._sweep(F2, { capStart: true, color: o.landColor });
-      this._samples(F2, k => s0 + lerp(xa, xb, F2[k].t), o);
+      // iniş örneklerinin ilerlemesi rampanın ucundan küçük olmaz: sıralamada geri düşme olmaz
+      this._samples(F2, k => s0 + Math.max(run, lerp(xa, xb, F2[k].t)), Object.assign({}, o, { kindOf: t => lerp(xa, xb, t) < run + gap + 2.5 ? 'jump' : null }));
       this.decor.push({ type: 'jumpSign', p: [p0[0] + d[0] * run, yLip, p0[2] + d[2] * run], yaw, hw: hw0 });
       this._advance(F2, s0 + xb, yaw);
     }
@@ -322,7 +325,7 @@
       this.laneCount++;
       // kol genişlikleri: 2 kolluda biri geniş biri dar → ayırıcı direk tam ortada olmaz, ortadan gelen misket direkte dengede kalmaz
       const lws = lanes.slice(0, n).map(l => l && l.lw).every(x => x) ? lanes.slice(0, n).map(l => l.lw)
-        : n === 2 ? [lw + 0.17, lw - 0.17] : new Array(n).fill(lw);
+        : n === 2 ? [lw + 0.13, lw - 0.13] : new Array(n).fill(lw);
       const tot = lws.reduce((a, x) => a + x, 0), cum = [0]; for (const x of lws) cum.push(cum[cum.length - 1] + x);
       for (let j = 0; j < n; j++) {
         const lo = lanes[j] || {}, lwj = lws[j], o0 = -tot + 2 * cum[j] + lwj, sgn = Math.abs(o0) < 0.3 ? 0 : Math.sign(o0);
@@ -391,9 +394,11 @@
       this.decor.push({ type: 'funnel', c, R: Rr, yRim, yHole: yAt(hole), hole, wallH });
       // çıkış: deliğin altından başlayan, arkası kapalı, yüksek duvarlı oluk
       const yaw2 = yaw + exitTurn, d2 = dirOf(yaw2), yHole = yAt(hole);
-      this.pos = [c[0] - d2[0] * 1.4, yHole - 2.9, c[2] - d2[2] * 1.4];
+      // çıkış oluğu deliğin hemen altından başlar ve ilk metreler daha eğimli: misket geriye kaçmaz
+      const back = hole + 0.4; // arka duvar deliğin arka kenarının biraz gerisinde: delikten düşen her misket oluğa düşer
+      this.pos = [c[0] - d2[0] * back, yHole - 2.9, c[2] - d2[2] * back];
       this.yaw = yaw2; this.s = s0 + Lf;
-      this.straight({ len: 6, drop: 0.55, wh0: 2.4, wh: 2.4, capStart: true });
+      this.straight({ len: 6, drop: 0.95, wh0: 2.4, wh: 2.4, capStart: true, kind: 'funnelExit' });
       this.straight({ len: 4, drop: 0.35, wh: this.baseWh });
     }
 
@@ -478,10 +483,10 @@
       const front = add(pc, add(mul(d, padLen / 2 * Math.cos(tilt)), [0, -padLen / 2 * Math.sin(tilt) - 0.35, 0]));
       const xa = len(sub([front[0], 0, front[2]], [p0[0], 0, p0[2]]));
       const gap = [];
-      for (let x = 0; x <= xa; x += 0.5) gap.push({ p: [p0[0] + d[0] * x, p0[1] - fall * Math.min(1, x / 2.2) + 0.55, p0[2] + d[2] * x], s: s0 + x, T: d, R: Rv, U: UP, hw: hwB, safe: false, lane: 0 });
+      for (let x = 0; x <= xa; x += 0.5) gap.push({ p: [p0[0] + d[0] * x, p0[1] - fall * Math.min(1, x / 2.2) + 0.55, p0[2] + d[2] * x], s: s0 + x, T: d, R: Rv, U: UP, hw: hwB, safe: false, lane: 0, kind: 'tramp' });
       this.samples.push(...gap);
       this.pos = front; this.s = s0 + xa; this.hw = hwB; this.wh = 2.6;
-      this.straight({ len: 11, drop: 1.0, hw0: hwB, hw: hwB, wh0: 2.8, wh: 2.6 }); // uzun iniş: hızlı gelen misket de içine düşer
+      this.straight({ len: 11, drop: 1.0, hw0: hwB, hw: hwB, wh0: 2.8, wh: 2.6, kindOf: t => t < 0.5 ? 'tramp' : null }); // uzun iniş: hızlı gelen misket de içine düşer
       this.straight({ len: 5, drop: 0.5, hw: hw0, wh: wh0 });
       this.decor.push({ type: 'tramp', p: pc, yaw });
     }
@@ -502,6 +507,95 @@
         this.prims.push({ type: 'piston', p: base, dir: mul(f.R, -side), stroke, half, q: quatFromBasis(f.R, f.U, cross(f.R, f.U)), period: o.period || 2.6, phase: k * 0.37, color: o.color || '#ffb703' });
       }
       this._advance(F, s0 + A[A.length - 1], this.yaw);
+    }
+
+    // ---------- hareketli engeller (kinematik cisimler; js/fizik.js MF.kinPose ile hareket eder) ----------
+
+    // Kazıklar: zeminden zamanlı çıkıp giren kazık sıraları (aralar misketin geçeceği kadar)
+    kaziklar(o = {}) {
+      const L = o.len || 14, drop = o.drop != null ? o.drop : L * 0.14, hwK = o.hw || 2.8;
+      const { F, A, s0, tin, tout } = this._wideSection(o, L, drop, hwK);
+      let row = 0;
+      for (let z = L * (tin + 0.07); z <= L * (tout - 0.07); z += 2.4, row++) {
+        const f = F[Math.round(z / L * (F.length - 1))], xs = row % 2 ? [0] : [-1.25, 1.25];
+        for (const x of xs) {
+          const base = add(f.p, mul(f.R, x));
+          this.prims.push({ type: 'kin', kind: 'kazik', p: base, U: f.U, q: quatFromY(f.U), r: 0.32, hh: 0.62, period: o.period || 2.6, phase: (row * 0.31) % 1, color: '#ffd60a' });
+        }
+      }
+      this._advance(F, s0 + A[A.length - 1], this.yaw);
+    }
+
+    // Sarkaç: yolun üstünde yana sallanan ağır tokmak
+    sarkac(o = {}) {
+      const L = o.len || 13, drop = o.drop != null ? o.drop : L * 0.1, n = o.count || (L >= 16 ? 2 : 1);
+      const { hw0, wh0 } = this._widths(o);
+      const d = dirOf(this.yaw), p0 = this.pos.slice(), nf = Math.ceil(L / 0.5);
+      const F = this._frames(nf, t => ({ p: [p0[0] + d[0] * L * t, p0[1] - drop * t, p0[2] + d[2] * L * t], hw: hw0, wh: wh0 }));
+      this._sweep(F, o);
+      const A = this._arc(F), s0 = this.s;
+      this._samples(F, k => s0 + A[k], o);
+      for (let k = 0; k < n; k++) {
+        const f = F[Math.round(((k + 0.5) / n) * (F.length - 1))], bob = 0.72, armL = wh0 + 3.6;
+        const pivot = add(f.p, mul(f.U, armL + 1.15)); // tokmak en altta zeminden ~0,4 m yukarıda geçer
+        const amp = Math.asin(Math.min(0.95, (f.hw - 0.7) / armL));
+        this.prims.push({ type: 'kin', kind: 'sarkac', pivot, R: f.R, U: f.U, N: f.T, armL, bob, amp, period: o.period || 2.4, phase: k * 0.5, hw: f.hw, color: '#e63946' });
+      }
+      this._advance(F, s0 + A[A.length - 1], this.yaw);
+    }
+
+    // Hareketli bant: zemini ileri (hızlandırır) ya da geri (yavaşlatır, ama misketi asla geri taşımaz) akan bölge
+    bant(o = {}) {
+      const L = o.len || 12, drop = o.drop != null ? o.drop : L * 0.1, dir = o.dir || 1;
+      const { hw0, wh0 } = this._widths(o);
+      const d = dirOf(this.yaw), p0 = this.pos.slice(), nf = Math.ceil(L / 0.5);
+      const F = this._frames(nf, t => ({ p: [p0[0] + d[0] * L * t, p0[1] - drop * t, p0[2] + d[2] * L * t], hw: hw0, wh: wh0 }));
+      this._sweep(F, o);
+      const A = this._arc(F), s0 = this.s;
+      this._samples(F, k => s0 + A[k], o);
+      // görsel bant şeridi (fizikte yok; kuvvet bölgesi fizik.js'te)
+      const m = new Mesh('belt', dir > 0 ? '#2ec4b6' : '#ff595e', { physics: false }); m.dir = dir;
+      const half = hw0 - 0.45;
+      for (let k = 0; k < F.length; k++) for (const x of [-half, half]) m.vert(add(add(F[k].p, mul(F[k].R, x)), mul(F[k].U, 0.03)), x < 0 ? 0 : 1, A[k] / 2);
+      for (let k = 0; k < F.length - 1; k++) { const a = k * 2, ref = add(F[k].p, mul(F[k].U, 2)); m.tri(a, a + 1, a + 2, ref); m.tri(a + 1, a + 3, a + 2, ref); }
+      this.meshes.push(m);
+      (this.belts = this.belts || []).push({ s0, s1: s0 + A[A.length - 1], accel: dir > 0 ? 4 : -1.1 });
+      this._advance(F, s0 + A[A.length - 1], this.yaw);
+    }
+
+    // Döner tabla: zemine gömülü, dönen disk; üstüne gelen misketi yana savurur
+    tabla(o = {}) {
+      const L = o.len || 12, drop = o.drop != null ? o.drop : L * 0.12, hwT = o.hw || 3.2;
+      const { F, A, s0 } = this._wideSection(o, L, drop, hwT);
+      const f = F[Math.round(0.5 * (F.length - 1))];
+      this.prims.push({ type: 'kin', kind: 'tabla', p: add(f.p, mul(f.U, 0.06)), U: f.U, q: quatFromY(f.U), r: hwT - 0.75, hh: 0.06, speed: (o.dir || 1) * 1.3, color: '#ffbe0b' });
+      this._advance(F, s0 + A[A.length - 1], this.yaw);
+    }
+
+    // Kapı: zeminden yükselip yolu kısa süre kapatan bariyer; geridekiler arkasında toplanır
+    kapi(o = {}) {
+      const L = o.len || 12, drop = o.drop != null ? o.drop : L * 0.1;
+      const { hw0, wh0 } = this._widths(o);
+      const d = dirOf(this.yaw), p0 = this.pos.slice(), nf = Math.ceil(L / 0.5);
+      const F = this._frames(nf, t => ({ p: [p0[0] + d[0] * L * t, p0[1] - drop * t, p0[2] + d[2] * L * t], hw: hw0, wh: wh0 }));
+      this._sweep(F, o);
+      const A = this._arc(F), s0 = this.s;
+      this._samples(F, k => s0 + A[k], o);
+      const f = F[Math.round(0.55 * (F.length - 1))];
+      this.prims.push({ type: 'kin', kind: 'kapi', p: f.p.slice(), U: f.U, q: quatFromBasis(f.R, f.U, cross(f.R, f.U)), half: [f.hw - 0.04, 0.6, 0.16], period: o.period || 4.2, phase: this.rngPhase || 0, color: '#ff006e' });
+      this.decor.push({ type: 'kapiDirek', p: f.p.slice(), R: f.R, U: f.U, hw: f.hw });
+      this._advance(F, s0 + A[A.length - 1], this.yaw);
+    }
+
+    // Şelale düşüşü: yol biter, misket 4–5 m aşağıdaki arkası kapalı geniş oluğa düşer
+    dusus(o = {}) {
+      const fall = o.fall || 4.4, hw0 = this.hw, wh0 = this.wh, d = dirOf(this.yaw), Rv = mul(leftOf(this.yaw), -1), p0 = this.pos.slice(), s0 = this.s;
+      const hwL = hw0 + 0.7;
+      for (let x = 0; x <= 1.5; x += 0.5) this.samples.push({ p: [p0[0] + d[0] * x, p0[1] - fall * Math.min(1, x / 1.5) + 0.55, p0[2] + d[2] * x], s: s0 + x, T: d, R: Rv, U: UP, hw: hwL, safe: false, lane: 0, kind: 'drop' });
+      this.pos = [p0[0] - d[0] * 0.3, p0[1] - fall, p0[2] - d[2] * 0.3]; this.s = s0 + 0.01; this.hw = hwL; this.wh = 2.7;
+      this.straight({ len: 8, drop: 0.9, hw0: hwL, hw: hwL, wh0: 2.7, wh: 2.5, capStart: true, kindOf: t => t < 0.45 ? 'drop' : null });
+      this.straight({ len: 4, drop: 0.4, hw: hw0, wh: wh0 });
+      this.decor.push({ type: 'selale', p: p0, yaw: this.yaw, hw: hw0, fall });
     }
 
     // Bitiş çizgisi ve sonrasında misketlerin durduğu alan
@@ -542,7 +636,7 @@
       return {
         id: def.id, name: def.name, meshes: this.meshes, prims: this.prims, samples: S, zones: this.zones, decor: this.decor,
         slots: this.slots, finishS: this.finishS, startS: this.startS, groundY, bounds: { minX, maxX, minY, maxY, minZ, maxZ },
-        target: def.target, theme: def.theme || {}, warnings: this.warnings || [],
+        target: def.target, theme: def.theme || {}, warnings: this.warnings || [], belts: this.belts || [],
       };
     }
   }

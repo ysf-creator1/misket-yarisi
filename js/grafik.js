@@ -145,13 +145,19 @@
 
   // ================= MALZEMELER =================
   const matCache = {};
+  let trackStyle = 'tahta';
   function trackMat(c) {
-    const k = 'track' + c; if (matCache[k]) return matCache[k];
+    const k = 'track' + trackStyle + c; if (matCache[k]) return matCache[k];
+    if (trackStyle === 'metal') return (matCache[k] = new THREE.MeshPhysicalMaterial({ color: col(c), metalness: 0.65, roughness: 0.28, clearcoat: 0.6, clearcoatRoughness: 0.15, side: THREE.DoubleSide, envMapIntensity: 1.1 }));
+    if (trackStyle === 'cam') return (matCache[k] = new THREE.MeshPhysicalMaterial({ color: col(c), roughness: 0.06, metalness: 0, clearcoat: 1, transparent: true, opacity: 0.72, side: THREE.DoubleSide, envMapIntensity: 1.3 }));
+    if (trackStyle === 'buz') return (matCache[k] = new THREE.MeshPhysicalMaterial({ color: col(c).lerp(new THREE.Color(0xdff4ff), 0.55), roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.85, side: THREE.DoubleSide, envMapIntensity: 1.4 }));
     return (matCache[k] = new THREE.MeshPhysicalMaterial({
       color: col(c), roughness: 0.5, roughnessMap: TX.woodR, normalMap: TX.woodN, normalScale: new THREE.Vector2(0.35, 0.35),
       clearcoat: 0.7, clearcoatRoughness: 0.18, side: THREE.DoubleSide, envMapIntensity: 0.9,
     }));
   }
+  const chevronTex = () => canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#20232b'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffffff'; for (const y of [10, 74]) { g.beginPath(); g.moveTo(24, y + 40); g.lineTo(64, y); g.lineTo(104, y + 40); g.lineTo(104, y + 52); g.lineTo(64, y + 14); g.lineTo(24, y + 52); g.closePath(); g.fill(); } });
+  const hazardTex = () => canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#ffd60a'; g.fillRect(0, 0, w, h); g.fillStyle = '#16161b'; for (let k = -2; k < 6; k++) { g.beginPath(); g.moveTo(k * 32, 0); g.lineTo(k * 32 + 16, 0); g.lineTo(k * 32 + 16 + h, h); g.lineTo(k * 32 + h, h); g.closePath(); g.fill(); } });
   const M = {};
   function makeMats() {
     M.chrome = new THREE.MeshStandardMaterial({ color: col('#e8ebf0'), metalness: 1, roughness: 0.16 });
@@ -336,7 +342,15 @@
     else if (S.sky === 'ic') { scene.background = col('#efe9df'); scene.fog.near = 600; scene.fog.far = 4000; }
     else if (skyTex) scene.background = skyTex;
 
+    trackStyle = th.trackMat || 'tahta';
+    const belts = [];
     for (const m of track.meshes) {
+      if (m.kind === 'belt') { // hareketli bant: akan ok dokusu
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(m.v, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2)); g.setIndex(m.i); g.computeVertexNormals();
+        const tx = chevronTex(); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(1, 1); if (m.dir < 0) { tx.center.set(0.5, 0.5); tx.rotation = Math.PI; }
+        const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tx, color: col(m.color), roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2 }));
+        mesh.receiveShadow = true; grp.add(mesh); belts.push({ tx, dir: m.dir }); continue;
+      }
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(m.v, 3));
       g.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
@@ -347,8 +361,9 @@
       if (m.kind === 'rim') mesh.renderOrder = 2;
       grp.add(mesh);
     }
-    const gates = [], spinners = [], movers = [];
+    const gates = [], spinners = [], movers = [], kins = [];
     for (const pr of track.prims) {
+      if (pr.type === 'kin') { const km = kinMesh(pr); grp.add(km); kins.push(km); const P0 = window.MF.kinPose(pr, 0); Grafik.syncKin(km, { x: P0.p[0], y: P0.p[1], z: P0.p[2] }, P0.q); continue; }
       if (pr.type === 'spinner') {
         const sg = new THREE.Group(), am = M.paintMetal(pr.color);
         for (let k = 0; k < pr.arms; k++) {
@@ -416,6 +431,15 @@
         const ofs = V.mul(V.leftOf(d.yaw), d.hw + 0.9);
         s.position.set(d.p[0] + ofs[0], d.p[1] + 2.4, d.p[2] + ofs[2]); s.rotation.y = d.yaw + Math.PI; grp.add(s);
         const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 8), M.steel); pole.position.set(d.p[0] + ofs[0], d.p[1] + 1.2, d.p[2] + ofs[2]); grp.add(pole);
+      } else if (d.type === 'kapiDirek') {
+        for (const sx of [-1, 1]) {
+          const x = d.p[0] + d.R[0] * sx * (d.hw + 0.3), z = d.p[2] + d.R[2] * sx * (d.hw + 0.3);
+          const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 2.6, 10), M.steel); pole.position.set(x, d.p[1] + 1.3, z); pole.castShadow = true; grp.add(pole);
+          const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshStandardMaterial({ color: col('#ff3355'), emissive: col('#ff3355'), emissiveIntensity: 2 })); lamp.position.set(x, d.p[1] + 2.7, z); grp.add(lamp);
+        }
+      } else if (d.type === 'selale') {
+        const curtain = new THREE.Mesh(new THREE.PlaneGeometry(d.hw * 2, d.fall), new THREE.MeshPhysicalMaterial({ color: col('#8fd8ff'), transparent: true, opacity: 0.28, roughness: 0.05, clearcoat: 1, side: THREE.DoubleSide, depthWrite: false }));
+        const dd = V.dirOf(d.yaw); curtain.position.set(d.p[0] + dd[0] * 0.15, d.p[1] - d.fall / 2, d.p[2] + dd[2] * 0.15); curtain.rotation.y = d.yaw; grp.add(curtain);
       } else if (d.type === 'funnel') {
         const ringM = new THREE.Mesh(new THREE.TorusGeometry(d.R + 0.02, 0.08, 10, 96), M.chrome);
         ringM.rotation.x = Math.PI / 2; ringM.position.set(d.c[0], d.yRim + (d.wallH || 1.3), d.c[2]); grp.add(ringM);
@@ -432,10 +456,48 @@
     const cctx = { grp, track, terr, rnd: MP.rng((track.id || 1) * 31 + 5), TX, updaters, room: null };
     if (window.Cevre) { try { Cevre.build(env, cctx); } catch (e) { console.error('çevre', e); } }
     scene.add(grp);
-    return { grp, gates, spinners, movers, terr, patches: [], updaters, room: cctx.room };
+    if (belts.length) updaters.push(t => { for (const b of belts) b.tx.offset.y = (t * 0.9) % 1; });
+    // yarış yokken (menüde) hareketli engeller kendi saatleriyle oynasın
+    if (kins.length) updaters.push(t => { if (!Grafik.kinAuto) return; kins.forEach(km => { const P = window.MF.kinPose(km.userData.pr, t); Grafik.syncKin(km, { x: P.p[0], y: P.p[1], z: P.p[2] }, P.q); }); });
+    return { grp, gates, spinners, movers, kins, terr, patches: [], updaters, room: cctx.room };
   };
   // hareketli süsler (dönme dolap, balonlar, kuzey ışıkları…)
   Grafik.updateView = function (v, t) { if (v && v.updaters) for (const u of v.updaters) u(t); };
+  // hareketli engellerin görüntüsü (konum/dönüş her karede fizikten gelir)
+  function kinMesh(pr) {
+    const g = new THREE.Group();
+    if (pr.kind === 'kazik') {
+      const t = hazardTex(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1);
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(pr.r, pr.r, pr.hh * 2, 20), new THREE.MeshStandardMaterial({ map: t, roughness: 0.5, metalness: 0.2 })); c.castShadow = true; g.add(c);
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(pr.r * 0.7, pr.r, 0.12, 20), M.chrome); top.position.y = pr.hh + 0.06; g.add(top);
+    } else if (pr.kind === 'sarkac') {
+      const bob = new THREE.Mesh(new THREE.SphereGeometry(pr.bob, 28, 18), new THREE.MeshStandardMaterial({ map: hazardTex(), color: col('#ff6b6b'), roughness: 0.35, metalness: 0.4 })); bob.castShadow = true; g.add(bob);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, pr.armL, 8), M.steel); arm.name = 'kol'; g.add(arm); g.userData.arm = arm;
+      // taşıyıcı çerçeve: iki direk + üst kiriş
+      const fr = new THREE.Group(); g.userData.frame = fr;
+      for (const sx of [-1, 1]) { const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, pr.armL + 1.2, 10), M.steel); pole.position.set(pr.pivot[0] + pr.R[0] * sx * (pr.hw + 0.4), pr.pivot[1] - (pr.armL + 1.2) / 2, pr.pivot[2] + pr.R[2] * sx * (pr.hw + 0.4)); pole.castShadow = true; fr.add(pole); }
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, pr.hw * 2 + 1.1), M.steel); beam.position.set(pr.pivot[0], pr.pivot[1], pr.pivot[2]); beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(pr.R[0], pr.R[1], pr.R[2])); fr.add(beam);
+    } else if (pr.kind === 'tabla') {
+      const t = canvasTex(256, 256, (gg, w, h) => { for (let k = 0; k < 12; k++) { gg.fillStyle = k % 2 ? '#ffbe0b' : '#3a86ff'; gg.beginPath(); gg.moveTo(128, 128); gg.arc(128, 128, 128, k * Math.PI / 6, (k + 1) * Math.PI / 6); gg.fill(); } gg.fillStyle = '#fff'; gg.beginPath(); gg.arc(128, 128, 22, 0, 7); gg.fill(); });
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(pr.r, pr.r, pr.hh * 2, 48), [new THREE.MeshStandardMaterial({ color: col('#555') }), new THREE.MeshStandardMaterial({ map: t, roughness: 0.4 }), new THREE.MeshStandardMaterial({ color: col('#555') })]);
+      disc.receiveShadow = true; g.add(disc);
+    } else {
+      const t = canvasTex(256, 64, (gg, w, h) => { for (let k = 0; k < 8; k++) { gg.fillStyle = k % 2 ? '#ffffff' : '#ff006e'; gg.fillRect(k * 32, 0, 32, h); } });
+      const box = new THREE.Mesh(new THREE.BoxGeometry(pr.half[0] * 2, pr.half[1] * 2, pr.half[2] * 2), new THREE.MeshStandardMaterial({ map: t, roughness: 0.4 })); box.castShadow = true; g.add(box);
+    }
+    g.userData.pr = pr;
+    return g;
+  }
+  // hareketli engeli konumla (sarkaçta kol pivottan tokmağa uzanır)
+  Grafik.syncKin = function (g, pos, rot) {
+    const pr = g.userData.pr;
+    g.position.set(pos.x, pos.y, pos.z); g.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+    if (pr.kind === 'sarkac') {
+      const arm = g.userData.arm, a = new THREE.Vector3(pr.pivot[0] - pos.x, pr.pivot[1] - pos.y, pr.pivot[2] - pos.z);
+      arm.position.copy(a).multiplyScalar(0.5); arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), a.clone().normalize());
+      if (g.userData.frame && !g.userData.frame.parent) g.parent.add(g.userData.frame);
+    }
+  };
   Grafik.disposeView = function (v) {
     if (!v) return;
     scene.remove(v.grp);
@@ -470,6 +532,7 @@
     return new THREE.MeshPhysicalMaterial({
       map: Grafik.marbleTexture(look), roughness: look.metal ? 0.2 : 0.08, metalness: look.metal ? 0.85 : 0.0,
       clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.25,
+      emissive: look.neon ? col(look.color) : col('#000000'), emissiveIntensity: look.neon ? 0.55 : 0,
     });
   };
   function labelTex(text, color, me) {
@@ -491,19 +554,27 @@
     if (window.Magaza) { if (look.sapka) Magaza.buildHat(acc, look.sapka, r, look.color); if (look.gozluk) Magaza.buildGlasses(acc, look.gozluk, r); }
     const shield = new THREE.Mesh(new THREE.SphereGeometry(r * 1.45, 32, 20), new THREE.MeshPhysicalMaterial({ color: col('#7fd8ff'), transparent: true, opacity: 0.28, roughness: 0, clearcoat: 1, emissive: col('#3fb8ff'), emissiveIntensity: 0.5, depthWrite: false }));
     shield.visible = false; scene.add(shield);
+    // sersemlik: başının üstünde dönen yıldızlar
+    const stars = new THREE.Group(); stars.visible = false; scene.add(stars);
+    for (let k = 0; k < 4; k++) { const st = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex(), depthTest: false, transparent: true })); st.scale.set(0.42, 0.42, 1); st.renderOrder = 6; st.userData.a = k * Math.PI / 2; stars.add(st); }
     const baseMat = mesh.material;
-    return { mesh, label, acc, shield, me, look, baseMat, yaw: 0, scale: 1, trailT: 0 };
+    return { mesh, label, acc, shield, stars, me, look, baseMat, yaw: 0, scale: 1, trailT: 0 };
   };
   const ironMat = new THREE.MeshStandardMaterial({ color: col('#b9c0c9'), metalness: 1, roughness: 0.22 });
+  let _starTex = null;
+  function starTex() {
+    if (_starTex) return _starTex;
+    return (_starTex = canvasTex(64, 64, (g) => { g.fillStyle = '#ffe14d'; g.strokeStyle = '#b8860b'; g.lineWidth = 3; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 11 : 28; g.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } g.closePath(); g.fill(); g.stroke(); }));
+  }
   Grafik.disposeMarble = function (mv) {
-    for (const o of [mv.mesh, mv.label, mv.acc, mv.shield]) { scene.remove(o); o.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material && c.material !== ironMat) { if (c.material.map) c.material.map.dispose(); c.material.dispose(); } }); }
+    for (const o of [mv.mesh, mv.label, mv.acc, mv.shield, mv.stars].filter(Boolean)) { scene.remove(o); o.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material && c.material !== ironMat) { if (c.material.map) c.material.map.dispose(); c.material.dispose(); } }); }
   };
   // her karede: fizikten konum/dönüş, aksesuar yönü, güç efektlerinin görünümü
   const tmpV = new THREE.Vector3();
   // tekrar (replay) için: kayıtlı konum/dönüşle yerleştir
   Grafik.placeMarble = function (mv, p, q, v, dt) {
     mv.mesh.position.set(p[0], p[1], p[2]); mv.mesh.quaternion.set(q[0], q[1], q[2], q[3]); mv.mesh.scale.setScalar(1);
-    mv.mesh.material = mv.baseMat; mv.mesh.material.opacity = 1; mv.shield.visible = false;
+    mv.mesh.material = mv.baseMat; mv.mesh.material.opacity = 1; mv.shield.visible = false; if (mv.stars) mv.stars.visible = false;
     if (Math.hypot(v[0], v[2]) > 0.6) { const ty = Math.atan2(v[0], v[2]); let d = ty - mv.yaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; mv.yaw += d * Math.min(1, dt * 6); }
     mv.acc.position.set(p[0], p[1], p[2]); mv.acc.rotation.set(0, mv.yaw, 0); mv.acc.scale.setScalar(1);
     mv.label.position.set(p[0], p[1] + (mv.me ? 1.35 : 1.05) + (mv.look.sapka ? 0.35 : 0), p[2]); mv.label.visible = mv.me;
@@ -518,9 +589,15 @@
     mv.mesh.material = fx.iron > now ? ironMat : mv.baseMat;
     const ghost = fx.ghost > now; mv.mesh.material.transparent = ghost; mv.mesh.material.opacity = ghost ? 0.35 : 1;
     mv.shield.visible = fx.shield > now; mv.shield.position.set(p.x, p.y, p.z); mv.shield.scale.setScalar(mv.scale * (1 + Math.sin(performance.now() / 120) * 0.03));
+    if (mv.stars) {
+      const stun = fx.stun > now; mv.stars.visible = stun;
+      if (stun) { const tt = performance.now() / 1000; mv.stars.position.set(p.x, p.y + 0.85 * mv.scale + (mv.look.sapka ? 0.35 : 0), p.z); mv.stars.children.forEach(st => { const a = st.userData.a + tt * 5; st.position.set(Math.cos(a) * 0.55, Math.sin(tt * 6 + st.userData.a) * 0.06, Math.sin(a) * 0.55); }); }
+    }
     const hs = Math.hypot(v.x, v.z);
     if (hs > 0.6) { const ty = Math.atan2(v.x, v.z); let d = ty - mv.yaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; mv.yaw += d * Math.min(1, dt * 6); }
     mv.acc.position.set(p.x, p.y, p.z); mv.acc.rotation.set(0, mv.yaw, 0); mv.acc.scale.setScalar(mv.scale);
+    if (mv.spinners === undefined) { mv.spinners = []; mv.acc.traverse(o => { if (o.userData && o.userData.spin) mv.spinners.push(o); }); }
+    for (const o of mv.spinners) o.rotation.y += o.userData.spin * dt; // pervaneli şapka
     mv.label.position.set(p.x, p.y + (mv.me ? 1.35 : 1.05) * mv.scale + (mv.look.sapka ? 0.35 : 0), p.z);
     if (!mv.me) { const d = camera.position.distanceTo(mv.mesh.position); mv.label.visible = phase !== 'countdown' && d > 6 && d < 70; }
     // iz (kostüm) ve güç parçacıkları
@@ -541,18 +618,22 @@
     geo.setAttribute('size', new THREE.BufferAttribute(size, 1)); geo.setAttribute('alpha', new THREE.BufferAttribute(alpha, 1));
     geo.setAttribute('shape', new THREE.BufferAttribute(shape, 1));
     const vel = new Float32Array(N * 3), life = new Float32Array(N), maxLife = new Float32Array(N), grav = new Float32Array(N), size0 = new Float32Array(N);
-    const sprite = canvasTex(256, 64, (g) => {
+    const sprite = canvasTex(512, 64, (g) => {
       const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,0.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
       g.fillStyle = '#fff';
       g.beginPath(); g.moveTo(96, 54); g.bezierCurveTo(70, 36, 70, 12, 86, 12); g.bezierCurveTo(94, 12, 96, 20, 96, 22); g.bezierCurveTo(96, 20, 98, 12, 106, 12); g.bezierCurveTo(122, 12, 122, 36, 96, 54); g.fill();
       g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 11 : 27; g.lineTo(160 + Math.cos(a) * r, 34 + Math.sin(a) * r); } g.fill();
       g.strokeStyle = '#fff'; g.lineWidth = 5; g.lineCap = 'round';
       for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; g.beginPath(); g.moveTo(224 - Math.cos(a) * 26, 32 - Math.sin(a) * 26); g.lineTo(224 + Math.cos(a) * 26, 32 + Math.sin(a) * 26); g.stroke(); }
+      g.font = '900 52px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('♪', 288, 34);           // 4 nota
+      g.beginPath(); g.ellipse(352, 32, 12, 26, 0.6, 0, 7); g.fill();                                                 // 5 yaprak
+      g.beginPath(); g.moveTo(416, 6); g.lineTo(438, 30); g.lineTo(416, 58); g.lineTo(394, 30); g.closePath(); g.fill(); // 6 elmas
+      g.beginPath(); g.moveTo(486, 4); g.lineTo(466, 34); g.lineTo(480, 34); g.lineTo(470, 60); g.lineTo(496, 26); g.lineTo(482, 26); g.closePath(); g.fill(); // 7 şimşek
     }, false);
     const mat = new THREE.ShaderMaterial({
       uniforms: { map: { value: sprite }, scale: { value: 600 } }, transparent: true, depthWrite: false, blending: THREE.NormalBlending, vertexColors: true,
       vertexShader: 'attribute float size; attribute float alpha; attribute float shape; varying float vA; varying float vS; varying vec3 vC; uniform float scale; void main(){ vA=alpha; vS=shape; vC=color; vec4 mv=modelViewMatrix*vec4(position,1.0); gl_PointSize=size*scale/-mv.z; gl_Position=projectionMatrix*mv; }',
-      fragmentShader: 'uniform sampler2D map; varying float vA; varying float vS; varying vec3 vC; void main(){ vec2 uv=vec2((gl_PointCoord.x+floor(vS+0.5))/4.0,1.0-gl_PointCoord.y); vec4 t=texture2D(map,uv); gl_FragColor=vec4(vC,t.a*vA); if(gl_FragColor.a<0.01) discard; }',
+      fragmentShader: 'uniform sampler2D map; varying float vA; varying float vS; varying vec3 vC; void main(){ vec2 uv=vec2((gl_PointCoord.x+floor(vS+0.5))/8.0,1.0-gl_PointCoord.y); vec4 t=texture2D(map,uv); gl_FragColor=vec4(vC,t.a*vA); if(gl_FragColor.a<0.01) discard; }',
     });
     const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.renderOrder = 4; scene.add(pts);
     let head = 0;
@@ -583,7 +664,7 @@
 
   // ================= GÜÇ EFEKTLERİ (sahnedeki geçici nesneler) =================
   const temp = [];
-  Grafik.addTemp = function (obj, until, onUpdate) { scene.add(obj); temp.push({ obj, until, onUpdate }); };
+  Grafik.addTemp = function (obj, until, onUpdate) { const e = { obj, until, onUpdate }; scene.add(obj); temp.push(e); return e; };
   Grafik.updateTemps = function (t, dt) {
     for (let i = temp.length - 1; i >= 0; i--) {
       const e = temp[i];
@@ -599,7 +680,7 @@
   Grafik.spawnWall = function (w, until) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w.half[0] * 2, w.half[1] * 2, w.half[2] * 2), new THREE.MeshStandardMaterial({ map: brickTex(), roughness: 0.9 }));
     m.position.set(w.p[0], w.p[1] + 3, w.p[2]); m.quaternion.set(w.q.x, w.q.y, w.q.z, w.q.w); m.castShadow = true;
-    Grafik.addTemp(m, until, (o, t, dt) => { o.position.y = Math.max(w.p[1], o.position.y - dt * 14); if (until - t < 0.3) o.scale.y = Math.max(0.01, (until - t) / 0.3); });
+    w._vis = Grafik.addTemp(m, until, (o, t, dt) => { o.position.y = Math.max(w.p[1], o.position.y - dt * 14); if (until - t < 0.3) o.scale.y = Math.max(0.01, (until - t) / 0.3); });
     Particles.burst({ x: w.p[0], y: w.p[1], z: w.p[2] }, 25, ['#c9b79c', '#a0907a'], 3, 0.35, 0.8, 0.6);
   };
   Grafik.spawnSlime = function (pt, until) {
@@ -615,6 +696,10 @@
     f.position.set(p.x, p.y, p.z);
     const t0 = performance.now();
     Grafik.addTemp(f, Infinity, (o) => { const k = (performance.now() - t0) / 350; o.scale.setScalar(1 + k * 5); o.material.opacity = Math.max(0, 0.9 * (1 - k)); if (k >= 1) temp.find(e => e.obj === o).dead = true; });
+  };
+  Grafik.breakWall = function (w) {
+    if (w._vis) w._vis.dead = true;
+    Particles.burst({ x: w.p[0], y: w.p[1], z: w.p[2] }, 70, ['#b5452c', '#a63d27', '#c24e33', '#d9c3a0'], 6, 0.4, 1.2, 0.9);
   };
   Grafik.sparkle = function (p, color) { Particles.burst(p, 40, [color || '#d0b3ff', '#ffffff'], 4, 0.4, 0.8, -0.1); };
   Grafik.puff = function (p) { Particles.burst(p, 18, ['#e8e2d6', '#cfc7b8'], 2.5, 0.5, 0.7, 0.2); };

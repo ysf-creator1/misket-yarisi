@@ -29,6 +29,7 @@
   ];
 
   const hyp = Math.hypot;
+  const OBST = (0x0200 << 16) | 0xFFFF; // engel çarpışma grubu (js/guclar.js MG.OBST_BIT)
 
   class Race {
     // R: başlatılmış RAPIER, track: MP.buildTrack çıktısı
@@ -50,15 +51,18 @@
           .setRestitution(m.restitution != null ? m.restitution : P.trackRestitution);
         w.createCollider(d, fixed);
       }
-      this.gateCols = []; this.spinners = []; this.pistons = []; this.clock = 0;
+      this.gateCols = []; this.spinners = []; this.pistons = []; this.kins = []; this.clock = 0;
+      this.belts = track.belts || [];
       for (const pr of track.prims) {
         let d;
         if (pr.type === 'spinner') { this._spinner(pr); continue; }
         if (pr.type === 'piston') { this._piston(pr); continue; }
+        if (pr.type === 'kin') { this._kin(pr); continue; }
         if (pr.type === 'cyl') d = R.ColliderDesc.cylinder(pr.hh, pr.r).setRestitution(pr.bumper ? P.bumperRestitution : P.postRestitution).setFriction(0);
         else if (pr.type === 'box') d = R.ColliderDesc.cuboid(pr.half[0], pr.half[1], pr.half[2]).setFriction(pr.board ? 0.05 : pr.pad ? 0.2 : 0.3).setRestitution(pr.restitution != null ? pr.restitution : pr.board ? 0.45 : 0.3);
         else continue;
         d.setTranslation(pr.p[0], pr.p[1], pr.p[2]).setRotation(pr.q);
+        if (pr.type === 'cyl' || pr.board) d.setCollisionGroups(OBST); // hayalet engellerden geçer (yastık, cam duvar, kapı geçilmez)
         const c = w.createCollider(d, fixed);
         if (pr.gate) this.gateCols.push(c);
       }
@@ -93,22 +97,35 @@
       const body = w.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(pr.p[0], pr.p[1], pr.p[2]).setRotation(pr.q));
       for (let k = 0; k < pr.arms; k++) {
         const qa = MP.qY(k * Math.PI / pr.arms);
-        w.createCollider(R.ColliderDesc.cuboid(pr.arm, pr.hh, pr.th).setRotation(qa).setRestitution(0.6).setFriction(0.1), body);
+        w.createCollider(R.ColliderDesc.cuboid(pr.arm, pr.hh, pr.th).setRotation(qa).setRestitution(0.6).setFriction(0.1).setCollisionGroups(OBST), body);
       }
-      w.createCollider(R.ColliderDesc.cylinder(pr.hh + 0.1, pr.hub).setRestitution(0.6), body);
+      w.createCollider(R.ColliderDesc.cylinder(pr.hh + 0.1, pr.hub).setRestitution(0.6).setCollisionGroups(OBST), body);
       this.spinners.push({ body, pr, ang: 0 });
     }
 
     _piston(pr) {
       const R = this.R, w = this.world;
       const body = w.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(pr.p[0], pr.p[1], pr.p[2]).setRotation(pr.q));
-      w.createCollider(R.ColliderDesc.cuboid(pr.half[0], pr.half[1], pr.half[2]).setRestitution(0.5).setFriction(0.1), body);
+      w.createCollider(R.ColliderDesc.cuboid(pr.half[0], pr.half[1], pr.half[2]).setRestitution(0.5).setFriction(0.1).setCollisionGroups(OBST), body);
       this.pistons.push({ body, pr });
     }
     pistonPos(pr, t) {
       const ph = (t / pr.period + pr.phase) % 1, e = ph < 0.25 ? ph / 0.25 : ph < 0.5 ? 1 : ph < 0.75 ? 1 - (ph - 0.5) / 0.25 : 0; // it, bekle, geri çek, bekle
       const k = pr.stroke * (e * e * (3 - 2 * e));
       return { x: pr.p[0] + pr.dir[0] * k, y: pr.p[1] + pr.dir[1] * k, z: pr.p[2] + pr.dir[2] * k };
+    }
+
+    // hareketli engeller: kazık, sarkaç, döner tabla, kapı (kinematik)
+    _kin(pr) {
+      const R = this.R, w = this.world, P0 = MF.kinPose(pr, 0);
+      const body = w.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(P0.p[0], P0.p[1], P0.p[2]).setRotation(P0.q));
+      let d;
+      if (pr.kind === 'kazik') d = R.ColliderDesc.cylinder(pr.hh, pr.r).setRestitution(0.5).setFriction(0.1);
+      else if (pr.kind === 'sarkac') d = R.ColliderDesc.ball(pr.bob).setRestitution(0.7).setFriction(0.1);
+      else if (pr.kind === 'tabla') d = R.ColliderDesc.cylinder(pr.hh, pr.r).setRestitution(0.2).setFriction(0.9);
+      else d = R.ColliderDesc.cuboid(pr.half[0], pr.half[1], pr.half[2]).setRestitution(0.3).setFriction(0.2);
+      w.createCollider(d.setCollisionGroups(OBST), body);
+      this.kins.push({ body, pr });
     }
 
     openGate() {
@@ -142,6 +159,20 @@
       }
       this.clock += dt;
       for (const ps of this.pistons) ps.body.setNextKinematicTranslation(this.pistonPos(ps.pr, this.clock));
+      for (const k of this.kins) { const P = MF.kinPose(k.pr, this.clock); k.body.setNextKinematicTranslation({ x: P.p[0], y: P.p[1], z: P.p[2] }); k.body.setNextKinematicRotation(P.q); }
+      // hareketli bantlar: üstündeki misketi iter (geri bant sadece yavaşlatır, misketi geri taşımaz)
+      if (this.belts.length) for (const m of this.marbles) {
+        if (m.finished || !m.lastSample || m.lastSample.lane) continue;
+        for (const b of this.belts) {
+          if (m.s < b.s0 || m.s > b.s1) continue;
+          const sm = m.lastSample, q = m.body.translation(), hgt = (q.x - sm.p[0]) * sm.U[0] + (q.y - sm.p[1]) * sm.U[1] + (q.z - sm.p[2]) * sm.U[2];
+          if (hgt > 0.5) continue; // havadaysa bant itmez
+          const v = m.body.linvel(), along = v.x * sm.T[0] + v.y * sm.T[1] + v.z * sm.T[2], mass = m.body.mass();
+          if (b.accel > 0 && along > 11) continue;
+          if (b.accel < 0 && along < 1.2) continue;
+          const k = b.accel * mass * dt; m.body.applyImpulse({ x: sm.T[0] * k, y: sm.T[1] * k, z: sm.T[2] * k }, true);
+        }
+      }
       for (const sp of this.spinners) {
         sp.ang = this.clock * sp.pr.speed;
         sp.body.setNextKinematicRotation(MP.qmul(sp.pr.q, MP.qY(sp.ang)));
@@ -164,7 +195,9 @@
         const r = hyp(p.x - z.c[0], p.z - z.c[2]);
         if (r < z.R + 0.4 && p.y < z.yTop && p.y > z.yBot) {
           const f = Math.max(0, Math.min(1, (z.R - r) / (z.R - z.hole)));
-          s = z.s0 + f * (z.s1 - z.s0); zone = z; break;
+          s = z.s0 + f * (z.s1 - z.s0); zone = z;
+          if (m.inZone === z) s = Math.max(s, m.s); // hunide ilerleme geri gitmez (dışa savrulan misket sıralamada geri düşmez)
+          break;
         }
       }
       if (s === null) {
@@ -201,7 +234,9 @@
     _respawn(m, why) {
       const sAt = m.s;
       // zıplama/turbo gibi bir güç sırasında düşen misket zaman kaybetmesin: ulaştığı yere geri konur
-      const safe = why === 'fall' && !!(m.fx && m.fx.safe > this.t);
+      // güç sırasında ya da atlama/trambolin/delik/düşüş bölgesinde düşen misket zaman kaybetmesin: ulaştığı yere konur
+      const kind = m.lastSample && m.lastSample.kind;
+      const safe = why === 'fall' && (!!(m.fx && m.fx.safe > this.t) || !!m.inZone || kind === 'jump' || kind === 'tramp' || kind === 'funnelExit' || kind === 'drop');
       const target = safe ? m.bestS + 1 : Math.max(0, m.bestS - 2.5);
       let sm = null;
       for (const q of this.safe) { if (q.s <= target) sm = q; else break; }
@@ -244,6 +279,26 @@
 
     dispose() { try { this.world.free(); } catch (e) { } }
   }
+
+  // hareketli engelin t anındaki konumu ve dönüşü (fizik ve görüntü aynı fonksiyonu kullanır)
+  const lerpN = (a, b, t) => a + (b - a) * t, sm3 = t => t * t * (3 - 2 * t);
+  MF.kinPose = function (pr, t) {
+    const add3 = (a, b, k) => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
+    if (pr.kind === 'kazik') { // yükselir (0,3 sn), bekler, iner, gizli bekler
+      const u = ((t / pr.period) + pr.phase) % 1;
+      const h = u < 0.12 ? lerpN(-0.75, 0.55, sm3(u / 0.12)) : u < 0.45 ? 0.55 : u < 0.57 ? lerpN(0.55, -0.75, sm3((u - 0.45) / 0.12)) : -0.75;
+      return { p: add3(pr.p, pr.U, h), q: pr.q };
+    }
+    if (pr.kind === 'sarkac') {
+      const th = pr.amp * Math.sin(2 * Math.PI * (t / pr.period + pr.phase));
+      return { p: add3(add3(pr.pivot, pr.R, Math.sin(th) * pr.armL), pr.U, -Math.cos(th) * pr.armL), q: { x: 0, y: 0, z: 0, w: 1 }, th };
+    }
+    if (pr.kind === 'tabla') return { p: pr.p, q: G.MP.qmul(pr.q, G.MP.qY(t * pr.speed)) };
+    // kapı: zeminden yükselir, 1,1 sn yolu kapatır, iner
+    const u = ((t / pr.period) + pr.phase) % 1, up = 0.09, hold = 0.26;
+    const e = u < up ? sm3(u / up) : u < up + hold ? 1 : u < 2 * up + hold ? 1 - sm3((u - up - hold) / up) : 0;
+    return { p: add3(pr.p, pr.U, lerpN(-0.75, 0.6, e)), q: pr.q };
+  };
 
   function lowerBound(S, s) { let a = 0, b = S.length; while (a < b) { const m = (a + b) >> 1; if (S[m].s < s) a = m + 1; else b = m; } return a; }
   function shuffle(a, rand) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
