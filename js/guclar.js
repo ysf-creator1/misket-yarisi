@@ -35,10 +35,13 @@
   const BASE_TIER = { 1: 1, 2: 0.6, 3: 0.22 }, BOOST = { 1: -0.4, 2: 0.5, 3: 3 };
 
   class PowerSystem {
-    // opts: { playerId (-1: hepsi bot), rand, firstAt, gap:[min,max], pick: süre }
+    // opts: { playerId (-1: hepsi bot) ya da humans: [misket no…] (çok oyunculu), rand, firstAt, gap:[min,max], pickTime }
     constructor(race, opts = {}) {
       this.race = race; this.rand = opts.rand || race.rand;
       this.playerId = opts.playerId != null ? opts.playerId : -1;
+      // kartını kendisi seçen insan oyuncular; diğerlerini bot seçer (çok oyunculuda oyundan düşenin yerine bot geçer)
+      this.humans = new Set(opts.humans || (this.playerId >= 0 ? [this.playerId] : []));
+      this.wallSeq = 0;
       this.pickTime = opts.pickTime || 10;
       this.gap = opts.gap || [15, 20];
       this.next = opts.firstAt != null ? opts.firstAt : 8 + this.rand() * 3;
@@ -67,8 +70,8 @@
       for (const id in this.hands) {
         const h = this.hands[id], m = r.marbles[id];
         if (h.used) continue;
-        if (m.finished || t > h.expires) { h.used = true; if (+id === this.playerId) r.events.push({ type: 'handGone', id: +id }); continue; }
-        if (+id !== this.playerId && t >= h.botAt) this.choose(+id, this._botPick(m, h.cards));
+        if (m.finished || t > h.expires) { h.used = true; if (this.humans.has(+id)) r.events.push({ type: 'handGone', id: +id }); continue; }
+        if (!this.humans.has(+id) && t >= h.botAt) this.choose(+id, this._botPick(m, h.cards));
       }
       this._ironWalls();
       // süreli duvarlar
@@ -108,7 +111,7 @@
           for (let k = 0; k < pool.length; k++) { q -= pool[k].w; if (q <= 0 || k === pool.length - 1) { cards.push(pool[k].p.id); pool.splice(k, 1); break; } }
         }
         this.hands[m.id] = { cards, dealt: r.t, expires: r.t + this.pickTime, botAt: r.t + 0.5 + this.rand() * 2.5, used: false };
-        if (m.id === this.playerId) r.events.push({ type: 'hand', id: m.id, cards, expires: r.t + this.pickTime });
+        if (this.humans.has(m.id)) r.events.push({ type: 'hand', id: m.id, cards, expires: r.t + this.pickTime });
       });
     }
 
@@ -248,7 +251,7 @@
             // duvar kuranı durdurmaz: onun için geçirgendir
             const col = r.world.createCollider(r.R.ColliderDesc.cuboid(half[0], half[1], half[2]).setTranslation(p0[0], p0[1], p0[2]).setRotation(q).setRestitution(0.3)
               .setCollisionGroups(grp(WALL_BIT, 0xFFFF & ~m.bit)));
-            const w = { col, until: t + 4, p: p0, q, half, owner: m.id, R: pt.R, U: pt.U, N: G.MP.v.cross(pt.R, pt.U) }; this.walls.push(w); ev.wall = w;
+            const w = { id: ++this.wallSeq, col, until: t + 4, p: p0, q, half, owner: m.id, R: pt.R, U: pt.U, N: G.MP.v.cross(pt.R, pt.U) }; this.walls.push(w); ev.wall = w;
           }
         }
       }

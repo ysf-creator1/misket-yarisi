@@ -69,6 +69,7 @@
     state.mvs = [];
     Grafik.clearTemps(); Grafik.Particles.clear();
     if (state.race) state.race.dispose();
+    if (window.Ag && Ag.race) Ag.race = null;
     state.race = null; state.hand = null; state.rec = []; state.replay = null; state.capture = null;
     Ses.stopRolling();
   }
@@ -150,7 +151,7 @@
       const me = m.id === state.pick;
       const fx = FX_ICONS.filter(([k2]) => m.fx && m.fx[k2] > r.t).map(x => x[1]).join('') + (m.fx && m.fx.inSlime ? '🟢' : '');
       const tm = m.finished ? `<span class="tm">${m.finishTime.toFixed(1)}</span>` : '';
-      return `<div class="srow${me ? ' me' : ''}"><span class="rk">${k + 1}</span><span class="dot" style="background:${state.colors[m.id]}"></span><span class="nm">${m.info.name}</span><span class="fx">${fx}</span>${me ? '<span class="tag">SEN</span>' : ''}${tm}</div>`;
+      return `<div class="srow${me ? ' me' : ''}"><span class="rk">${k + 1}</span><span class="dot" style="background:${state.colors[m.id]}"></span><span class="nm">${esc(m.info.name)}</span><span class="fx">${fx}</span>${me ? '<span class="tag">SEN</span>' : ''}${tm}</div>`;
     }).join('');
     const W = $('prog').clientWidth - 36;
     for (const m of r.marbles) { const el = $('pd' + m.id); if (el) el.style.left = (18 + Math.max(0, Math.min(1, m.s / fs)) * W) + 'px'; }
@@ -183,6 +184,7 @@
 
   // ================= YARIŞ =================
   function startRace() {
+    if (window.Ag && (Ag.room || state.mp)) leaveMp(); // tek oyunculu yarışa geçerken odadan çık
     ensureTrack(state.trackId);
     disposeRace();
     const r = state.race = new MF.Race(window.RAPIER, state.track, {});
@@ -345,7 +347,9 @@
     p.races++; p.points += gain; p.earned += gain; p.xp += xpGain;
     if (place === 1) { p.wins++; if (state.wasLast) st(p).comeback = (st(p).comeback || 0) + 1; }
     let unlockedNew = false;
-    if (place <= 3) { p.podiums++; if (id + 1 > p.unlocked) { p.unlocked = id + 1; unlockedNew = true; } }
+    // çok oyunculuda kilidi açık olmayan parkurda (arkadaşın seçtiği) ilk 3 sonraki parkuru açmaz
+    if (place <= 3) { p.podiums++; if (id + 1 > p.unlocked && id <= p.unlocked) { p.unlocked = id + 1; unlockedNew = true; } }
+    if (state.mp) { st(p).mpRaces = (st(p).mpRaces || 0) + 1; if (place === 1) st(p).mpWins = (st(p).mpWins || 0) + 1; }
     const b = p.best[id];
     if (!b || place < b.place || (place === b.place && me.finishTime && me.finishTime < (b.time || 1e9))) p.best[id] = { place, time: me.finishTime || null };
     const notes = [];
@@ -397,7 +401,7 @@
     } else {
       $('resTable').innerHTML = r.finishOrder.map((m, k) => {
         const pts = prizeFor(id, k + 1);
-        return `<tr class="${m.id === state.pick ? 'me' : ''}"><td class="medal">${MEDAL[k] || (k + 1)}</td><td>${dot(m.id)}${m.info.name}${sen(m.id)}</td><td class="muted">${m.finishTime ? m.finishTime.toFixed(1) + ' sn' : 'bitiremedi'}</td><td style="text-align:right;color:#ffd77a">${pts ? '+' + pts : ''}</td></tr>`;
+        return `<tr class="${m.id === state.pick ? 'me' : ''}"><td class="medal">${MEDAL[k] || (k + 1)}</td><td>${dot(m.id)}${esc(m.info.name)}${sen(m.id)}</td><td class="muted">${m.finishTime ? m.finishTime.toFixed(1) + ' sn' : 'bitiremedi'}</td><td style="text-align:right;color:#ffd77a">${pts ? '+' + pts : ''}</td></tr>`;
       }).join('');
       $('resNote').textContent = `Toplam puanın: ${p.points}`;
       $('btnResAgain').textContent = 'Tekrar Yarış ↻';
@@ -407,6 +411,7 @@
     nb.classList.toggle('hidden', !hasNext); nb.disabled = !nextOpen;
     nb.textContent = nextOpen ? 'Sonraki Parkur ▶' : '🔒 Sonraki Parkur (ilk 3 gerekli)';
     $('btnResAgain').classList.toggle('main', !nextOpen);
+    if (state.mp) { nb.classList.add('hidden'); $('btnResAgain').textContent = 'Lobiye Dön 👥'; $('btnResAgain').classList.add('main'); $('resNote').textContent = `Toplam puanın: ${p.points} · Oda: ${state.mp.kod}`; }
     state.cupDone = cupDone;
     show('scrResult');
     state.phase = 'result';
@@ -446,8 +451,8 @@
   }
 
   // ================= EKRANLAR =================
-  const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch'];
-  const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach' };
+  const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch', 'scrMp'];
+  const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach', scrMp: 'mp' };
   function show(id) {
     SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id)); $('shopHint').classList.toggle('hidden', id !== 'scrShop');
     const navOn = id in NAV_OF && !!state.player;
@@ -459,11 +464,13 @@
     const b = e.target.closest('[data-nav]'); if (!b) return;
     const to = b.dataset.nav;
     if (state.phase === 'shop' && to !== 'shop') leaveShop();
+    if (to !== 'mp' && state.phase === 'result') leaveMp();
     if (to === 'menu') showMenu();
     else if (to === 'tracks') { state.cup = null; showTracks(); }
     else if (to === 'cups') { state.cup = null; showCups(); }
     else if (to === 'shop') { if (state.phase !== 'shop') { state.cup = null; showShop(); } }
     else if (to === 'ach') { state.cup = null; toMenuScene(); showAch(); }
+    else if (to === 'mp') { state.cup = null; showMp(); }
   });
   document.addEventListener('click', e => { if (e.target.closest('button')) Ses.click(); });
 
@@ -492,7 +499,12 @@
   function createPlayer() { const n = $('newName').value.trim(); if (!n) return; if (Kayit.get(n)) { selectPlayer(n); return; } const p = Kayit.create(n); $('newName').value = ''; if (p) selectPlayer(p.name); }
   $('btnCreate').onclick = createPlayer;
   $('newName').addEventListener('keydown', e => { if (e.key === 'Enter') createPlayer(); });
-  function selectPlayer(name) { state.player = Kayit.get(name); if (!state.player) return; Kayit.save.last = state.player.name; Kayit.persist(); showMenu(); }
+  function selectPlayer(name) {
+    state.player = Kayit.get(name); if (!state.player) return; Kayit.save.last = state.player.name; Kayit.persist();
+    if (Ag.connected) Ag.connect(agProfile()); // oyuncu değişti: sunucuya yeni adı bildir
+    if (pendingRoom) { const k = pendingRoom; pendingRoom = null; showMp(); joinWhenReady(k); return; }
+    showMenu();
+  }
 
   function showMenu() {
     toMenuScene(); state.cup = null;
@@ -589,15 +601,20 @@
   $('btnPickBack').onclick = () => { if (state.cup) { state.cup = null; showCups(); } else showTracks(); };
   $('btnGo').onclick = startRace;
   $('btnResAgain').onclick = () => {
+    if (state.mp) { disposeRace(); showMp(); return; }
     if (state.cup) { if (state.cupDone) { state.cup = null; showCups(); } else { state.trackId = state.cup.tracks[state.cup.idx]; startRace(); } }
     else showPick();
   };
-  $('btnResTracks').onclick = () => { state.cup = null; showTracks(); };
+  $('btnResTracks').onclick = () => { state.cup = null; leaveMp(); showTracks(); };
   $('btnResNext').onclick = () => { if (state.cup || state.trackId >= MP.TRACKS.length || state.player.unlocked < state.trackId + 1) return; state.trackId++; state.world = null; showPick(); };
-  $('btnResMenu').onclick = showMenu;
+  $('btnResMenu').onclick = () => { leaveMp(); showMenu(); };
   function cycleCam() { state.cam = (state.cam + 1) % CAMS.length; $('camName').textContent = CAMS[state.cam]; }
   $('btnCam').onclick = cycleCam;
   function quitRace() {
+    if (state.mp) {
+      if ((state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') && !confirm('Yarıştan çıkılsın mı? (Misketini bot sürer, puan alınmaz)')) return;
+      Ag.send({ t: 'ayril' }); disposeRace(); state.mp = null; showMp(); return;
+    }
     if (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') { if (!confirm('Yarıştan çıkılsın mı? (Puan alınmaz' + (state.betActive ? ', bahis iade edilir' : '') + ')')) return; }
     if (state.betActive) { state.player.points += state.betActive.amount; state.betActive = null; Kayit.persist(); }
     disposeRace(); state.cup = null; showTracks();
@@ -612,6 +629,96 @@
       if (e.key >= '1' && e.key <= '3') pickCard(+e.key - 1);
     }
   });
+
+
+  // ================= ÇOK OYUNCULU =================
+  // Fizik sunucuda (sunucu/oyun-sunucusu.js); burada lobi ve Ag.RemoteRace ile oynatma. Puanlar normal yarış gibi profile yazılır.
+  let pendingRoom = null, joinAfter = null, mpMsgTimer = null;
+  try { const q = new URLSearchParams(location.search).get('oda'); if (q && /^[A-Za-z0-9]{5}$/.test(q)) pendingRoom = q.toUpperCase(); } catch (e) { }
+  const agProfile = () => ({ ad: state.player.name, eq: state.player.eq, acik: state.player.unlocked });
+  function showMp() {
+    if (state.phase === 'shop') leaveShop();
+    toMenuScene();
+    if (!Ag.connected) Ag.connect(agProfile());
+    renderMp(); show('scrMp');
+  }
+  function leaveMp() { if (Ag.room) Ag.send({ t: 'ayril' }); Ag.room = null; state.mp = null; }
+  function joinWhenReady(k) { if (Ag.connected && Ag.pid) Ag.send({ t: 'katil', kod: k }); else { joinAfter = k; Ag.connect(agProfile()); } }
+  function mpMsg(t) { const el = $('mpMsg'); el.textContent = t || ''; el.classList.toggle('hidden', !t); clearTimeout(mpMsgTimer); if (t) mpMsgTimer = setTimeout(() => el.classList.add('hidden'), 5000); }
+  Ag.on('durum', d => { if (d.bagli && joinAfter) { Ag.send({ t: 'katil', kod: joinAfter }); joinAfter = null; } renderMp(); });
+  Ag.on('oda', () => renderMp());
+  Ag.on('hata', m => { mpMsg('⚠️ ' + m.mesaj); if (state.mp && state.race) toast('⚠️ ' + m.mesaj, 'bad'); });
+  Ag.on('basla', m => startNetRace(m));
+  let mpTrackN = 0;
+  function renderMp() {
+    const room = Ag.room, me = Ag.pid, ready = Ag.connected && !!me;
+    $('mpStatus').textContent = ready ? '🟢 Sunucuya bağlısın' : Ag.want ? '⏳ Sunucuya bağlanılıyor…' : '🔴 Bağlı değil';
+    $('mpHome').classList.toggle('hidden', !!room); $('mpRoom').classList.toggle('hidden', !room);
+    for (const id of ['mpQuick', 'mpCreate', 'mpJoin']) $(id).disabled = !ready;
+    if (!room) return;
+    const host = room.kurucu === me, mine = room.oyuncular.find(q => q.pid === me), T = MP.TRACKS[room.parkur - 1];
+    $('mpRoomCode').textContent = room.kod; $('mpCopy').classList.toggle('hidden', room.hizli);
+    $('mpTitle').textContent = room.hizli ? '⚡ Hızlı oyun' : '🏠 Özel oda';
+    const canPick = host && !room.hizli && room.durum === 'lobi';
+    $('mpTrack').classList.toggle('hidden', !canPick); $('mpTrackTxt').classList.toggle('hidden', canPick);
+    if (canPick) {
+      const n = Math.min(state.player.unlocked, MP.TRACKS.length);
+      if (n !== mpTrackN) { mpTrackN = n; $('mpTrack').innerHTML = MP.TRACKS.slice(0, n).map(t => `<option value="${t.id}">${t.id} · ${esc(t.name)} (${MP.WORLDS[t.world].icon} ~${t.target} sn)</option>`).join(''); }
+      $('mpTrack').value = room.parkur;
+    }
+    $('mpTrackTxt').textContent = `${room.parkur} · ${T.name} (${MP.WORLDS[T.world].icon} ${MP.WORLDS[T.world].name}, ~${T.target} sn)`;
+    $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' ? `Oyuncular bekleniyor… ${room.bekleme} sn içinde başlar (6 kişi olunca hemen). Eksik koltuklarda bot yarışır.` : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
+    $('mpSlots').innerHTML = MF.MARBLES.map((info, i) => {
+      const q = room.oyuncular.find(x => x.misket === i), isMe = q && q.pid === me;
+      const who = q ? `<b>${esc(q.ad)}${isMe ? ' (sen)' : ''}${q.pid === room.kurucu && !room.hizli ? ' 👑' : ''}</b><small>${!q.bagli ? '📴 bağlantı koptu' : q.hazir ? '✅ hazır' : '⏳ hazırlanıyor'}</small>` : `<b>🤖 Bot</b><small>${room.durum === 'lobi' ? 'seçmek için dokun' : ''}</small>`;
+      return `<button class="mpslot${isMe ? ' me' : ''}${q ? '' : ' free'}" data-slot="${i}" ${q && !isMe ? 'disabled' : ''}><span class="ball" style="background:radial-gradient(circle at 35% 30%, ${info.color2}, ${info.color} 55%, #000 140%)"></span><span class="mn">${esc(info.name)}</span>${who}</button>`;
+    }).join('');
+    const n = room.oyuncular.length;
+    $('mpReady').classList.toggle('hidden', room.hizli); $('mpReady').textContent = mine && mine.hazir ? '✅ Hazırsın' : 'Hazırım';
+    $('mpStart').classList.toggle('hidden', !host || room.hizli); $('mpStart').disabled = room.durum !== 'lobi';
+    $('mpStart').textContent = `Yarışı Başlat ▶ (${n} kişi + ${6 - n} bot)`;
+  }
+  $('mpQuick').onclick = () => Ag.send({ t: 'hizli' });
+  $('mpCreate').onclick = () => Ag.send({ t: 'odaKur' });
+  $('mpJoin').onclick = () => { const k = $('mpCode').value.trim().toUpperCase(); if (!/^[A-Z0-9]{5}$/.test(k)) { mpMsg('Oda kodu 5 harf/rakam olmalı'); return; } Ag.send({ t: 'katil', kod: k }); };
+  $('mpCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('mpJoin').click(); });
+  $('mpLeave').onclick = () => { leaveMp(); renderMp(); };
+  $('mpReady').onclick = () => { const mine = Ag.room && Ag.room.oyuncular.find(q => q.pid === Ag.pid); Ag.send({ t: 'hazir', v: !(mine && mine.hazir) }); };
+  $('mpStart').onclick = () => Ag.send({ t: 'baslat' });
+  $('mpTrack').onchange = e => Ag.send({ t: 'parkur', id: +e.target.value });
+  $('mpSlots').addEventListener('click', e => { const b = e.target.closest('[data-slot]'); if (b && !b.disabled) Ag.send({ t: 'misket', no: +b.dataset.slot }); });
+  $('mpCopy').onclick = () => {
+    const link = `${location.origin}${location.pathname}?oda=${Ag.room.kod}`;
+    const done = () => mpMsg('🔗 Davet linki kopyalandı: arkadaşına gönder');
+    if (navigator.share && window.MOBIL) navigator.share({ title: 'Misket Yarışı', text: 'Misket yarışına gel! Oda: ' + Ag.room.kod, url: link }).catch(() => { });
+    else if (navigator.clipboard) navigator.clipboard.writeText(link).then(done, () => prompt('Davet linki:', link));
+    else prompt('Davet linki:', link);
+  };
+  function startNetRace(m) {
+    if (!state.player) return;
+    if (state.race && !state.mp && ['countdown', 'race', 'ending'].includes(state.phase)) { Ag.send({ t: 'ayril' }); return; } // tek oyunculu yarıştayken
+    if (state.phase === 'shop') leaveShop();
+    state.mp = { kod: m.kod, racers: m.yarisanlar }; state.cup = null; state.betActive = null;
+    state.trackId = m.parkur; ensureTrack(m.parkur); disposeRace();
+    const r = state.race = Ag.startRace(state.track, m), p = state.player;
+    state.pick = m.benim;
+    state.mvs = MF.MARBLES.map((info, i) => {
+      const h = m.yarisanlar[i], me = i === state.pick;
+      const look = me ? Magaza.lookFor(info, p.eq) : h ? Magaza.lookFor(info, h.eq || {}) : { color: info.color, color2: info.color2 };
+      return Grafik.makeMarble(r.marbles[i].info, look, me, MF.PARAMS.r);
+    });
+    state.colors = state.mvs.map(mv => mv.look.color);
+    state.prevV = MF.MARBLES.map(() => [0, 0, 0]);
+    state.view.gates.forEach(g => { g.mesh.visible = true; g.mesh.position.y = g.y0; g.opening = false; });
+    state.endTimer = 0; state.wasLast = false;
+    if (m.intro > 0.3) { state.phase = 'countdown'; state.countdown = m.intro; }
+    else { state.phase = 'race'; state.view.gates.forEach(g => { g.mesh.visible = false; }); } // yarış ortasında geri bağlandı
+    camInit = false;
+    show(null); $('hud').classList.remove('hidden'); $('toasts').innerHTML = ''; $('slowmo').classList.add('hidden'); hideCards();
+    buildHud(); updateHud(true);
+    lastCount = null;
+    if (m.intro <= 0.3) toast('🔌 Yarışa geri döndün', 'gold');
+  }
 
   // ================= MAĞAZA =================
   const SHOP_DEFAULT = { renk: 'Misketin kendi rengi', forma: 'Formasız', desen: 'Klasik kıvrım', gozluk: 'Gözlüksüz', sapka: 'Şapkasız', iz: 'İzsiz' };
@@ -703,13 +810,14 @@
     show('scrAch');
   }
   $('btnAch').onclick = showAch;
+  $('btnMp').onclick = showMp;
   $('btnAchBack').onclick = showMenu;
 
   // test kancası (otomatik ekran testleri için)
   window.__misket = {
     state, ACH,
     ileri(sn, kosul) { const r = state.race; if (!r) return; for (let i = 0; i < sn * 10 && !r.done; i++) { r.step(0.1); if (kosul && kosul(r)) break; } handleEvents(); camInit = false; },
-    kart(k) { pickCard(k); },
+    kart(k) { pickCard(k); }, showMp: () => showMp(),
     goster(id) { disposeRace(); ensureTrack(id); show(null); state.phase = 'menu'; state.trackId = id; },
   };
 
