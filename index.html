@@ -166,6 +166,9 @@
   .gain.good{color:#ffd77a}
   .notes{display:flex;flex-direction:column;gap:6px;align-items:center;margin:4px 0 12px}
   .note{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-weight:800;font-size:14px}
+  .authform{display:flex;flex-direction:column;gap:8px;max-width:360px;margin:0 auto}
+  .namemsg{min-height:16px;font-weight:700;font-size:13px;margin-top:-4px} .namemsg.good{color:var(--good)} .namemsg.bad{color:#ffb4a8}
+  .autherr{min-height:18px;margin:2px 0 0;text-align:center;font-weight:800;font-size:14px;color:#ffb4a8} .autherr.info{color:var(--muted)}
   .note.ach{border-color:rgba(255,194,61,.6);color:#ffe199}
 
   /* üst menü çubuğu */
@@ -177,6 +180,18 @@
   #topnav .navpts{margin-left:8px;white-space:nowrap}
   body.navon .screen{padding-top:calc(72px + env(safe-area-inset-top))}
   body.navon #scrShop .panel{max-height:calc(100vh - 92px)}
+
+  /* günlük görevler + liderlik */
+  .gunluk{margin:12px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04)}
+  .dhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px} .dhead small{color:#ffd77a;font-weight:800}
+  .dtask{display:grid;grid-template-columns:1fr 70px 34px 74px;gap:8px;align-items:center;font-size:13px;font-weight:700;padding:3px 0}
+  .dtask.done{opacity:.55} .dbar{height:7px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden} .dbar i{display:block;height:100%;background:linear-gradient(90deg,#7bd389,#45c8ff)}
+  .dval{color:var(--muted);text-align:right} .dodul{color:#ffd77a;text-align:right} .dok{color:var(--good);text-align:right;font-size:16px}
+  .dtask button,.dhead button{padding:4px 8px;font-size:12px;min-height:0}
+  .llist{display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow:auto}
+  .lrow{display:grid;grid-template-columns:36px 1fr auto auto;gap:10px;align-items:center;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.04)}
+  .lrow.me{background:rgba(255,194,61,.16);box-shadow:0 0 0 1px rgba(255,194,61,.5) inset} .lrow .lk{font-size:18px;text-align:center} .lrow .lv{font-weight:800;color:#ffd77a}
+  #liderTrack{background:rgba(0,0,0,.35);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px}
 
   /* çok oyunculu */
   .menu button.wide{grid-column:1/-1}
@@ -247,6 +262,7 @@
     #topnav{gap:3px;padding:calc(6px + env(safe-area-inset-top)) 4px 6px;justify-content:space-between}
     #topnav button{flex:1;flex-direction:column;gap:1px;padding:5px 2px;font-size:10px;min-width:0;min-height:0}
     #topnav button span{font-size:19px} #topnav .navpts{display:none}
+    #topnav b{white-space:nowrap} #topnav b[data-k]{font-size:0} #topnav b[data-k]::after{content:attr(data-k);font-size:10px}
     body.navon .screen{padding-top:calc(66px + env(safe-area-inset-top))}
     #scrShop{align-items:flex-end;background:linear-gradient(180deg,rgba(5,10,25,0) 0%,rgba(5,10,25,0) 40%,rgba(5,10,25,.6) 60%)}
     #scrShop .panel{width:100%;max-height:58vh}
@@ -292,21 +308,35 @@
 <!-- Üst menü çubuğu (menü ekranlarında her zaman görünür) -->
 <nav id="topnav" class="hidden">
   <button data-nav="menu"><span>🏠</span><b>Menü</b></button>
-  <button data-nav="tracks"><span>🏁</span><b>Parkurlar</b></button>
+  <button data-nav="tracks"><span>🏁</span><b data-k="Parkur">Parkurlar</b></button>
   <button data-nav="cups"><span>🏆</span><b>Kupalar</b></button>
   <button data-nav="shop"><span>🛒</span><b>Mağaza</b></button>
-  <button data-nav="ach"><span>🏅</span><b>Başarımlar</b></button>
-  <button data-nav="mp"><span>👥</span><b>Çok Oyunculu</b></button>
+  <button data-nav="ach"><span>🏅</span><b data-k="Başarım">Başarımlar</b></button>
+  <button data-nav="mp"><span>👥</span><b data-k="Çoklu">Çok Oyunculu</b></button>
+  <button data-nav="lider"><span>📊</span><b>Liderlik</b></button>
   <span class="navpts pill">⭐ <span id="navPoints">0</span></span>
 </nav>
 
-<!-- Profil -->
-<div id="scrProfile" class="screen hidden"><div class="panel">
+<!-- Profil / giriş -->
+<div id="scrProfile" class="screen hidden"><div class="panel" style="width:min(600px,96vw)">
   <h1>Misket Yarışı</h1>
   <p class="sub">Kim oynuyor?</p>
   <div class="plist" id="plist"></div>
-  <h3>Yeni oyuncu</h3>
-  <div class="row" style="flex-wrap:nowrap"><input id="newName" maxlength="16" placeholder="Adını yaz…" autocomplete="off"><button class="main" id="btnCreate">Ekle</button></div>
+  <div id="legacyBox" class="hidden">
+    <h3>Bu cihazdaki eski kayıtlar</h3>
+    <p class="sub" style="font-size:13px;margin-bottom:6px">Henüz buluta taşınmadı. Dokun, bir PIN belirle; ilerlemen kaybolmadan buluta geçsin.</p>
+    <div class="plist" id="legacyList"></div>
+  </div>
+  <div class="tabs" id="authTabs" style="margin-top:14px"><button data-auth="giris" class="on">🔑 Giriş yap</button><button data-auth="yeni">➕ Yeni oyuncu</button></div>
+  <div class="authform">
+    <input id="authName" maxlength="16" placeholder="Adın" autocomplete="username" autocapitalize="off">
+    <small id="authNameMsg" class="namemsg"></small>
+    <input id="authPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4 haneli PIN" autocomplete="current-password">
+    <input id="authPin2" class="hidden" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="PIN tekrar" autocomplete="new-password">
+    <button class="main" id="btnAuth">Giriş yap</button>
+    <p class="autherr" id="authErr"></p>
+  </div>
+  <p class="sub" style="font-size:12px;margin:8px 0 0">Adın tekildir; puanların bulutta saklanır. Başka cihazdan adın ve PIN'inle girersin. PIN'ini kimseyle paylaşma.</p>
   <div class="savestatus" id="saveStatus1"></div>
 </div></div>
 
@@ -320,13 +350,16 @@
     <button id="btnCups"><span>🏆</span>Kupalar<small>3 parkurluk turnuva</small></button>
     <button id="btnShop"><span>🛒</span>Mağaza<small>Kostüm ve iz satın al</small></button>
     <button id="btnAch"><span>🏅</span>Başarımlar<small id="mAch">0 / 0</small></button>
-    <button id="btnMp" class="wide"><span>👥</span>Çok Oyunculu<small>Arkadaşlarınla ya da hızlı oyunla yarış (eksikler bot)</small></button>
+    <button id="btnLider"><span>📊</span>Liderlik<small>En iyiler ve parkur rekorları</small></button>
+    <button id="btnMp"><span>👥</span>Çok Oyunculu<small>Arkadaşlarınla ya da hızlı oyunla yarış (eksikler bot)</small></button>
   </div>
   <div class="row muted" id="mStats" style="font-size:14px;font-weight:700"></div>
+  <div class="gunluk" id="mGunluk"></div>
   <div class="settings">
     <button class="sm" id="btnSound">🔊 Ses: Açık</button>
     <button class="sm" id="btnGfx">🖥️ Grafik: Yüksek</button>
     <button class="sm" id="btnSwitch">👤 Oyuncu değiştir</button>
+    <button class="sm" id="btnPin">🔑 PIN değiştir</button>
   </div>
   <div class="savestatus" id="saveStatus2"></div>
 </div></div>
@@ -388,6 +421,14 @@
   <div class="row" id="resButtons"><button id="btnResMenu">Ana Menü</button><button id="btnResTracks">Parkurlar</button><button class="main" id="btnResAgain">Tekrar Yarış ↻</button><button class="main hidden" id="btnResNext">Sonraki Parkur ▶</button></div>
 </div></div>
 
+<!-- Liderlik -->
+<div id="scrLider" class="screen hidden"><div class="panel" style="width:min(560px,96vw)">
+  <h2>📊 Liderlik</h2>
+  <div class="tabs" id="liderTabs"><button data-lt="puan" class="on">⭐ Puan</button><button data-lt="galibiyet">🏆 Galibiyet</button><button data-lt="parkur">🏁 En uzak parkur</button><button data-lt="rekor">⏱ Parkur rekoru</button></div>
+  <div class="row hidden" id="liderTrackRow" style="margin-bottom:10px"><select id="liderTrack" style="max-width:100%"></select></div>
+  <div id="liderList" class="llist"></div>
+</div></div>
+
 <!-- Çok oyunculu lobi -->
 <div id="scrMp" class="screen hidden"><div class="panel" style="width:min(660px,96vw)">
   <h2>👥 Çok Oyunculu</h2>
@@ -436,6 +477,7 @@
   });
 </script>
 <script src="kayit/kayit.js"></script>
+<script src="js/isim.js"></script>
 <script src="three.min.js"></script>
 <script src="varliklar/RGBELoader.js"></script>
 <script src="varliklar/dokular.js"></script>

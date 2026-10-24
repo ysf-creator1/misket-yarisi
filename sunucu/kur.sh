@@ -41,6 +41,9 @@ $ALAN {
 	handle /durum {
 		reverse_proxy 127.0.0.1:8790
 	}
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8790
+	}
 	handle {
 		respond "Misket Yarışı sunucusu çalışıyor. Oyun: https://ysf-creator1.github.io/misket-yarisi/" 200
 	}
@@ -50,6 +53,7 @@ systemctl reload caddy || systemctl restart caddy
 
 # 5) oyun kullanıcısı + kod
 id oyun >/dev/null 2>&1 || useradd --system --create-home --home-dir /opt/misket --shell /usr/sbin/nologin oyun
+install -d -o oyun -g oyun -m 750 /opt/misket/veri /opt/misket/veri/yedek
 if [ ! -d /opt/misket/kod/.git ]; then sudo -u oyun git clone --depth 1 "$DEPO" /opt/misket/kod; fi
 
 # 6) oyun servisi (kod varsa başlar)
@@ -61,7 +65,7 @@ After=network-online.target
 [Service]
 User=oyun
 WorkingDirectory=/opt/misket/kod
-Environment=NODE_ENV=production PORT=8790
+Environment=NODE_ENV=production PORT=8790 VERI=/opt/misket/veri
 ExecStart=/usr/bin/node --max-old-space-size=600 sunucu/oyun-sunucusu.js
 Restart=always
 RestartSec=3

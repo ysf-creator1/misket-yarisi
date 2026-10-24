@@ -8,6 +8,7 @@ const path = require('path');
 const http = require('http');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
+const hesaplar = require('./hesaplar'); // bulut oyuncu hesapları (/api/*)
 
 const root = path.join(__dirname, '..');
 for (const f of ['rapier.js', 'js/parcalar.js', 'js/parkurlar.js', 'js/dunyalar.js', 'js/fizik.js', 'js/guclar.js']) require(path.join(root, f));
@@ -236,11 +237,12 @@ function resendHand(p) {
 
 // ================= HTTP + WebSocket =================
 const server = http.createServer((req, res) => {
+  if (req.url.startsWith('/api/')) { const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim(); return void hesaplar.handle(req, res, ip); }
   if (req.url === '/durum') {
     let racing = 0, online = 0; for (const r of rooms.values()) if (r.race) racing++;
     for (const p of players.values()) if (p.ws && p.ws.readyState === 1) online++;
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-    return res.end(JSON.stringify({ ok: true, odalar: rooms.size, yarisan: racing, cevrimici: online, bellekMB: Math.round(process.memoryUsage().rss / 1048576), calisma: Math.round(process.uptime()), dongu: loopStat }));
+    return res.end(JSON.stringify({ ok: true, odalar: rooms.size, yarisan: racing, cevrimici: online, bellekMB: Math.round(process.memoryUsage().rss / 1048576), hesap: hesaplar.count(), calisma: Math.round(process.uptime()), dongu: loopStat }));
   }
   res.writeHead(404); res.end();
 });
@@ -315,4 +317,4 @@ setInterval(() => {
 RAPIER.init().then(() => {
   server.listen(PORT, HOST, () => log(`Misket sunucusu hazır: http://${HOST}:${PORT} (ws: /ws)`));
 });
-process.on('SIGTERM', () => { log('kapanıyor'); for (const r of rooms.values()) broadcast(r, { t: 'hata', mesaj: 'Sunucu yeniden başlıyor, birkaç saniye sonra tekrar bağlan.' }); setTimeout(() => process.exit(0), 300); });
+process.on('SIGTERM', () => { log('kapanıyor'); try { hesaplar.flush(); } catch (e) { } for (const r of rooms.values()) broadcast(r, { t: 'hata', mesaj: 'Sunucu yeniden başlıyor, birkaç saniye sonra tekrar bağlan.' }); setTimeout(() => process.exit(0), 300); });

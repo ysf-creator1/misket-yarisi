@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
-  const { MP, MF, MG, Kayit, THREE, Grafik, Magaza, Ses } = window;
+  const { MP, MF, MG, MI, Kayit, THREE, Grafik, Magaza, Ses } = window;
   const camera = Grafik.camera, scene = Grafik.scene;
 
   const state = {
@@ -50,6 +50,72 @@
     { id: 'seviye10', icon: '⭐', name: 'Tecrübeli', desc: '10. seviyeye ulaş', reward: 300, check: p => levelOf(p.xp) >= 10 },
   ];
   const cupWins = p => Object.values(p.cups || {}).filter(v => v === 1).length;
+  // ================= GÜNLÜK GÖREVLER =================
+  // Her gün oyuncuya özel 3 görev (tarih + ada göre sabit) ve giriş ödülü (art arda günlerde artar)
+  const DAILY_POOL = [
+    { id: 'yaris', ad: '3 yarış bitir', hedef: 3, odul: 40 },
+    { id: 'ilk3', ad: "2 yarışta ilk 3'e gir", hedef: 2, odul: 60 },
+    { id: 'birinci', ad: '1 yarış kazan', hedef: 1, odul: 80 },
+    { id: 'guc', ad: '6 güç kartı kullan', hedef: 6, odul: 40 },
+    { id: 'tuzak', ad: '3 tuzak kur', hedef: 3, odul: 45 },
+    { id: 'mp', ad: '1 çok oyunculu yarış yap', hedef: 1, odul: 70 },
+    { id: 'kalkan', ad: 'Bir saldırıyı kalkanla engelle', hedef: 1, odul: 60 },
+    { id: 'yeni', ad: 'Yeni bir parkur aç', hedef: 1, odul: 80 },
+  ];
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const dayBefore = s => { const d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  function ensureDaily(p) {
+    const g = today(); p.daily = p.daily || {};
+    if (p.daily.gun === g) return p.daily;
+    const rnd = MP.rng([...(g + MI.key(p.name))].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7));
+    const pool = DAILY_POOL.slice(), scale = 1 + Math.min(200, p.unlocked || 1) / 100, pick = [];
+    while (pick.length < 3) { const t = pool.splice(Math.floor(rnd() * pool.length), 1)[0]; pick.push({ id: t.id, ad: t.ad, hedef: t.hedef, ilerleme: 0, odul: Math.round(t.odul * scale / 5) * 5, alindi: false }); }
+    const seri = p.daily.girisGun === dayBefore(g) ? (p.daily.seri || 0) + 1 : 1;
+    p.daily = { gun: g, gorevler: pick, seri, girisOdul: 20 + 5 * Math.min(seri - 1, 6), girisAlindi: false, girisGun: p.daily.girisGun };
+    return p.daily;
+  }
+  function dailyAdd(id, n = 1) {
+    const p = state.player; if (!p) return;
+    for (const t of ensureDaily(p).gorevler) if (t.id === id && t.ilerleme < t.hedef) { t.ilerleme = Math.min(t.hedef, t.ilerleme + n); if (t.ilerleme === t.hedef) toast(`📅 Günlük görev tamam: ${t.ad} (menüden ödülünü al)`, 'gold'); }
+  }
+  function renderDaily() {
+    const p = state.player, d = ensureDaily(p);
+    $('mGunluk').innerHTML = `<div class="dhead"><b>📅 Günlük görevler</b>${d.girisAlindi ? `<small>🔥 ${d.seri}. gün</small>` : `<button class="sm main" data-dgiris>🎁 Giriş ödülü +${d.girisOdul}${d.seri > 1 ? ` (🔥 ${d.seri}. gün)` : ''}</button>`}</div>` +
+      d.gorevler.map((t, i) => `<div class="dtask${t.alindi ? ' done' : ''}"><span>${esc(t.ad)}</span><span class="dbar"><i style="width:${100 * t.ilerleme / t.hedef}%"></i></span><span class="dval">${t.ilerleme}/${t.hedef}</span>${t.alindi ? '<span class="dok">✓</span>' : t.ilerleme >= t.hedef ? `<button class="sm main" data-dal="${i}">Al +${t.odul}</button>` : `<span class="dodul">+${t.odul}</span>`}</div>`).join('');
+  }
+  $('mGunluk').addEventListener('click', e => {
+    const p = state.player, d = ensureDaily(p);
+    if (e.target.closest('[data-dgiris]') && !d.girisAlindi) { d.girisAlindi = true; d.girisGun = d.gun; p.points += d.girisOdul; p.earned += d.girisOdul; Ses.buy(); Kayit.persist(); showMenu(); return; }
+    const b = e.target.closest('[data-dal]'); if (!b) return;
+    const t = d.gorevler[+b.dataset.dal]; if (!t || t.alindi || t.ilerleme < t.hedef) return;
+    t.alindi = true; p.points += t.odul; p.earned += t.odul; Ses.buy(); Kayit.persist(); showMenu();
+  });
+
+  // ================= LİDERLİK =================
+  let liderTab = 'puan';
+  async function showLider(tab) {
+    liderTab = tab || liderTab; toMenuScene(); show('scrLider');
+    document.querySelectorAll('#liderTabs [data-lt]').forEach(b => b.classList.toggle('on', b.dataset.lt === liderTab));
+    $('liderTrackRow').classList.toggle('hidden', liderTab !== 'rekor');
+    const me = MI.key(state.player.name), box = $('liderList');
+    box.innerHTML = '<p class="muted" style="text-align:center">⏳ Yükleniyor…</p>';
+    const row = (k, ad, val, sub) => `<div class="lrow${MI.key(ad) === me ? ' me' : ''}"><span class="lk">${MEDAL[k] || k + 1}</span><b>${esc(ad)}</b><span class="muted">${sub || ''}</span><span class="lv">${val}</span></div>`;
+    if (liderTab === 'rekor') {
+      const sel = $('liderTrack');
+      if (!sel.options.length) sel.innerHTML = MP.TRACKS.map(t => `<option value="${t.id}">${t.id} · ${esc(t.name)}</option>`).join('');
+      if (!sel.dataset.set) { sel.value = Math.max(1, Math.min(state.player.unlocked - 1, 200)) || 1; sel.dataset.set = 1; }
+      const list = await Kayit.records(+sel.value);
+      box.innerHTML = !list ? '<p class="muted" style="text-align:center">⚠️ Sunucuya ulaşılamadı</p>' : list.length ? list.map((x, k) => row(k, x.ad, x.sure.toFixed(1) + ' sn')).join('') : '<p class="muted" style="text-align:center">Bu parkurda henüz rekor yok. İlk sen ol!</p>';
+      return;
+    }
+    const b = await Kayit.leaderboard();
+    if (!b) { box.innerHTML = '<p class="muted" style="text-align:center">⚠️ Sunucuya ulaşılamadı</p>'; return; }
+    const L = b[liderTab] || [], unit = { puan: ' puan', galibiyet: ' galibiyet', parkur: '. parkur' }[liderTab];
+    box.innerHTML = (L.length ? L.map((x, k) => row(k, x.ad, x.deger + unit, 'Sv ' + x.seviye)).join('') : '<p class="muted" style="text-align:center">Henüz kimse yok</p>') + `<p class="muted" style="text-align:center;font-size:12px;margin-top:8px">Toplam ${b.oyuncu} oyuncu</p>`;
+  }
+  $('liderTabs').addEventListener('click', e => { const b = e.target.closest('[data-lt]'); if (b) showLider(b.dataset.lt); });
+  $('liderTrack').onchange = () => showLider('rekor');
+
   function checkAch(p) {
     const got = [];
     for (const a of ACH) if (!p.ach[a.id] && a.check(p)) { p.ach[a.id] = Date.now(); p.points += a.reward; p.earned += a.reward; got.push(a); }
@@ -230,8 +296,8 @@
     else if (e.power === 'ruzgar') for (const id of e.targets || []) { const m = r.marbles[id], q = m.body.translation(); Grafik.wind(q, m.lastSample ? m.lastSample.T : [0, 0, 1]); }
     else if (e.power === 'kalkan' || e.power === 'turbo' || e.power === 'demir') Grafik.sparkle(up, e.power === 'kalkan' ? '#7fd8ff' : '#ffd166');
     const s = st(state.player);
-    if (mine) { s.powers = (s.powers || 0) + 1; if (P.type === 'attack') s.traps = (s.traps || 0) + 1; }
-    for (const bid of (e.blockedIds || []).concat(e.blocked && tg && !(e.blockedIds || []).length ? [tg.id] : [])) { Grafik.sparkle(r.marbles[bid].body.translation(), '#7fd8ff'); Ses.blocked(); if (bid === state.pick) s.blocks = (s.blocks || 0) + 1; }
+    if (mine) { s.powers = (s.powers || 0) + 1; dailyAdd('guc'); if (P.type === 'attack') { s.traps = (s.traps || 0) + 1; dailyAdd('tuzak'); } }
+    for (const bid of (e.blockedIds || []).concat(e.blocked && tg && !(e.blockedIds || []).length ? [tg.id] : [])) { Grafik.sparkle(r.marbles[bid].body.translation(), '#7fd8ff'); Ses.blocked(); if (bid === state.pick) { s.blocks = (s.blocks || 0) + 1; dailyAdd('kalkan'); } }
     let msg;
     if (P.type === 'self') msg = `${P.icon} ${mine ? 'Sen' : nameOf(r, e.id)}: ${P.name}`;
     else if (e.power === 'ruzgar') msg = `${P.icon} ${mine ? 'Sen' : nameOf(r, e.id)} ters rüzgâr estirdi!` + (meHit ? ' (sana da!)' : '');
@@ -350,6 +416,7 @@
     // çok oyunculuda kilidi açık olmayan parkurda (arkadaşın seçtiği) ilk 3 sonraki parkuru açmaz
     if (place <= 3) { p.podiums++; if (id + 1 > p.unlocked && id <= p.unlocked) { p.unlocked = id + 1; unlockedNew = true; } }
     if (state.mp) { st(p).mpRaces = (st(p).mpRaces || 0) + 1; if (place === 1) st(p).mpWins = (st(p).mpWins || 0) + 1; }
+    dailyAdd('yaris'); if (place <= 3) dailyAdd('ilk3'); if (place === 1) dailyAdd('birinci'); if (state.mp) dailyAdd('mp'); if (unlockedNew) dailyAdd('yeni');
     const b = p.best[id];
     if (!b || place < b.place || (place === b.place && me.finishTime && me.finishTime < (b.time || 1e9))) p.best[id] = { place, time: me.finishTime || null };
     const notes = [];
@@ -414,6 +481,7 @@
     if (state.mp) { nb.classList.add('hidden'); $('btnResAgain').textContent = 'Lobiye Dön 👥'; $('btnResAgain').classList.add('main'); $('resNote').textContent = `Toplam puanın: ${p.points} · Oda: ${state.mp.kod}`; }
     state.cupDone = cupDone;
     show('scrResult');
+    if (state.authLost) setTimeout(authLost, 2500);
     state.phase = 'result';
   }
 
@@ -451,8 +519,8 @@
   }
 
   // ================= EKRANLAR =================
-  const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch', 'scrMp'];
-  const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach', scrMp: 'mp' };
+  const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch', 'scrMp', 'scrLider'];
+  const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach', scrMp: 'mp', scrLider: 'lider' };
   function show(id) {
     SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id)); $('shopHint').classList.toggle('hidden', id !== 'scrShop');
     const navOn = id in NAV_OF && !!state.player;
@@ -471,36 +539,89 @@
     else if (to === 'shop') { if (state.phase !== 'shop') { state.cup = null; showShop(); } }
     else if (to === 'ach') { state.cup = null; toMenuScene(); showAch(); }
     else if (to === 'mp') { state.cup = null; showMp(); }
+    else if (to === 'lider') { state.cup = null; showLider(); }
   });
   document.addEventListener('click', e => { if (e.target.closest('button')) Ses.click(); });
 
   function saveStatusText() {
     const s = Kayit.status();
-    return s === 'ok' ? '💾 Kayıtlar dosyaya kaydediliyor (kayit/kayit.json)' : s === 'wait' ? '💾 Kayıt dosyasına bağlanılıyor…'
-      : s === 'err' ? '⚠️ Kayıt dosyasına yazılamadı — kayıtlar şimdilik tarayıcıda tutuluyor'
-        : Kayit.WEB ? '💾 Kayıtların bu cihazın tarayıcısında saklanıyor'
-          : '⚠️ Oyun doğrudan açıldı: kayıtlar sadece tarayıcıda. Kalıcı kayıt için "Misket Yarışı" uygulamasıyla aç.';
+    return s === 'ok' ? "☁️ Kayıtların bulutta: başka cihazdan adın ve PIN'inle girebilirsin" : s === 'wait' ? '⏳ Buluta kaydediliyor…'
+      : s === 'auth' ? "🔑 Oturum sona erdi: PIN'inle tekrar gir" : '⚠️ İnternet yok: ilerlemen bu cihazda bekliyor, bağlanınca gönderilecek';
   }
   Kayit.onStatus = () => { for (const id of ['saveStatus1', 'saveStatus2']) { const el = $(id); el.textContent = saveStatusText(); el.className = 'savestatus s-' + Kayit.status(); } };
+  // başka cihazda PIN değişti ya da oturum düştü: yarışta değilsek giriş ekranına
+  Kayit.onAuthLost = name => { state.authLost = name; if (!['countdown', 'race', 'ending'].includes(state.phase)) authLost(); };
+  function authLost() { const n = state.authLost; if (!n) return; state.authLost = null; showProfiles('giris', n, "Oturumun sona erdi (PIN değişmiş olabilir). PIN'inle tekrar gir."); }
+  // buluttan daha yeni profil geldi (başka cihazda oynanmış)
+  Kayit.onProfile = () => { if (!$('scrMenu').classList.contains('hidden')) showMenu(); };
 
   function toMenuScene() { if (state.phase !== 'result') state.phase = 'menu'; state.phase = 'menu'; $('hud').classList.add('hidden'); hideCards(); Ses.stopRolling(); }
-  function showProfiles() {
+  // ---- giriş ekranı: bu cihazdaki hesaplar, eski kayıtlar, giriş / yeni oyuncu ----
+  let authMode = 'giris', authLegacy = null, nameTimer = null;
+  function showProfiles(mode, name, msg) {
     toMenuScene();
     const list = Kayit.players();
-    $('plist').innerHTML = list.length ? list.map(p => `<button class="pcard" data-name="${esc(p.name)}"><b>${esc(p.name)}</b><small>Seviye ${levelOf(p.xp || 0)} · ⭐ ${p.points} puan</small><small>${p.races} yarış · ${p.wins} galibiyet</small><span class="del" data-del="${esc(p.name)}" title="Sil">✕</span></button>`).join('')
-      : '<p class="muted" style="grid-column:1/-1;text-align:center">Henüz oyuncu yok. Aşağıdan adını yazıp ekle.</p>';
-    Kayit.onStatus(); show('scrProfile'); setTimeout(() => $('newName').focus(), 50);
+    $('plist').innerHTML = list.length ? list.map(p => `<button class="pcard" data-name="${esc(p.name)}"><b>${esc(p.name)}</b><small>Seviye ${levelOf(p.xp || 0)} · ⭐ ${p.points} puan</small><small>${p.races} yarış · ${p.wins} galibiyet</small><span class="del" data-del="${esc(p.name)}" title="Bu cihazdan çıkış">✕</span></button>`).join('')
+      : '<p class="muted" style="grid-column:1/-1;text-align:center;margin:0">Bu cihazda henüz giriş yapılmadı.</p>';
+    const leg = Kayit.legacyPlayers();
+    $('legacyBox').classList.toggle('hidden', !leg.length);
+    $('legacyList').innerHTML = leg.map(p => `<button class="pcard" data-legacy="${esc(p.name)}"><b>${esc(p.name)}</b><small>⭐ ${p.points || 0} puan · ${p.races || 0} yarış</small><small class="best">☁️ Buluta taşı</small><span class="del" data-legdel="${esc(p.name)}" title="Gizle">✕</span></button>`).join('');
+    setAuth(mode || (list.length ? 'giris' : 'yeni'), name, msg);
+    Kayit.onStatus(); show('scrProfile');
   }
-  $('plist').addEventListener('click', e => {
+  function setAuth(mode, name, msg) {
+    authMode = mode; if (mode !== 'legacy') authLegacy = null;
+    document.querySelectorAll('#authTabs [data-auth]').forEach(b => b.classList.toggle('on', b.dataset.auth === (mode === 'legacy' ? 'yeni' : mode)));
+    $('authPin2').classList.toggle('hidden', mode === 'giris');
+    $('btnAuth').textContent = mode === 'giris' ? 'Giriş yap' : mode === 'legacy' ? '☁️ Buluta taşı ve oyna' : 'Oyuncu oluştur';
+    $('authPin').placeholder = mode === 'giris' ? '4 haneli PIN' : 'PIN belirle (4 rakam)';
+    $('authPin').autocomplete = mode === 'giris' ? 'current-password' : 'new-password';
+    if (name != null) $('authName').value = name;
+    $('authPin').value = ''; $('authPin2').value = ''; $('authNameMsg').textContent = ''; $('authErr').textContent = msg || '';
+    $('authErr').classList.toggle('info', !!msg && mode !== 'legacy');
+    if (mode !== 'giris') checkNameSoon();
+    setTimeout(() => { const ae = document.activeElement; if (ae && ae.tagName === 'INPUT') return; ($('authName').value ? $('authPin') : $('authName')).focus(); }, 50); // yazılan kutudan imleci kaçırma
+  }
+  function checkNameSoon() {
+    clearTimeout(nameTimer); const n = $('authName').value;
+    if (authMode === 'giris' || !n.trim()) { $('authNameMsg').textContent = ''; return; }
+    const local = MI.check(n); if (local) { $('authNameMsg').textContent = '⚠️ ' + local; $('authNameMsg').className = 'namemsg bad'; return; }
+    nameTimer = setTimeout(async () => {
+      const r = await Kayit.checkName(n); if ($('authName').value !== n) return;
+      $('authNameMsg').textContent = r.uygun ? '✅ Bu ad boş' : r.uygun === false ? '⚠️ ' + (r.hata || 'Bu ad alınmış') + (authMode === 'legacy' && /alınmış/.test(r.hata || '') ? ". Senin hesabınsa 'Giriş yap' ile PIN'inle gir." : '') : '⚠️ ' + (r.hata || '');
+      $('authNameMsg').className = 'namemsg ' + (r.uygun ? 'good' : 'bad');
+    }, 350);
+  }
+  $('authName').addEventListener('input', checkNameSoon);
+  $('authTabs').addEventListener('click', e => { const b = e.target.closest('[data-auth]'); if (b) setAuth(b.dataset.auth, authMode === 'legacy' ? '' : null); });
+  for (const id of ['authName', 'authPin', 'authPin2']) $(id).addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+  async function submitAuth() {
+    const ad = MI.tidy($('authName').value), pin = $('authPin').value.trim(), err = m => { $('authErr').textContent = '⚠️ ' + m; $('authErr').classList.remove('info'); };
+    if (!ad) return err('Adını yaz');
+    if (!MI.pinOk(pin)) return err('PIN 4 rakam olmalı');
+    if (authMode !== 'giris') { const e = MI.check(ad); if (e) return err(e); if ($('authPin2').value.trim() !== pin) return err('İki PIN aynı değil'); }
+    $('btnAuth').disabled = true; $('authErr').textContent = '⏳ Bekle…'; $('authErr').classList.add('info');
+    const r = authMode === 'giris' ? await Kayit.login(ad, pin) : await Kayit.register(ad, pin, authMode === 'legacy' ? authLegacy : null);
+    $('btnAuth').disabled = false;
+    if (r.hata) return err(r.hata + (authMode === 'legacy' && /alınmış/.test(r.hata) ? ". Senin hesabınsa 'Giriş yap' ile PIN'inle gir." : ''));
+    selectPlayer(r.profil.name);
+  }
+  $('btnAuth').onclick = submitAuth;
+  $('plist').addEventListener('click', async e => {
     const del = e.target.closest('[data-del]');
-    if (del) { e.stopPropagation(); const n = del.dataset.del; if (confirm(`"${n}" oyuncusu ve tüm puanları silinsin mi?`)) { Kayit.remove(n); showProfiles(); } return; }
+    if (del) { e.stopPropagation(); const n = del.dataset.del; if (confirm(`"${n}" bu cihazdan çıkış yapsın mı?\nHesap ve puanlar bulutta kalır; tekrar adın ve PIN'inle girebilirsin.`)) { await Kayit.forget(n); if (state.player && MI.key(state.player.name) === MI.key(n)) state.player = null; showProfiles(); } return; }
     const b = e.target.closest('[data-name]'); if (b) selectPlayer(b.dataset.name);
   });
-  function createPlayer() { const n = $('newName').value.trim(); if (!n) return; if (Kayit.get(n)) { selectPlayer(n); return; } const p = Kayit.create(n); $('newName').value = ''; if (p) selectPlayer(p.name); }
-  $('btnCreate').onclick = createPlayer;
-  $('newName').addEventListener('keydown', e => { if (e.key === 'Enter') createPlayer(); });
+  $('legacyList').addEventListener('click', e => {
+    const del = e.target.closest('[data-legdel]');
+    if (del) { e.stopPropagation(); if (confirm(`"${del.dataset.legdel}" eski kaydı gizlensin mi? (Buluta taşınmaz)`)) { Kayit.dismissLegacy(del.dataset.legdel); showProfiles(); } return; }
+    const b = e.target.closest('[data-legacy]'); if (!b) return;
+    authLegacy = Kayit.legacyPlayers().find(p => MI.key(p.name) === MI.key(b.dataset.legacy)) || null;
+    setAuth('legacy', b.dataset.legacy, '');
+    $('authErr').textContent = `"${b.dataset.legacy}" için bir PIN belirle: ilerlemen (${authLegacy ? authLegacy.points || 0 : 0} puan) buluta taşınacak.`; $('authErr').classList.add('info');
+  });
   function selectPlayer(name) {
-    state.player = Kayit.get(name); if (!state.player) return; Kayit.save.last = state.player.name; Kayit.persist();
+    state.player = Kayit.use(name); if (!state.player) return showProfiles();
     if (Ag.connected) Ag.connect(agProfile()); // oyuncu değişti: sunucuya yeni adı bildir
     if (pendingRoom) { const k = pendingRoom; pendingRoom = null; showMp(); joinWhenReady(k); return; }
     showMenu();
@@ -515,9 +636,19 @@
     $('mStats').textContent = `${p.races} yarış · ${p.wins} galibiyet · ${p.podiums} kez ilk 3 · toplam ${p.earned} puan kazanıldı`;
     $('btnSound').textContent = Kayit.save.sound === false ? '🔇 Ses: Kapalı' : '🔊 Ses: Açık';
     $('btnGfx').textContent = '🖥️ Grafik: ' + ({ yuksek: 'Yüksek', orta: 'Orta', dusuk: 'Düşük' }[Grafik.quality()]);
+    renderDaily();
     Kayit.onStatus(); show('scrMenu');
+    if (state.authLost) authLost();
   }
-  $('btnSwitch').onclick = showProfiles;
+  $('btnSwitch').onclick = () => showProfiles();
+  $('btnLider').onclick = () => showLider();
+  $('btnPin').onclick = async () => {
+    const eski = prompt('Şu anki PIN\'in (4 rakam):'); if (eski == null) return;
+    const yeni = prompt('Yeni PIN (4 rakam):'); if (yeni == null) return;
+    if (!MI.pinOk(yeni)) { alert('Yeni PIN 4 rakam olmalı'); return; }
+    if (prompt('Yeni PIN\'i tekrar yaz:') !== yeni) { alert('PIN\'ler aynı değil'); return; }
+    const r = await Kayit.changePin(eski.trim(), yeni); alert(r.ok ? '✅ PIN değişti. Diğer cihazlarda yeniden giriş gerekecek.' : '⚠️ ' + r.hata);
+  };
   $('btnRace').onclick = () => { state.cup = null; state.world = null; showTracks(); };
   $('btnSound').onclick = () => { Kayit.save.sound = Kayit.save.sound === false; Ses.on = Kayit.save.sound !== false; Kayit.persist(); showMenu(); };
   $('btnGfx').onclick = () => {

@@ -1,104 +1,163 @@
-/* Misket Yarışı — kayıt sistemi
- * Tarayıcı (localStorage) + oyun klasöründeki kayit/kayit.json (yerel sunucu ile).
- * Oyun hangi yolla açılırsa açılsın kayit/kayit.js okunur; tarayıcı verisi silinse bile kayıtlar dosyadan geri gelir.
- * (Zirve Top Yarışı'ndaki sistemin aynısı; birleştirme kuralı sunucu.py içindeki birlestir ile aynı.)
+/* Misket Yarışı — bulut kayıt sistemi
+ * Oyuncular sunucuda (sunucu/hesaplar.js): ad tekildir, 4 haneli PIN ile her cihazdan girilir.
+ * Bu cihazda girilmiş hesaplar hatırlanır; profilin bir kopyası cihazda tutulur, internet yoksa değişiklikler bekler ve bağlanınca gönderilir.
+ * Eski (bulut öncesi) cihaz kayıtları okunur ve buluta taşınabilir: localStorage 'misket-yarisi-v1' + kayit/kayit.js.
  */
 (function (G) {
   'use strict';
-  const SAVE_KEY = 'misket-yarisi-v1';
-  // dosyaya kayıt yalnızca bu bilgisayardaki oyun sunucusuyla (internetten açılınca kayıtlar o cihazın tarayıcısında)
-  const FILE_MODE = /^https?:$/.test(location.protocol) && /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
-  const trLower = s => String(s || '').trim().toLocaleLowerCase('tr');
-  const pKey = p => [p.earned || 0, p.races || 0, p.upd || 0];
-  function pAtLeast(a, b) { const x = pKey(a), y = pKey(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i]; return true; }
+  const STORE = 'misket-bulut-v1', AYAR = 'misket-ayar', OLD_KEY = 'misket-yarisi-v1', MOVED = 'misket-eski-tasindi';
+  const MI = G.MI;
+  // sunucu adresi: js/ag.js ile aynı kural (?sunucu=ws://… yerel test)
+  let api = 'https://misket-yarisi.swedencentral.cloudapp.azure.com/api/';
+  try {
+    const q = new URLSearchParams(location.search).get('sunucu') || sessionStorage.getItem('misket-sunucu');
+    if (q && /^wss?:\/\//.test(q)) api = q.replace(/^ws/, 'http').replace(/\/ws\/?$/, '') + '/api/';
+  } catch (e) { }
+  const readJSON = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+  const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } };
 
-  // İki kaydı birleştir: her oyuncu için daha ilerlemiş olan (toplam kazanılan puan, yarış sayısı, son değişiklik) kalır.
-  function mergeSaves(a, b) {
-    const ok = s => s && typeof s === 'object' && s.players && typeof s.players === 'object';
-    if (!ok(a)) return ok(b) ? b : null; if (!ok(b)) return a;
-    const [newer, older] = (a.updatedAt || 0) >= (b.updatedAt || 0) ? [a, b] : [b, a];
-    const out = Object.assign({}, older, newer), deleted = {}, best = {};
-    for (const s of [a, b]) for (const n in (s.deleted || {})) deleted[n] = Math.max(deleted[n] || 0, s.deleted[n] || 0);
-    for (const s of [older, newer]) for (const name in s.players) {
-      const p = s.players[name]; if (!p || typeof p !== 'object') continue;
-      const k = trLower(p.name || name); if ((deleted[k] || 0) > (p.upd || 0)) continue;
-      if (!best[k] || pAtLeast(p, best[k])) best[k] = p;
-    }
-    out.players = {}; for (const k in best) out.players[best[k].name || k] = best[k];
-    out.deleted = deleted; out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
-    return out;
-  }
-  function loadSave() {
-    let ls = null; try { ls = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { }
-    let file = null; try { if (G.MISKET_KAYIT && typeof G.MISKET_KAYIT === 'object') file = JSON.parse(JSON.stringify(G.MISKET_KAYIT)); } catch (e) { }
-    return mergeSaves(ls, file) || { players: {}, last: '', sound: true, deleted: {}, updatedAt: 0 };
-  }
+  // ---- cihaz ayarları (ses, grafik, son oyuncu) ----
+  const save = Object.assign({ sound: true, gfx: null, last: '' }, readJSON(AYAR) || {});
+  const old0 = readJSON(OLD_KEY); // bulut öncesi ayarları devral
+  if (!readJSON(AYAR) && old0) { if (old0.sound === false) save.sound = false; if (old0.gfx) save.gfx = old0.gfx; }
 
-  const save = loadSave();
-  // değişen oyuncunun "upd" zamanını güncellemek için son kaydedilen hâllerin özeti
-  const snap = {};
-  const playerSnap = p => { const c = Object.assign({}, p); delete c.upd; return JSON.stringify(c); };
-  for (const k in save.players) snap[k] = playerSnap(save.players[k]);
-
-  const FileSave = {
-    state: FILE_MODE ? 'wait' : 'off', timer: null,
-    schedule() { if (!FILE_MODE) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 300); },
-    flush(keepalive) {
-      if (!FILE_MODE) return; clearTimeout(this.timer);
-      return fetch('api/kayit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Misket': '1' }, body: JSON.stringify(save), keepalive: !!keepalive })
-        .then(r => r.ok ? r.json() : Promise.reject(r.status)).then(j => { this.state = j && j.ok ? 'ok' : 'err'; Kayit.onStatus(); })
-        .catch(() => { this.state = 'err'; Kayit.onStatus(); });
-    },
-  };
-
-  function persist() {
-    const now = Date.now();
-    for (const k in save.players) { const js = playerSnap(save.players[k]); if (snap[k] !== js) { save.players[k].upd = now; snap[k] = js; } }
-    save.updatedAt = now;
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { }
-    FileSave.schedule();
-  }
+  // ---- bu cihazdaki hesaplar ----
+  const store = Object.assign({ accounts: {} }, readJSON(STORE) || {});
+  const keep = () => writeJSON(STORE, store);
+  const acc = name => store.accounts[MI.key(name)] || null;
 
   function newPlayer(name) {
-    return {
-      name, points: 0, earned: 0, races: 0, wins: 0, podiums: 0, xp: 0,
-      unlocked: 1, best: {}, cups: {}, owned: [], eq: {}, ach: {}, stats: {}, bets: { won: 0, lost: 0 },
-    };
+    return { name, points: 0, earned: 0, races: 0, wins: 0, podiums: 0, xp: 0, unlocked: 1, best: {}, cups: {}, owned: [], eq: {}, ach: {}, stats: {}, bets: { won: 0, lost: 0 }, daily: {} };
   }
-  // eski kayıtlara yeni alanları ekle (sonraki aşamalarda yeni alanlar buraya)
-  function migratePlayer(p) {
-    const d = newPlayer(p.name);
-    for (const k in d) if (p[k] === undefined) p[k] = d[k];
+  function migratePlayer(p) { const d = newPlayer(p.name); for (const k in d) if (p[k] === undefined) p[k] = d[k]; return p; }
+  for (const k in store.accounts) migratePlayer(store.accounts[k].profile);
+
+  // ---- eski cihaz kayıtları (buluta taşınmamış) ----
+  function legacyPlayers() {
+    const moved = readJSON(MOVED) || [], out = {};
+    const add = s => { if (s && s.players) for (const n in s.players) { const p = s.players[n]; if (!p || typeof p !== 'object') continue; const k = MI.key(p.name || n); if (moved.includes(k) || store.accounts[k]) continue; if (!out[k] || (p.earned || 0) > (out[k].earned || 0)) out[k] = Object.assign({}, p, { name: p.name || n }); } };
+    add(readJSON(OLD_KEY));
+    try { if (G.MISKET_KAYIT) add(JSON.parse(JSON.stringify(G.MISKET_KAYIT))); } catch (e) { }
+    return Object.values(out);
+  }
+  const markMoved = name => { const m = readJSON(MOVED) || []; if (!m.includes(MI.key(name))) m.push(MI.key(name)); writeJSON(MOVED, m); };
+
+  // ---- sunucu istekleri ----
+  async function call(route, opt = {}) {
+    let r;
+    try {
+      r = await fetch(api + route, { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: Object.assign({ 'Content-Type': 'application/json' }, opt.token ? { Authorization: 'Bearer ' + opt.token } : {}), body: opt.body ? JSON.stringify(opt.body) : undefined, keepalive: !!opt.keepalive });
+    } catch (e) { return { code: 0, j: { hata: 'Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.' } }; }
+    let j = null; try { j = await r.json(); } catch (e) { }
+    return { code: r.status, j: j || {} };
+  }
+
+  // ---- kaydetme (değişiklikten 1,5 sn sonra; hata olursa 15 sn'de bir yeniden) ----
+  let state = 'ok', timer = null, busy = false;
+  const setState = s => { if (s !== state) { state = s; Kayit.onStatus(); } };
+  function persist() {
+    const a = Kayit.active && acc(Kayit.active.name);
+    writeJSON(AYAR, save);
+    if (!a) return;
+    a.profile = Kayit.active; a.dirty = true; keep();
+    setState(state === 'off' ? 'off' : 'wait');
+    clearTimeout(timer); timer = setTimeout(push, 1500);
+  }
+  async function push(keepalive) {
+    const a = Kayit.active && acc(Kayit.active.name);
+    if (!a || !a.dirty || busy) return;
+    busy = true; a.dirty = false;
+    const body = { profil: a.profile, rev: a.rev };
+    const r = await call('profil', { method: 'PUT', token: a.token, body, keepalive });
+    busy = false;
+    if (r.code === 200) { a.rev = r.j.rev; keep(); setState(a.dirty ? 'wait' : 'ok'); if (a.dirty) { clearTimeout(timer); timer = setTimeout(push, 800); } return; }
+    if (r.code === 409) { // başka cihaz daha yeni kaydetmiş: daha ilerlemiş olan kalır
+      const srv = r.j.profil, mine = a.profile;
+      a.rev = r.j.rev;
+      if (ahead(srv, mine)) { Object.keys(mine).forEach(k => delete mine[k]); Object.assign(mine, migratePlayer(srv)); keep(); setState('ok'); Kayit.onProfile(); }
+      else { a.dirty = true; keep(); push(); }
+      return;
+    }
+    a.dirty = true; keep();
+    if (r.code === 401) { setState('auth'); Kayit.onAuthLost(a.profile.name); return; }
+    setState('off'); clearTimeout(timer); timer = setTimeout(push, 15000);
+  }
+  const score = p => [p.earned || 0, p.races || 0];
+  function ahead(a, b) { const x = score(a), y = score(b); return x[0] !== y[0] ? x[0] > y[0] : x[1] > y[1]; }
+
+  function remember(name, token, profil, rev) {
+    const k = MI.key(name);
+    const p = migratePlayer(Object.assign(newPlayer(profil.name), profil));
+    store.accounts[k] = { token, rev, profile: p, dirty: false, last: Date.now() }; keep();
     return p;
   }
-  for (const k in save.players) migratePlayer(save.players[k]);
 
   const Kayit = G.Kayit = {
-    save, persist, FILE_MODE, WEB: /^https?:$/.test(location.protocol) && !FILE_MODE, trLower,
-    onStatus() { },
-    status() { return FileSave.state; },
-    players() { return Object.values(save.players).sort((a, b) => (b.upd || 0) - (a.upd || 0)); },
-    get(name) { const k = trLower(name); return Object.values(save.players).find(p => trLower(p.name) === k) || null; },
-    create(name) {
-      name = String(name || '').trim().slice(0, 16);
-      if (!name || Kayit.get(name)) return null;
-      const p = newPlayer(name); save.players[name] = p; persist(); return p;
+    save, FILE_MODE: false, WEB: true, CLOUD: true, api, active: null,
+    onStatus() { }, onAuthLost() { }, onProfile() { },
+    status: () => state,
+    persist, flush: k => push(k),
+    // bu cihazda girilmiş hesaplar (son kullanılan önce)
+    players() { return Object.values(store.accounts).sort((a, b) => (b.last || 0) - (a.last || 0)).map(a => a.profile); },
+    get(name) { const a = acc(name); return a ? a.profile : null; },
+    // oyuna gir: önce cihazdaki kopya, sonra buluttan tazele
+    use(name) {
+      const a = acc(name); if (!a) return null;
+      Kayit.active = a.profile; a.last = Date.now(); save.last = a.profile.name; keep(); writeJSON(AYAR, save);
+      Kayit.refresh();
+      return a.profile;
     },
-    remove(name) {
-      const p = Kayit.get(name); if (!p) return;
-      for (const k in save.players) if (save.players[k] === p) delete save.players[k];
-      save.deleted = save.deleted || {}; save.deleted[trLower(name)] = Date.now();
-      if (trLower(save.last) === trLower(name)) save.last = '';
-      persist();
+    async refresh() {
+      const a = Kayit.active && acc(Kayit.active.name); if (!a) return;
+      if (a.dirty) { push(); return; }
+      const r = await call('profil', { token: a.token });
+      if (r.code === 200) {
+        if (r.j.rev !== a.rev || ahead(r.j.profil, a.profile)) { const mine = a.profile; Object.keys(mine).forEach(k => delete mine[k]); Object.assign(mine, migratePlayer(r.j.profil)); a.rev = r.j.rev; keep(); Kayit.onProfile(); }
+        setState('ok');
+      } else if (r.code === 401) { setState('auth'); Kayit.onAuthLost(a.profile.name); }
+      else setState('off');
     },
-    flush: k => FileSave.flush(k),
+    checkName: async ad => { const e = MI.check(ad); if (e) return { uygun: false, hata: e }; const r = await call('isim?ad=' + encodeURIComponent(MI.tidy(ad))); return r.code === 200 ? r.j : { uygun: null, hata: r.j.hata }; },
+    // yeni hesap (eski cihaz kaydı varsa onunla)
+    async register(ad, pin, fromLegacy) {
+      const r = await call('kayit', { body: { ad: MI.tidy(ad), pin } });
+      if (r.code !== 200) return { hata: r.j.hata || 'Kayıt olmadı' };
+      let p = remember(r.j.profil.name, r.j.token, r.j.profil, r.j.rev);
+      if (fromLegacy) { // eski ilerlemeyi buluta yükle
+        Object.assign(p, migratePlayer(Object.assign({}, fromLegacy, { name: p.name })));
+        const u = await call('profil', { method: 'PUT', token: r.j.token, body: { profil: p, rev: r.j.rev } });
+        if (u.code === 200) store.accounts[MI.key(p.name)].rev = u.j.rev; else store.accounts[MI.key(p.name)].dirty = true;
+        keep(); markMoved(fromLegacy.name);
+      }
+      return { profil: p };
+    },
+    async login(ad, pin) {
+      const r = await call('giris', { body: { ad: MI.tidy(ad), pin } });
+      if (r.code !== 200) return { hata: r.j.hata || 'Giriş olmadı' };
+      const old = acc(r.j.profil.name);
+      if (old && old.dirty && ahead(old.profile, r.j.profil)) { old.token = r.j.token; old.rev = r.j.rev; keep(); return { profil: old.profile }; } // cihazda bekleyen ilerleme
+      markMoved(r.j.profil.name);
+      return { profil: remember(r.j.profil.name, r.j.token, r.j.profil, r.j.rev) };
+    },
+    // bu cihazdan çıkış (bulut hesabı silinmez)
+    async forget(name) {
+      const a = acc(name); if (!a) return;
+      if (a.dirty) await push();
+      call('cikis', { method: 'POST', token: a.token });
+      delete store.accounts[MI.key(name)]; keep();
+      if (Kayit.active && MI.key(Kayit.active.name) === MI.key(name)) Kayit.active = null;
+    },
+    async changePin(eski, yeni) {
+      const a = Kayit.active && acc(Kayit.active.name); if (!a) return { hata: 'Önce giriş yap' };
+      const r = await call('pin', { token: a.token, body: { eski, yeni } });
+      return r.code === 200 ? { ok: true } : { hata: r.j.hata || 'PIN değişmedi' };
+    },
+    leaderboard: async () => { const r = await call('liderlik'); return r.code === 200 ? r.j : null; },
+    records: async id => { const r = await call('rekor?parkur=' + id); return r.code === 200 ? r.j.liste : null; },
+    legacyPlayers, dismissLegacy: markMoved, trLower: s => MI.key(s),
   };
 
-  if (FILE_MODE) {
-    setInterval(() => fetch('api/ping').then(r => { if (!r.ok) throw 0; if (FileSave.state === 'err') FileSave.flush(); })
-      .catch(() => { FileSave.state = 'err'; Kayit.onStatus(); }), 60000);
-    window.addEventListener('pagehide', () => FileSave.flush(true));
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') FileSave.flush(true); });
-    FileSave.flush();
-  }
+  window.addEventListener('pagehide', () => push(true));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') push(true); else if (Kayit.active) Kayit.refresh(); });
+  window.addEventListener('online', () => push());
 })(window);
