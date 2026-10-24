@@ -23,6 +23,7 @@ const QUICK_WAIT = 20;             // hızlı oyunda en fazla bekleme (sn)
 const MAX_ROOMS = +process.env.MAX_ROOMS || 16, MAX_PER_IP = 16, MAX_MSG = 4096, MAX_RATE = 40; // koruma sınırları
 const ROOM_IDLE = 10 * 60 * 1000;  // boş oda silinme süresi
 const LEAVE_GRACE = 30 * 1000;     // lobide bağlantısı kopanın yeri bu süre tutulur
+const VOTE_COUNT = 5000, VOTE_WAIT = 30000; // yarış sonrası oylama: herkes seçince 5 sn geri sayım; ilk seçimden 30 sn sonra çoğunlukla başlar
 
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const rid = n => crypto.randomBytes(n).toString('hex');
@@ -57,6 +58,11 @@ function roomInfo(room) {
   return {
     t: 'oda', kod: room.code, kurucu: room.host, parkur: room.track, hizli: room.quick, durum: room.state,
     bekleme: room.quick && room.state === 'lobi' ? Math.max(0, Math.ceil((room.quickAt - Date.now()) / 1000)) : null,
+    oylama: room.vote && room.state === 'lobi' ? {
+      sonParkur: room.vote.last, oylar: Object.fromEntries(room.vote.secim), secim: room.vote.choice,
+      kalan: room.vote.startAt ? Math.max(0, Math.ceil((room.vote.startAt - Date.now()) / 1000)) : null,
+      bekleme: room.vote.first ? Math.max(0, Math.ceil((room.vote.first + VOTE_WAIT - Date.now()) / 1000)) : null,
+    } : null,
     oyuncular: humansOf(room).map(p => ({ pid: p.pid, ad: p.name, misafir: !p.kayitli, misket: p.marble, hazir: p.ready, bagli: !!(p.ws && p.ws.readyState === 1), eq: p.eq, acik: p.unlocked })),
   };
 }
@@ -96,9 +102,24 @@ function leaveRoom(p, silent) {
   room.players.delete(p.pid); p.room = null; p.ready = false;
   if (room.race && p.marble >= 0) room.ps.humans.delete(p.marble); // yerine bot geçer
   if (room.host === p.pid) room.host = room.players.size ? room.players.keys().next().value : null;
+  recountVote(room);
   if (!room.players.size && room.state === 'lobi') closeRoom(room);
   else pushRoom(room);
   if (!silent) send(p, { t: 'odadanCikti' });
+}
+// ---- yarış sonrası oylama: aynı parkur mu, sonraki mi? ----
+function recountVote(room) {
+  const v = room.vote; if (!v || room.state !== 'lobi') return;
+  const online = humansOf(room).filter(p => p.ws && p.ws.readyState === 1);
+  for (const pid of [...v.secim.keys()]) if (!room.players.has(pid)) v.secim.delete(pid); // ayrılanların oyu düşer
+  if (!v.secim.size) { v.first = null; v.startAt = null; v.choice = null; return; }
+  v.first = v.first || Date.now();
+  let ayni = 0, sonraki = 0; for (const c of v.secim.values()) c === 'ayni' ? ayni++ : sonraki++;
+  v.choice = ayni > sonraki ? 'ayni' : sonraki > ayni ? 'sonraki' : (v.secim.get(room.host) || 'ayni'); // eşitlikte kurucunun seçimi
+  if (v.last >= MP.TRACKS.length) v.choice = 'ayni';
+  const all = online.every(p => v.secim.has(p.pid));
+  if (all || Date.now() - v.first >= VOTE_WAIT) { if (!v.startAt) v.startAt = Date.now() + VOTE_COUNT; }
+  else v.startAt = null; // biri seçimini iptal etti / henüz herkes seçmedi: geri sayım durur
 }
 function closeRoom(room) {
   if (room.race) { try { room.race.dispose(); } catch (e) { } room.race = null; }
@@ -109,6 +130,7 @@ function closeRoom(room) {
 // ================= yarış =================
 function startRace(room) {
   if (room.state !== 'lobi') return;
+  room.vote = null;
   const humans = humansOf(room).filter(p => p.marble >= 0);
   if (!humans.length) return;
   if (quickRoom === room) quickRoom = null;
@@ -195,6 +217,7 @@ function finishRaceRoom(room) {
   for (const p of humansOf(room)) { p.ready = false; if (!(p.ws && p.ws.readyState === 1)) { room.players.delete(p.pid); p.room = null; players.delete(p.pid); byKey.delete(p.key); } }
   if (!room.players.size) return closeRoom(room);
   if (!room.players.has(room.host)) room.host = room.players.keys().next().value;
+  room.vote = { last: room.track, secim: new Map(), first: null, startAt: null, choice: null }; // sonuç ekranında oylama
   pushRoom(room);
 }
 
@@ -228,6 +251,11 @@ function onMessage(p, msg) {
     case 'hazir': if (room && room.state === 'lobi') { p.ready = !!msg.v; pushRoom(room); } return;
     case 'parkur': if (room && room.state === 'lobi' && room.host === p.pid && !room.quick) { room.track = Math.min(clampTrack(msg.id), clampTrack(p.unlocked)); pushRoom(room); } return;
     case 'baslat': if (room && room.state === 'lobi' && room.host === p.pid) startRace(room); return;
+    case 'oy': { // 'ayni' | 'sonraki' | null (iptal) — yarış başlayana kadar değiştirilebilir
+      if (!room || room.state !== 'lobi' || !room.vote) return;
+      if (msg.secim === 'ayni' || msg.secim === 'sonraki') room.vote.secim.set(p.pid, msg.secim); else room.vote.secim.delete(p.pid);
+      recountVote(room); pushRoom(room); return;
+    }
     case 'kart': {
       if (!room || !room.race || p.marble < 0) return;
       const k = Math.floor(+msg.k); if (k >= 0 && k <= 2) room.ps.choose(p.marble, k);
@@ -291,7 +319,7 @@ function onConnect(ws, req, ip) {
     const room = p.room;
     if (room) {
       if (room.race && p.marble >= 0) room.ps.humans.delete(p.marble); // yarışta: misketi bot devralır
-      pushRoom(room);
+      recountVote(room); pushRoom(room);
     }
     p.dropTimer = setTimeout(() => { // geri gelmezse temizle
       if (p.ws) return;
@@ -318,6 +346,12 @@ setInterval(() => {
   const now = Date.now();
   for (const room of [...rooms.values()]) {
     if (room.quick && room.state === 'lobi') pushRoom(room);
+    if (room.vote && room.state === 'lobi' && room.vote.first) { // oylama geri sayımı
+      recountVote(room);
+      const v = room.vote;
+      if (v && v.startAt && Date.now() >= v.startAt) { room.track = v.choice === 'sonraki' ? Math.min(MP.TRACKS.length, v.last + 1) : v.last; startRace(room); }
+      else pushRoom(room);
+    }
     const anyOnline = humansOf(room).some(p => p.ws && p.ws.readyState === 1);
     if (!anyOnline && now - room.touched > (room.race ? 60 * 1000 : ROOM_IDLE)) closeRoom(room);
     else if (anyOnline) room.touched = now;

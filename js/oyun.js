@@ -507,11 +507,12 @@
     nb.classList.toggle('hidden', !hasNext); nb.disabled = !nextOpen;
     nb.textContent = nextOpen ? 'Sonraki Parkur ▶' : '🔒 Sonraki Parkur (ilk 3 gerekli)';
     $('btnResAgain').classList.toggle('main', !nextOpen);
-    if (state.mp) { nb.classList.add('hidden'); $('btnResAgain').textContent = 'Lobiye Dön 👥'; $('btnResAgain').classList.add('main'); $('resNote').textContent = `Toplam puanın: ${p.points} · Oda: ${state.mp.kod}`; }
+    if (state.mp) { nb.classList.add('hidden'); $('btnResAgain').textContent = 'Lobiye Dön 👥'; $('btnResAgain').classList.remove('main'); $('resNote').textContent = `Toplam puanın: ${p.points} · Oda: ${state.mp.kod}`; }
     state.cupDone = cupDone;
     show('scrResult');
     if (state.authLost) setTimeout(authLost, 2500);
     state.phase = 'result';
+    renderVote(); // çok oyunculu: aynı parkur / sonraki parkur oylaması
   }
 
   // ================= DÖNGÜ =================
@@ -967,13 +968,34 @@
     if (state.phase === 'shop') leaveShop();
     toMenuScene();
     Ag.connect(agProfile()); // bağlıysa güncel ad/kostüm yeniden bildirilir
-    renderMp(); show('scrMp');
+    renderMp(); show('scrMp'); renderVote();
   }
   function leaveMp() { if (Ag.room) Ag.send({ t: 'ayril' }); Ag.room = null; state.mp = null; }
   function joinWhenReady(k) { if (Ag.connected && Ag.pid) Ag.send({ t: 'katil', kod: k }); else { joinAfter = k; Ag.connect(agProfile()); } }
   function mpMsg(t) { const el = $('mpMsg'); el.textContent = t || ''; el.classList.toggle('hidden', !t); clearTimeout(mpMsgTimer); if (t) mpMsgTimer = setTimeout(() => el.classList.add('hidden'), 5000); }
   Ag.on('durum', d => { if (d.bagli && joinAfter) { Ag.send({ t: 'katil', kod: joinAfter }); joinAfter = null; } renderMp(); });
-  Ag.on('oda', () => renderMp());
+  Ag.on('oda', () => { renderMp(); renderVote(); });
+  // ---- yarış sonrası oylama: aynı parkur mu, sonraki mi? (yarış başlayana kadar değiştirilebilir / iptal edilebilir) ----
+  function voteHTML(room) {
+    const v = room && room.oylama; if (!v) return '';
+    const mine = v.oylar[Ag.pid], last = v.sonParkur, nextId = Math.min(MP.TRACKS.length, last + 1);
+    const names = c => room.oyuncular.filter(o => v.oylar[o.pid] === c).map(o => esc(o.ad)).join(', ');
+    const opt = (c, icon, title, t, dis) => `<button class="voteopt${mine === c ? ' on' : ''}${v.kalan != null && v.secim === c ? ' win' : ''}" data-oy="${c}" ${dis ? 'disabled' : ''}><span class="vic">${icon}</span><b>${title}</b><small>Parkur ${t.id} · ${esc(t.name)}</small><span class="vwho">${names(c) ? '✋ ' + names(c) : 'henüz seçen yok'}</span>${v.kalan != null && v.secim === c ? '<span class="vwin">▶ bu başlayacak</span>' : ''}</button>`;
+    const status = v.kalan != null ? `⏳ <b>${v.kalan} sn</b> sonra başlıyor: <b>${v.secim === 'sonraki' ? 'Sonraki parkur' : 'Aynı parkur'}</b>. Fikrini değiştirmek için diğerine dokun ya da seçimini iptal et.`
+      : mine ? `Diğer oyuncuların seçimi bekleniyor…${v.bekleme != null ? ` (en geç ${v.bekleme} sn sonra çoğunluğun seçimiyle başlar)` : ''}` : 'Sıradaki yarış için seç: herkes seçince 5 sn sonra başlar.';
+    return `<div class="vote"><p class="vstat">${status}</p><div class="vopts">${opt('ayni', '🔁', 'Aynı parkur', MP.TRACKS[last - 1])}${opt('sonraki', '⏭', 'Sonraki parkur', MP.TRACKS[nextId - 1], last >= MP.TRACKS.length)}</div>${mine ? '<button class="sm" data-oy="iptal">✖ Seçimimi iptal et</button>' : ''}</div>`;
+  }
+  function renderVote() {
+    const room = Ag.room, show1 = !!(state.mp && state.phase === 'result' && room && room.oylama);
+    $('resVote').innerHTML = show1 ? voteHTML(room) : ''; $('resVote').classList.toggle('hidden', !show1);
+    const show2 = !!(room && room.oylama && room.oylama.sonParkur);
+    $('mpVote').innerHTML = show2 ? voteHTML(room) : ''; $('mpVote').classList.toggle('hidden', !show2);
+  }
+  for (const id of ['resVote', 'mpVote']) $(id).addEventListener('click', e => {
+    const b = e.target.closest('[data-oy]'); if (!b || b.disabled) return;
+    const mine = Ag.room && Ag.room.oylama && Ag.room.oylama.oylar[Ag.pid], c = b.dataset.oy;
+    Ag.send({ t: 'oy', secim: c === 'iptal' || c === mine ? null : c }); // aynı seçeneğe tekrar dokunmak da iptal eder
+  });
   Ag.on('hata', m => { mpMsg('⚠️ ' + m.mesaj); if (state.mp && state.race) toast('⚠️ ' + m.mesaj, 'bad'); });
   Ag.on('basla', m => startNetRace(m));
   let mpTrackN = 0;

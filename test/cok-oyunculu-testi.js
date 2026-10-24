@@ -85,6 +85,23 @@ const humanFlags = dv => { const n = dv.getUint8(1), out = []; for (let i = 0; i
     ok('olaylarda Rapier nesnesi yok', !JSON.stringify(A.events).includes('"col"'));
     await sleep(300);
     ok('yarıştan sonra oda lobiye döndü', A.room.durum === 'lobi' && A.room.oyuncular.length === 3);
+    // yarış sonrası oylama
+    const vote = () => A.room.oylama;
+    ok('sonuçtan sonra oylama açıldı', vote() && vote().sonParkur === trackId && vote().kalan === null);
+    for (const c of [A, B, C2]) c.autoCard = false;
+    A.send({ t: 'oy', secim: 'sonraki' }); await sleep(300);
+    ok('tek kişi seçince geri sayım yok', vote().oylar[A.pid] === 'sonraki' && vote().kalan === null, `bekleme ${vote().bekleme} sn`);
+    B.send({ t: 'oy', secim: 'ayni' }); C2.send({ t: 'oy', secim: 'sonraki' }); await sleep(300);
+    ok('herkes seçince 5 sn geri sayım, çoğunluk sonraki', vote().kalan >= 4 && vote().secim === 'sonraki', `kalan ${vote().kalan} sn`);
+    C2.send({ t: 'oy', secim: null }); await sleep(300);
+    ok('biri iptal edince geri sayım durur', vote().kalan === null && !vote().oylar[C2.pid]);
+    C2.send({ t: 'oy', secim: 'ayni' }); await sleep(300);
+    ok('fikir değişince çoğunluk aynı parkur', vote().secim === 'ayni' && vote().kalan >= 4);
+    B.send({ t: 'oy', secim: 'sonraki' }); await sleep(300);
+    ok('tekrar değişince sonraki parkur', vote().secim === 'sonraki');
+    const nB = A.msgs.filter(m => m.t === 'basla').length;
+    await A.wait(() => A.msgs.filter(m => m.t === 'basla').length > nB, 12000); const st2 = A.msgs.filter(m => m.t === 'basla').pop();
+    ok('geri sayım bitince sonraki parkurla başladı', st2.parkur === trackId + 1, `parkur ${st2.parkur}`);
     for (const c of [A, B, C2]) c.close();
 
     console.log('1b) Misafir adları');

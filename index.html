@@ -213,6 +213,16 @@
   .mpguest{padding:10px 12px;margin:0 0 10px;border:1px solid rgba(255,194,61,.5);border-radius:14px;background:rgba(255,194,61,.07)}
   .mpguest label{display:block;font-weight:800;margin-bottom:6px} .mpguest label small{color:var(--muted);font-weight:700}
   #mpName{font-size:22px;font-weight:900;padding:10px 12px;border:2px dashed rgba(255,194,61,.7)}
+  .vote{margin:10px 0;padding:10px;border:1px solid rgba(255,194,61,.45);border-radius:16px;background:rgba(255,194,61,.06);text-align:center}
+  .vstat{margin:0 0 8px;font-weight:700;font-size:14px}
+  .vopts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+  .voteopt{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 8px;border-radius:14px}
+  .voteopt .vic{font-size:30px} .voteopt b{font-size:17px} .voteopt small{color:var(--muted);font-weight:700;font-size:12px}
+  .voteopt .vwho{font-size:12px;font-weight:800;color:#ffd77a;min-height:16px}
+  .voteopt.on{border-color:var(--accent);background:rgba(255,194,61,.2);box-shadow:0 0 0 2px var(--accent) inset}
+  .voteopt.win{animation:pulse 1s ease-in-out infinite;border-color:#7bd389}
+  .voteopt .vwin{font-size:11px;font-weight:900;color:#2b1700;background:#7bd389;border-radius:8px;padding:1px 8px;margin-top:2px}
+  @keyframes pulse{50%{transform:scale(1.03)}}
   .note.ach{border-color:rgba(255,194,61,.6);color:#ffe199}
 
   /* üst menü çubuğu */
@@ -493,6 +503,7 @@
   <div class="notes" id="resNotes"></div>
   <table class="rtable" id="resTable"></table>
   <p class="sub" id="resNote"></p>
+  <div id="resVote" class="hidden"></div>
   <div class="row" id="resButtons"><button id="btnResMenu">Ana Menü</button><button id="btnResTracks">Parkurlar</button><button class="main" id="btnResAgain">Tekrar Yarış ↻</button><button class="main hidden" id="btnResNext">Sonraki Parkur ▶</button></div>
 </div></div>
 
@@ -563,6 +574,7 @@
     <div class="row" style="justify-content:space-between"><b id="mpTitle">🏠 Özel oda</b><span>Oda kodu: <b id="mpRoomCode" class="mpcode"></b></span><button class="sm" id="mpCopy">🔗 Davet linki</button></div>
     <div class="row" style="margin:10px 0"><span class="muted" style="font-weight:800">Parkur:</span><select id="mpTrack" style="max-width:100%"></select><b id="mpTrackTxt"></b></div>
     <p class="sub" id="mpQuickInfo" style="margin:4px 0 8px"></p>
+    <div id="mpVote" class="hidden" style="margin-bottom:10px"></div>
     <div class="mpslots" id="mpSlots"></div>
     <div class="row" style="margin-top:12px"><button id="mpLeave">← Odadan çık</button><button id="mpReady">Hazırım</button><button class="main" id="mpStart">Yarışı Başlat ▶</button></div>
   </div>

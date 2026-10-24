@@ -183,3 +183,8 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 7. Parkur seçimi akordiyon: dünya başlığına dokununca 10 parkuru altında açılır; en son oynanan parkurun dünyası açık gelir.
 8. Sağ üstte ⏸ düğmesi (ve Esc): tek kişilikte yarış durur (sekme değişince de), çok kişilikte yarış sürer; Devam / Güç kartları / Yarıştan çık.
 - Testler: hesap 43/43, çok oyunculu 25/25, güç senaryo 9/9; tarayıcıda kayıtlı ad + kostüm görünürlüğü, tanıtım, duraklatma, bildirim, misafir ad kutusu, bulut ve resimli şifre akışları geçti.
+
+## 11. Güncelleme: çok oyunculuda yarış sonrası "aynı parkur / sonraki parkur"
+- Sonuç ekranında (ve lobide) oylama: 🔁 Aynı parkur · ⏭ Sonraki parkur; kimin neyi seçtiği görünür. Seçim yarış başlayana kadar değiştirilebilir ya da iptal edilir (aynı seçeneğe tekrar dokunmak da iptal).
+- Sunucu (`recountVote`): odadaki bağlı herkes seçince 5 sn geri sayım; biri iptal ederse durur; ilk seçimden 30 sn sonra çoğunlukla başlar; eşitlikte kurucunun seçimi; ayrılanın oyu düşer. Kurucu "Yarışı Başlat" ile her zaman elle başlatabilir.
+- Testler: çok oyunculu 32/32 (seçim, geri sayım, iptal, fikir değiştirme, doğru parkurla başlama); tarayıcıda iki oyuncuyla uçtan uca.
