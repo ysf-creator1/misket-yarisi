@@ -13,12 +13,13 @@ Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam
 - **Mağaza:** renk, desen, forma, gözlük, şapka ve iz (144 ürün). **Kupalar**, **bahis**, **başarımlar**, **seviye**.
 
 ## ☁️ Oyuncu hesapları (bulut)
+- **Hesap zorunlu değil:** ilk açılışta bu cihaza özel bir misafir oyuncu (ör. Misafir123) verilir, puanları sadece bu cihazda durur. İsterse menüden hesap oluşturur; misafir ilerlemesi yeni hesaba taşınır. Çok oyunculuda misafir bu adla görünür ve şifresiz adını değiştirebilir (kayıtlı bir oyuncunun adını alamaz; "Misafir…" adları hesap için ayrılmıştır).
 - Oyuncu adı **tekildir** (büyük/küçük harf farkı aynı sayılır); uygunsuz adlar kabul edilmez. Her oyuncunun **4 haneli PIN**'i vardır.
 - Puan, seviye, açılan parkurlar, eşyalar, başarımlar sunucuda saklanır; başka cihazdan adın + PIN'inle girersin. İnternet yoksa ilerleme cihazda bekler, bağlanınca gönderilir.
 - Bulut öncesi bu cihazda oynanmış kayıtlar giriş ekranında "eski kayıtlar" olarak görünür; PIN belirleyip buluta taşınır.
 - **Liderlik:** puan, galibiyet, en uzak parkur ve parkur rekorları. **Günlük görevler:** her gün 3 görev + giriş ödülü (art arda günlerde artar).
 - Şifre: **4 haneli PIN** ya da **resimli şifre** (12 resimden 1'i; bir cihazda 3 yanlışta o cihaz 30 dakika bekler). Giriş yapılan cihaz bir daha sormaz.
-- Unutunca: **📱 Yeni cihaz ekle** (girişli cihazda 6 haneli kod + QR, 5 dk), **🧾 kurtarma kodu** (kayıtta verilir; "Şifremi unuttum"), son çare yönetici: `bash sunucu/sifre-sifirla.sh "Ad"`.
+- Unutunca: **📱 Yeni cihaz ekle** (girişli cihazda 6 haneli kod + QR, 5 dk) ya da yönetici: `bash sunucu/sifre-sifirla.sh "Ad"`.
 - Sunucu kayıtları her gün yedekler (30 gün); `bash sunucu/yedek-indir.sh` bir kopyayı bilgisayara indirir.
 
 ## 👥 Çok oyunculu

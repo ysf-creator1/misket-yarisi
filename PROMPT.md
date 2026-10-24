@@ -164,3 +164,11 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Sunucu (`sunucu/hesaplar.js`): hesap türü `pin|resim`; resimde sayaçlar: cihaz (X-Cihaz) 3 yanlış → 30 dk, aynı IP saatte 20 → 30 dk (gizli sekme/başka tarayıcıyla aşmaya karşı), hesaba günde 10 → 30 dk. PIN: 5 yanlış → 10 dk (değişmedi). Kurtarma kodu (8 karakter, kayıtta bir kez), yeni cihaz kodu (6 hane, 5 dk, tek kullanım), şifre değiştirme (eski şifre gerekir, diğer oturumlar kapanır), yönetici sıfırlaması yalnız sunucu içinden (`sunucu/sifre-sifirla.sh`).
 - İstemci: giriş ekranında Giriş / Yeni oyuncu / Kodla gir sekmeleri, ad yazınca hesabın türüne göre PIN kutusu ya da her seferinde karışık dizilen resim ızgarası; bekleme geri sayımı; "Şifremi unuttum"; menüde 🔑 Şifre değiştir, 📱 Yeni cihaz ekle (QR: varliklar/qrcode.js, MIT), 🧾 Kurtarma kodu; kurtarma kodu olmayan eski hesaplara uyarı.
 - Testler: `test/hesap-testi.js` 43/43; tarayıcıda resimli kayıt, 3 yanlış → bekleme (sayfa yenilense de sürer, ızgara karışır), QR/kod ile giriş, kurtarma, şifre türü değiştirme; önceki bulut/çok oyunculu/tek oyunculu testleri yeniden geçti.
+
+## 9. Güncelleme: misafir oyuncu, kurtarma kodu kaldırıldı
+- İstek: hesap zorunlu olmasın, misafir otomatik atansın; isteyen puanlarını kaydetmek için hesap oluştursun; kurtarma kodu olmasın; çok oyunculuda misafir "Misafir123" gibi görünsün, isterse adını şifresiz değiştirsin (yalnız kendi oturumunda).
+- `js/kayit-sistemi.js`: `store.guest` (yalnız cihazda), `Kayit.guest/isGuest/renameGuest/token`; misafirin kaydı sunucuya gitmez; hesap oluştururken "misafir ilerlemem taşınsın" seçeneği.
+- `js/isim.js`: `guestLike` (Misafir+rakam hesap adı olamaz), `guestName`.
+- Sunucu: kurtarma kodu uçları ve alanları silindi; çok oyunculuda `hesaplar.mpName`: kayıtlı bir ad yalnızca o hesabın oturumuyla kullanılır, değilse sunucu Misafir### verir; lobide misafirler 👤.
+- Açılış: son oyuncu yoksa doğrudan misafirle menü; menüde misafir kutusu (Hesap oluştur / Giriş yap / Adımı değiştir); "Şifremi unuttum" artık yeni cihaz koduna ve yöneticiye yönlendirir.
+- Testler: hesap 43/43, çok oyunculu 25/25 (misafir adı, ad değiştirme, kayıtlı adın alınamaması), tarayıcıda misafir akışı + önceki bulut/resim/çok oyunculu/tek oyunculu testleri geçti.

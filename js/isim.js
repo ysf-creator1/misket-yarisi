@@ -33,5 +33,8 @@
     return null;
   }
   const pinOk = p => /^[0-9]{4}$/.test(String(p || ''));
-  G.MI = { tidy, key, check, isBad, pinOk };
+  // misafir adları (Misafir123): otomatik verilir, hesap adı olarak alınamaz
+  const guestLike = s => /^misafir[ _-]?\d*$/.test(key(s).replace(/ı/g, 'i'));
+  const guestName = () => 'Misafir' + (100 + Math.floor(Math.random() * 900));
+  G.MI = { tidy, key, check, isBad, pinOk, guestLike, guestName };
 })(typeof window !== 'undefined' ? window : globalThis);

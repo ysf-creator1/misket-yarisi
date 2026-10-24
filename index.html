@@ -178,6 +178,9 @@
   .codein{text-align:center;letter-spacing:4px;font-weight:800;font-size:20px}
   .bigcode{font-size:40px;font-weight:900;letter-spacing:6px;color:#ffd77a;margin:8px 0;font-variant-numeric:tabular-nums}
   .qrbox{width:200px;height:200px;margin:8px auto;background:#fff;border-radius:12px;padding:6px} .qrbox:empty{display:none} .qrbox svg{width:100%;height:100%}
+  .misafir{margin:12px 0 4px;padding:10px 12px;border:1px solid rgba(255,194,61,.45);border-radius:14px;background:rgba(255,194,61,.08);text-align:center}
+  .misafir p{margin:0 0 8px;font-size:13px;font-weight:700;color:#ffe199}
+  .carry{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer} .carry input{width:auto;accent-color:var(--accent)}
   .note.ach{border-color:rgba(255,194,61,.6);color:#ffe199}
 
   /* üst menü çubuğu */
@@ -341,17 +344,18 @@
     <input id="authName" maxlength="16" placeholder="Adın" autocomplete="username" autocapitalize="off">
     <small id="authNameMsg" class="namemsg"></small>
     <input id="authKod" class="hidden codein" inputmode="numeric" pattern="[0-9]*" maxlength="7" placeholder="6 haneli kod" autocomplete="one-time-code">
-    <input id="authKurtar" class="hidden codein" maxlength="9" placeholder="Kurtarma kodu (ör. K7M2-P9XQ)" autocapitalize="characters" autocomplete="off">
     <div class="seg hidden" id="authType"><button data-tur="pin" class="on">🔢 PIN</button><button data-tur="resim">🖼️ Resimli şifre</button></div>
     <input id="authPin" class="hidden" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4 haneli PIN" autocomplete="current-password">
     <input id="authPin2" class="hidden" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="PIN tekrar" autocomplete="new-password">
     <small id="authTypeHint" class="muted hidden" style="text-align:center;font-weight:700"></small>
     <div class="rgrid hidden" id="authGrid"></div>
+    <label class="carry hidden" id="authCarryRow"><input type="checkbox" id="authCarry" checked> <span id="authCarryTxt"></span></label>
     <button class="main" id="btnAuth">Giriş yap</button>
     <p class="autherr" id="authErr"></p>
     <button class="linkbtn" id="authForgot">Şifremi unuttum</button>
   </div>
-  <p class="sub" style="font-size:12px;margin:8px 0 0">Adın tekildir; puanların bulutta saklanır. Bu cihaz seni hatırlar; başka cihazdan adın ve şifrenle (PIN ya da resim) girersin. Şifreni kimseyle paylaşma.</p>
+  <div class="row" style="margin-top:10px"><button id="btnGuestPlay">🎮 Misafir olarak devam et</button></div>
+  <p class="sub" style="font-size:12px;margin:8px 0 0">Hesap açmak zorunlu değil: misafir olarak oynayabilirsin (puanların bu cihazda kalır). Hesabın varsa adın tekildir; puanların bulutta saklanır. Bu cihaz seni hatırlar; başka cihazdan adın ve şifrenle (PIN ya da resim) girersin. Şifreni kimseyle paylaşma.</p>
   <div class="savestatus" id="saveStatus1"></div>
 </div></div>
 
@@ -369,15 +373,17 @@
     <button id="btnMp"><span>👥</span>Çok Oyunculu<small>Arkadaşlarınla ya da hızlı oyunla yarış (eksikler bot)</small></button>
   </div>
   <div class="row muted" id="mStats" style="font-size:14px;font-weight:700"></div>
+  <div class="misafir hidden" id="mMisafir">
+    <p id="mMisafirTxt"></p>
+    <div class="row"><button class="main" id="mHesap">☁️ Hesap oluştur</button><button id="mGiris">🔑 Giriş yap</button><button class="sm" id="mAdDegis">✏️ Adımı değiştir</button></div>
+  </div>
   <div class="gunluk" id="mGunluk"></div>
-  <div class="note hidden" id="mKurtarUyari" style="margin-top:8px;text-align:center">⚠️ Kurtarma kodun yok. Şifreni unutursan diye <b>🧾 Kurtarma kodu</b> düğmesiyle bir tane al.</div>
   <div class="settings">
     <button class="sm" id="btnSound">🔊 Ses: Açık</button>
     <button class="sm" id="btnGfx">🖥️ Grafik: Yüksek</button>
     <button class="sm" id="btnSwitch">👤 Oyuncu değiştir</button>
-    <button class="sm" id="btnPin">🔑 Şifre değiştir</button>
-    <button class="sm" id="btnCihaz">📱 Yeni cihaz ekle</button>
-    <button class="sm" id="btnKurtar">🧾 Kurtarma kodu</button>
+    <span id="mHesapAyar" style="display:contents"><button class="sm" id="btnPin">🔑 Şifre değiştir</button>
+    <button class="sm" id="btnCihaz">📱 Yeni cihaz ekle</button></span>
   </div>
   <div class="savestatus" id="saveStatus2"></div>
 </div></div>
@@ -439,14 +445,6 @@
   <div class="row" id="resButtons"><button id="btnResMenu">Ana Menü</button><button id="btnResTracks">Parkurlar</button><button class="main" id="btnResAgain">Tekrar Yarış ↻</button><button class="main hidden" id="btnResNext">Sonraki Parkur ▶</button></div>
 </div></div>
 
-<!-- Kurtarma kodu -->
-<div id="scrKod" class="screen hidden"><div class="panel" style="width:min(440px,96vw);text-align:center">
-  <h2>🧾 Kurtarma kodun</h2>
-  <p class="sub" id="rcText"></p>
-  <div class="bigcode" id="rcCode">----</div>
-  <div class="row" style="margin-top:14px"><button id="rcCopy">📋 Kopyala</button><button class="main" id="rcDone">Kaydettim, devam ▶</button></div>
-</div></div>
-
 <!-- Şifre değiştir -->
 <div id="scrSifre" class="screen hidden"><div class="panel" style="width:min(460px,96vw)">
   <h2>🔑 Şifre değiştir</h2>
@@ -486,6 +484,7 @@
 <div id="scrMp" class="screen hidden"><div class="panel" style="width:min(660px,96vw)">
   <h2>👥 Çok Oyunculu</h2>
   <p class="sub" id="mpStatus">Sunucuya bağlanılıyor…</p>
+  <div class="row" style="margin:-6px 0 10px"><span id="mpMe"></span><button class="sm hidden" id="mpRename">✏️ Adımı değiştir</button></div>
   <div class="note hidden" id="mpMsg" style="margin-bottom:10px;text-align:center"></div>
   <div id="mpHome">
     <div class="menu">

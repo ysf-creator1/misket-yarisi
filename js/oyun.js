@@ -519,7 +519,7 @@
   }
 
   // ================= EKRANLAR =================
-  const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch', 'scrMp', 'scrLider', 'scrKod', 'scrSifre', 'scrCihaz'];
+  const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch', 'scrMp', 'scrLider', 'scrSifre', 'scrCihaz'];
   const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach', scrMp: 'mp', scrLider: 'lider', scrSifre: 'menu', scrCihaz: 'menu' };
   function show(id) {
     SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id)); $('shopHint').classList.toggle('hidden', id !== 'scrShop');
@@ -546,7 +546,7 @@
   function saveStatusText() {
     const s = Kayit.status();
     return s === 'ok' ? "☁️ Kayıtların bulutta: başka cihazdan adın ve şifrenle girebilirsin" : s === 'wait' ? '⏳ Buluta kaydediliyor…'
-      : s === 'auth' ? "🔑 Oturum sona erdi: şifrenle tekrar gir" : '⚠️ İnternet yok: ilerlemen bu cihazda bekliyor, bağlanınca gönderilecek';
+      : s === 'auth' ? "🔑 Oturum sona erdi: şifrenle tekrar gir" : s === 'guest' ? '📱 Misafirsin: puanların sadece bu cihazda. Kalıcı olsun istersen hesap oluştur.' : '⚠️ İnternet yok: ilerlemen bu cihazda bekliyor, bağlanınca gönderilecek';
   }
   Kayit.onStatus = () => { for (const id of ['saveStatus1', 'saveStatus2']) { const el = $(id); el.textContent = saveStatusText(); el.className = 'savestatus s-' + Kayit.status(); } };
   // başka cihazda PIN değişti ya da oturum düştü: yarışta değilsek giriş ekranına
@@ -577,50 +577,53 @@
   function showProfiles(mode, name, msg) {
     toMenuScene();
     const list = Kayit.players();
-    $('plist').innerHTML = list.length ? list.map(p => `<button class="pcard" data-name="${esc(p.name)}"><b>${esc(p.name)}</b><small>Seviye ${levelOf(p.xp || 0)} · ⭐ ${p.points} puan</small><small>${p.races} yarış · ${p.wins} galibiyet</small><span class="del" data-del="${esc(p.name)}" title="Bu cihazdan çıkış">✕</span></button>`).join('')
+    $('plist').innerHTML = list.length ? list.map(p => `<button class="pcard" data-name="${esc(p.name)}"><b>${esc(p.name)}${Kayit.isGuest(p) ? ' <span class="pill" style="padding:0 6px;font-size:10px">misafir</span>' : ''}</b><small>Seviye ${levelOf(p.xp || 0)} · ⭐ ${p.points} puan</small><small>${p.races} yarış · ${p.wins} galibiyet</small><span class="del" data-del="${esc(p.name)}" title="Bu cihazdan çıkış">✕</span></button>`).join('')
       : '<p class="muted" style="grid-column:1/-1;text-align:center;margin:0">Bu cihazda henüz giriş yapılmadı.</p>';
     const leg = Kayit.legacyPlayers();
     $('legacyBox').classList.toggle('hidden', !leg.length);
     $('legacyList').innerHTML = leg.map(p => `<button class="pcard" data-legacy="${esc(p.name)}"><b>${esc(p.name)}</b><small>⭐ ${p.points || 0} puan · ${p.races || 0} yarış</small><small class="best">☁️ Buluta taşı</small><span class="del" data-legdel="${esc(p.name)}" title="Gizle">✕</span></button>`).join('');
     if (!mode && pendingCode) mode = 'kod';
     setAuth(mode || (list.length ? 'giris' : 'yeni'), name, msg);
+    $('btnGuestPlay').textContent = `🎮 ${Kayit.guest().name} olarak misafir devam et`;
     Kayit.onStatus(); show('scrProfile');
     if (mode === 'kod' && pendingCode) { $('authKod').value = pendingCode; pendingCode = null; submitAuth(); }
   }
   // formu moda göre düzenle
   function setAuth(mode, name, msg) {
     authMode = mode; if (mode !== 'legacy') authLegacy = null;
-    if (mode === 'yeni' || mode === 'legacy' || mode === 'kurtar') { authTur = authTur === 'resim' ? 'resim' : 'pin'; } else if (mode === 'giris') authTur = null;
+    if (mode === 'yeni' || mode === 'legacy') { authTur = authTur === 'resim' ? 'resim' : 'pin'; } else if (mode === 'giris') authTur = null;
     authPick = null;
-    document.querySelectorAll('#authTabs [data-auth]').forEach(b => b.classList.toggle('on', b.dataset.auth === (mode === 'legacy' ? 'yeni' : mode === 'kurtar' ? 'giris' : mode)));
+    document.querySelectorAll('#authTabs [data-auth]').forEach(b => b.classList.toggle('on', b.dataset.auth === (mode === 'legacy' ? 'yeni' : mode)));
     if (name != null) $('authName').value = name;
-    for (const id of ['authPin', 'authPin2', 'authKod', 'authKurtar']) $(id).value = '';
+    for (const id of ['authPin', 'authPin2', 'authKod']) $(id).value = '';
     $('authNameMsg').textContent = '';
     $('authErr').textContent = msg || ''; $('authErr').className = 'autherr' + (msg ? ' info' : '');
     renderAuth();
-    if (mode === 'giris' || mode === 'yeni' || mode === 'legacy' || mode === 'kurtar') checkNameSoon(true);
-    setTimeout(() => { const ae = document.activeElement; if (ae && ae.tagName === 'INPUT') return; (mode === 'kod' ? $('authKod') : $('authName').value ? (mode === 'kurtar' ? $('authKurtar') : $('authPin')) : $('authName')).focus(); }, 50); // yazılan kutudan imleci kaçırma
+    if (mode === 'giris' || mode === 'yeni' || mode === 'legacy') checkNameSoon(true);
+    setTimeout(() => { const ae = document.activeElement; if (ae && ae.tagName === 'INPUT') return; (mode === 'kod' ? $('authKod') : $('authName').value ? $('authPin') : $('authName')).focus(); }, 50); // yazılan kutudan imleci kaçırma
   }
   function renderAuth() {
-    const m = authMode, setting = m === 'yeni' || m === 'legacy' || m === 'kurtar', name = $('authName').value;
+    const m = authMode, setting = m === 'yeni' || m === 'legacy', name = $('authName').value;
     const lock = m === 'giris' && authTur === 'resim' && name ? lockLeft(name) : 0;
     $('authName').classList.toggle('hidden', m === 'kod');
     $('authKod').classList.toggle('hidden', m !== 'kod');
-    $('authKurtar').classList.toggle('hidden', m !== 'kurtar');
     $('authType').classList.toggle('hidden', !setting);
     document.querySelectorAll('#authType [data-tur]').forEach(b => b.classList.toggle('on', b.dataset.tur === authTur));
     const showPin = (setting && authTur === 'pin') || (m === 'giris' && authTur === 'pin');
     const showGrid = (setting && authTur === 'resim') || (m === 'giris' && authTur === 'resim');
     $('authPin').classList.toggle('hidden', !showPin); $('authPin2').classList.toggle('hidden', !(showPin && setting));
-    $('authPin').placeholder = setting ? (m === 'kurtar' ? 'Yeni PIN (4 rakam)' : 'PIN belirle (4 rakam)') : '4 haneli PIN';
+    $('authPin').placeholder = setting ? 'PIN belirle (4 rakam)' : '4 haneli PIN';
     $('authPin').autocomplete = setting ? 'new-password' : 'current-password';
     $('authGrid').classList.toggle('hidden', !showGrid);
     if (showGrid) drawGrid($('authGrid'), setting ? authPick : null, !!lock);
     $('authTypeHint').classList.toggle('hidden', !showGrid);
-    $('authTypeHint').textContent = setting ? (m === 'kurtar' ? 'Yeni resmini seç: girişte bu resme dokunacaksın.' : 'Bir resim seç: başka cihazdan girerken bu resme dokunacaksın. 3 yanlışta o cihaz 30 dakika bekler.') : 'Resmine dokun:';
+    $('authTypeHint').textContent = setting ? ('Bir resim seç: başka cihazdan girerken bu resme dokunacaksın. 3 yanlışta o cihaz 30 dakika bekler.') : 'Resmine dokun:';
     $('btnAuth').classList.toggle('hidden', m === 'giris' && authTur !== 'pin');
-    $('btnAuth').textContent = m === 'giris' ? 'Giriş yap' : m === 'legacy' ? '☁️ Buluta taşı ve oyna' : m === 'kurtar' ? 'Yeni şifreyle gir' : m === 'kod' ? 'Kodla gir' : 'Oyuncu oluştur';
+    $('btnAuth').textContent = m === 'giris' ? 'Giriş yap' : m === 'legacy' ? '☁️ Buluta taşı ve oyna' : m === 'kod' ? 'Kodla gir' : 'Oyuncu oluştur';
     $('authForgot').classList.toggle('hidden', m !== 'giris');
+    const carry = m === 'yeni' && Kayit.isGuest(state.player) && (state.player.races > 0 || state.player.points > 0);
+    $('authCarryRow').classList.toggle('hidden', !carry);
+    if (carry) $('authCarryTxt').textContent = `Misafir ilerlemem bu hesaba taşınsın (⭐ ${state.player.points} puan, ${state.player.races} yarış)`;
     clearInterval(lockTimer);
     if (lock) { const tick = () => { const l = lockLeft(name); if (!l) { clearInterval(lockTimer); $('authErr').textContent = '✅ Bekleme bitti, tekrar deneyebilirsin.'; $('authErr').className = 'autherr info'; drawGrid($('authGrid'), null, false); return; } $('authErr').textContent = `⏳ 3 kez yanlış resim seçildi. Bu cihazda 30 dakika beklemen gerekiyor. Kalan: ${mmss(l)}`; $('authErr').className = 'autherr'; }; tick(); lockTimer = setInterval(tick, 1000); }
   }
@@ -631,7 +634,7 @@
     if (authMode !== 'giris') { const local = MI.check(n); if (local) { $('authNameMsg').textContent = '⚠️ ' + local; $('authNameMsg').className = 'namemsg bad'; return; } }
     nameTimer = setTimeout(async () => {
       const r = await Kayit.checkName(n); if ($('authName').value !== n) return;
-      if (authMode === 'giris' || authMode === 'kurtar') { // giriş: şifre türüne göre PIN kutusu ya da resim ızgarası
+      if (authMode === 'giris') { // giriş: şifre türüne göre PIN kutusu ya da resim ızgarası
         const tur = r.var ? r.tur : null;
         $('authNameMsg').textContent = r.var ? (authMode === 'giris' ? (tur === 'resim' ? '🖼️ Resimli şifre' : '🔢 PIN') : '') : (r.uygun === null ? '⚠️ ' + (r.hata || '') : "⚠️ Bu adla oyuncu yok. 'Yeni oyuncu' ile oluşturabilirsin.");
         $('authNameMsg').className = 'namemsg ' + (r.var ? 'good' : 'bad');
@@ -642,17 +645,17 @@
       $('authNameMsg').className = 'namemsg ' + (r.uygun ? 'good' : 'bad');
     }, now === true ? 0 : 350);
   }
-  $('authName').addEventListener('input', checkNameSoon);
+  $('authName').addEventListener('input', () => { if (!/⏳/.test($('authErr').textContent)) $('authErr').textContent = ''; checkNameSoon(); });
   $('authTabs').addEventListener('click', e => { const b = e.target.closest('[data-auth]'); if (b) setAuth(b.dataset.auth, authMode === 'legacy' ? '' : null); });
   $('authType').addEventListener('click', e => { const b = e.target.closest('[data-tur]'); if (!b) return; authTur = b.dataset.tur; authPick = null; renderAuth(); });
-  $('authForgot').onclick = () => setAuth('kurtar', null, "Kayıtta verilen kurtarma kodunu yaz, sonra yeni şifreni belirle. Kodun yoksa: girişli bir cihazın varsa '📱 Kodla gir'i kullan, yoksa oyunun sahibinden şifreni sıfırlamasını iste.");
+  $('authForgot').onclick = () => { $('authErr').innerHTML = "Şifreni unuttuysan: girişli başka bir cihazın varsa orada menüden <b>📱 Yeni cihaz ekle</b> de, çıkan kodu burada <b>📱 Kodla gir</b>'e yaz. Yoksa oyunun sahibinden şifreni sıfırlamasını iste."; $('authErr').className = 'autherr info'; };
   $('authGrid').addEventListener('click', e => {
     const b = e.target.closest('[data-r]'); if (!b || b.disabled) return;
     const i = +b.dataset.r;
     if (authMode === 'giris') { submitAuth(i); return; } // girişte resme dokunmak yeter
     authPick = i; markGrid($('authGrid'), i);
   });
-  for (const id of ['authName', 'authPin', 'authPin2', 'authKod', 'authKurtar']) $(id).addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+  for (const id of ['authName', 'authPin', 'authPin2', 'authKod']) $(id).addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
   async function submitAuth(resim) {
     const m = authMode, ad = MI.tidy($('authName').value), err = t => { $('authErr').textContent = '⚠️ ' + t; $('authErr').className = 'autherr'; };
     let secret = null;
@@ -664,15 +667,14 @@
         else if (authTur === 'pin') { const pin = $('authPin').value.trim(); if (!MI.pinOk(pin)) return err('PIN 4 rakam olmalı'); secret = { pin }; }
         else return err('Bu adla oyuncu bulunamadı');
       } else {
-        if (m !== 'kurtar') { const e = MI.check(ad); if (e) return err(e); }
-        if (m === 'kurtar' && $('authKurtar').value.replace(/[^a-z0-9]/gi, '').length !== 8) return err('Kurtarma kodu 8 karakter (ör. K7M2-P9XQ)');
+        { const e = MI.check(ad); if (e) return err(e); if (MI.guestLike(ad)) return err("'Misafir' ile başlayan adlar misafirlere ayrılmış, başka bir ad seç"); }
         if (authTur === 'pin') { const pin = $('authPin').value.trim(); if (!MI.pinOk(pin)) return err('PIN 4 rakam olmalı'); if ($('authPin2').value.trim() !== pin) return err('İki PIN aynı değil'); secret = { tur: 'pin', pin }; }
         else { if (authPick == null) return err('Bir resim seç'); secret = { tur: 'resim', resim: authPick }; }
       }
     }
     $('btnAuth').disabled = true; $('authErr').textContent = '⏳ Bekle…'; $('authErr').className = 'autherr info';
     const r = m === 'giris' ? await Kayit.login(ad, secret) : m === 'kod' ? await Kayit.codeLogin(secret)
-      : m === 'kurtar' ? await Kayit.recover(ad, $('authKurtar').value, secret) : await Kayit.register(ad, secret, m === 'legacy' ? authLegacy : null);
+      : await Kayit.register(ad, secret, m === 'legacy' ? authLegacy : (Kayit.isGuest(state.player) && $('authCarry').checked ? state.player : null));
     $('btnAuth').disabled = false;
     if (r.hata) {
       if (r.kalanSn) { setLock(ad, r.kalanSn); renderAuth(); return; }
@@ -680,13 +682,21 @@
       if (m === 'giris' && authTur === 'resim') drawGrid($('authGrid'), null, false); // yanlış resim: dizilişi yeniden karıştır
       return;
     }
-    if (r.kurtarma) showRecovery(r.kurtarma, () => selectPlayer(r.profil.name), m === 'kurtar');
-    else selectPlayer(r.profil.name);
+    selectPlayer(r.profil.name);
   }
   $('btnAuth').onclick = () => submitAuth();
+  $('btnGuestPlay').onclick = () => selectPlayer(Kayit.guest().name);
+  // misafirin adını değiştir (şifresiz, sadece bu cihazda; çok oyunculuda bu adla görünür)
+  async function renameGuest(done) {
+    const p = state.player; if (!Kayit.isGuest(p)) return;
+    const ad = prompt('Çok oyunculuda görünecek adın (şifre gerekmez, sadece bu cihazda kalır):', p.name); if (ad == null || MI.tidy(ad) === p.name) return;
+    const r = await Kayit.renameGuest(ad); if (r.hata) { alert('⚠️ ' + r.hata); return; }
+    if (Ag.connected) Ag.connect(agProfile());
+    if (done) done();
+  }
   $('plist').addEventListener('click', async e => {
     const del = e.target.closest('[data-del]');
-    if (del) { e.stopPropagation(); const n = del.dataset.del; if (confirm(`"${n}" bu cihazdan çıkış yapsın mı?\nHesap ve puanlar bulutta kalır; tekrar adın ve şifrenle girebilirsin.`)) { await Kayit.forget(n); if (state.player && MI.key(state.player.name) === MI.key(n)) state.player = null; showProfiles(); } return; }
+    if (del) { e.stopPropagation(); const n = del.dataset.del; if (confirm(Kayit.isGuest(Kayit.get(n)) ? `Misafir "${n}" ve bu cihazdaki puanları silinsin mi?` : `"${n}" bu cihazdan çıkış yapsın mı?\nHesap ve puanlar bulutta kalır; tekrar adın ve şifrenle girebilirsin.`)) { await Kayit.forget(n); if (state.player && MI.key(state.player.name) === MI.key(n)) state.player = null; showProfiles(); } return; }
     const b = e.target.closest('[data-name]'); if (b) selectPlayer(b.dataset.name);
   });
   $('legacyList').addEventListener('click', e => {
@@ -700,15 +710,6 @@
       if (r.var) setAuth('giris', b.dataset.legacy, `"${b.dataset.legacy}" bulutta zaten kayıtlı. Şifrenle giriş yap.`);
     });
   });
-  // kurtarma kodunu göster (kayıtta, kurtarmada ve menüden yenileyince)
-  function showRecovery(code, next, again) {
-    $('rcCode').textContent = code;
-    $('rcText').textContent = again ? 'Eski kurtarma kodun artık geçersiz. Yenisini sakla:' : 'Şifreni unutursan bu kodla yeni şifre belirlersin. Ekran görüntüsü al ya da bir kâğıda yaz. Kimseyle paylaşma.';
-    state.rcNext = next; show('scrKod');
-  }
-  $('rcCopy').onclick = () => { const c = $('rcCode').textContent; if (navigator.clipboard) navigator.clipboard.writeText(c).then(() => { $('rcCopy').textContent = '✅ Kopyalandı'; }, () => { }); };
-  $('rcDone').onclick = () => { $('rcCopy').textContent = '📋 Kopyala'; const n = state.rcNext; state.rcNext = null; if (n) n(); else showMenu(); };
-
   // ---- şifre değiştir ----
   let sfOld = null, sfTur = 'pin', sfNew = null;
   function showSifre() {
@@ -776,7 +777,9 @@
     $('btnSound').textContent = Kayit.save.sound === false ? '🔇 Ses: Kapalı' : '🔊 Ses: Açık';
     $('btnGfx').textContent = '🖥️ Grafik: ' + ({ yuksek: 'Yüksek', orta: 'Orta', dusuk: 'Düşük' }[Grafik.quality()]);
     renderDaily();
-    const info = Kayit.info(); $('mKurtarUyari').classList.toggle('hidden', !info || info.kurtarmaVar);
+    const guest = Kayit.isGuest(p);
+    $('mMisafir').classList.toggle('hidden', !guest); $('mHesapAyar').classList.toggle('hidden', guest);
+    if (guest) $('mMisafirTxt').textContent = `Misafir olarak oynuyorsun (${p.name}). Puanların sadece bu cihazda; kalıcı olsun ve başka cihazdan da girebilmek istersen hesap oluştur.`;
     Kayit.onStatus(); show('scrMenu');
     if (state.authLost) authLost();
   }
@@ -784,12 +787,9 @@
   $('btnLider').onclick = () => showLider();
   $('btnPin').onclick = showSifre;
   $('btnCihaz').onclick = showCihaz;
-  $('btnKurtar').onclick = async () => {
-    const info = Kayit.info();
-    if (info && info.kurtarmaVar && !confirm('Yeni kurtarma kodu alınsın mı? Eski kodun geçersiz olur.')) return;
-    const r = await Kayit.newRecovery(); if (r.hata) { alert('⚠️ ' + r.hata); return; }
-    showRecovery(r.kurtarma, () => showMenu(), !!(info && info.kurtarmaVar));
-  };
+  $('mHesap').onclick = () => showProfiles('yeni');
+  $('mGiris').onclick = () => showProfiles('giris');
+  $('mAdDegis').onclick = () => renameGuest(() => showMenu());
   $('btnRace').onclick = () => { state.cup = null; state.world = null; showTracks(); };
   $('btnSound').onclick = () => { Kayit.save.sound = Kayit.save.sound === false; Ses.on = Kayit.save.sound !== false; Kayit.persist(); showMenu(); };
   $('btnGfx').onclick = () => {
@@ -907,7 +907,7 @@
   // Fizik sunucuda (sunucu/oyun-sunucusu.js); burada lobi ve Ag.RemoteRace ile oynatma. Puanlar normal yarış gibi profile yazılır.
   let pendingRoom = null, joinAfter = null, mpMsgTimer = null;
   try { const q = new URLSearchParams(location.search).get('oda'); if (q && /^[A-Za-z0-9]{5}$/.test(q)) pendingRoom = q.toUpperCase(); } catch (e) { }
-  const agProfile = () => ({ ad: state.player.name, eq: state.player.eq, acik: state.player.unlocked });
+  const agProfile = () => ({ ad: state.player.name, eq: state.player.eq, acik: state.player.unlocked, token: Kayit.token() }); // kayıtlı adın sahibi olduğunu göstermek için
   function showMp() {
     if (state.phase === 'shop') leaveShop();
     toMenuScene();
@@ -925,6 +925,9 @@
   function renderMp() {
     const room = Ag.room, me = Ag.pid, ready = Ag.connected && !!me;
     $('mpStatus').textContent = ready ? '🟢 Sunucuya bağlısın' : Ag.want ? '⏳ Sunucuya bağlanılıyor…' : '🔴 Bağlı değil';
+    const guest = Kayit.isGuest(state.player);
+    $('mpMe').innerHTML = `Bu oyunda adın: <b>${esc(Ag.ad || state.player.name)}</b>${guest ? ' <span class="pill" style="padding:0 6px;font-size:11px">misafir</span>' : ''}`;
+    $('mpRename').classList.toggle('hidden', !guest);
     $('mpHome').classList.toggle('hidden', !!room); $('mpRoom').classList.toggle('hidden', !room);
     for (const id of ['mpQuick', 'mpCreate', 'mpJoin']) $(id).disabled = !ready;
     if (!room) return;
@@ -942,7 +945,7 @@
     $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' ? `Oyuncular bekleniyor… ${room.bekleme} sn içinde başlar (6 kişi olunca hemen). Eksik koltuklarda bot yarışır.` : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
     $('mpSlots').innerHTML = MF.MARBLES.map((info, i) => {
       const q = room.oyuncular.find(x => x.misket === i), isMe = q && q.pid === me;
-      const who = q ? `<b>${esc(q.ad)}${isMe ? ' (sen)' : ''}${q.pid === room.kurucu && !room.hizli ? ' 👑' : ''}</b><small>${!q.bagli ? '📴 bağlantı koptu' : q.hazir ? '✅ hazır' : '⏳ hazırlanıyor'}</small>` : `<b>🤖 Bot</b><small>${room.durum === 'lobi' ? 'seçmek için dokun' : ''}</small>`;
+      const who = q ? `<b>${esc(q.ad)}${isMe ? ' (sen)' : ''}${q.misafir ? ' 👤' : ''}${q.pid === room.kurucu && !room.hizli ? ' 👑' : ''}</b><small>${!q.bagli ? '📴 bağlantı koptu' : q.hazir ? '✅ hazır' : '⏳ hazırlanıyor'}</small>` : `<b>🤖 Bot</b><small>${room.durum === 'lobi' ? 'seçmek için dokun' : ''}</small>`;
       return `<button class="mpslot${isMe ? ' me' : ''}${q ? '' : ' free'}" data-slot="${i}" ${q && !isMe ? 'disabled' : ''}><span class="ball" style="background:radial-gradient(circle at 35% 30%, ${info.color2}, ${info.color} 55%, #000 140%)"></span><span class="mn">${esc(info.name)}</span>${who}</button>`;
     }).join('');
     const n = room.oyuncular.length;
@@ -951,6 +954,7 @@
     $('mpStart').textContent = `Yarışı Başlat ▶ (${n} kişi + ${6 - n} bot)`;
   }
   $('mpQuick').onclick = () => Ag.send({ t: 'hizli' });
+  $('mpRename').onclick = () => renameGuest(() => renderMp());
   $('mpCreate').onclick = () => Ag.send({ t: 'odaKur' });
   $('mpJoin').onclick = () => { const k = $('mpCode').value.trim().toUpperCase(); if (!/^[A-Z0-9]{5}$/.test(k)) { mpMsg('Oda kodu 5 harf/rakam olmalı'); return; } Ag.send({ t: 'katil', kod: k }); };
   $('mpCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('mpJoin').click(); });
@@ -1103,7 +1107,8 @@
   }).then(() => {
     ensureTrack(1);
     const lp = Kayit.save.last && Kayit.get(Kayit.save.last);
-    if (lp && !pendingCode) selectPlayer(lp.name); else showProfiles(); // ?kod= ile gelindiyse kodla giriş
+    if (pendingCode) showProfiles('kod'); // ?kod= ile gelindiyse kodla giriş
+    else selectPlayer((lp || Kayit.guest()).name); // hesap zorunlu değil: misafirle doğrudan oyuna
     requestAnimationFrame(loop);
   }).catch(err => { $('loadMsg').textContent = 'Yüklenemedi: ' + err; console.error(err); });
 })();

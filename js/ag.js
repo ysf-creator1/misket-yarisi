@@ -30,7 +30,7 @@
       if (typeof ev.data !== 'string') { if (Ag.race) Ag.race.onSnap(new DataView(ev.data)); return; }
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       switch (m.t) {
-        case 'hosgeldin': Ag.pid = m.pid; setKey(m.anahtar); emit('durum', { bagli: true }); break;
+        case 'hosgeldin': Ag.pid = m.pid; Ag.ad = m.ad; setKey(m.anahtar); emit('durum', { bagli: true }); break; // ad: sunucunun onayladığı görünen ad
         case 'oda': Ag.room = m; emit('oda', m); break;
         case 'odadanCikti': Ag.room = null; emit('oda', null); break;
         case 'basla': emit('basla', m); break;

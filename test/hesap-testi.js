@@ -48,32 +48,30 @@ const api = async (route, opt = {}) => {
     r = await fetch(B + 'profil', { method: 'OPTIONS', headers: { Origin: 'https://kotu-site.com' } }); ok('başka siteye CORS izni yok', !r.headers.get('access-control-allow-origin'));
     // --- resimli şifre ---
     r = await api('kayit', { body: { ad: 'Resimci', tur: 'resim', resim: 7 } });
-    ok('resimli şifreyle kayıt + kurtarma kodu', r.code === 200 && r.j.tur === 'resim' && /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(r.j.kurtarma), r.j.kurtarma);
-    const kurtar1 = r.j.kurtarma, tokR = r.j.token;
+    ok('resimli şifreyle kayıt (kurtarma kodu yok)', r.code === 200 && r.j.tur === 'resim' && r.j.kurtarma === undefined);
+    const tokR = r.j.token;
+    r = await api('kayit', { body: { ad: 'Misafir123', pin: '1234' } }); ok('misafir adıyla hesap açılamaz', r.code === 400, r.j.hata);
     r = await api('isim?ad=resimci'); ok('isim sorgusu şifre türünü söyler', r.j.var && r.j.tur === 'resim');
     r = await api('giris', { dev: 'aaaa1111', body: { ad: 'resimci', resim: 3 } }); ok('yanlış resim: 2 hak kaldı', r.code === 401 && r.j.kalanHak === 2, r.j.hata);
     r = await api('giris', { dev: 'aaaa1111', body: { ad: 'resimci', resim: 4 } }); ok('yanlış resim: 1 hak kaldı', r.j.kalanHak === 1);
     r = await api('giris', { dev: 'aaaa1111', body: { ad: 'resimci', resim: 5 } }); ok('3. yanlışta 30 dk bekleme', r.code === 429 && r.j.kalanSn > 1700, r.j.hata);
     r = await api('giris', { dev: 'aaaa1111', body: { ad: 'resimci', resim: 7 } }); ok('beklemedeyken doğru resim de kabul edilmez', r.code === 429);
     r = await api('giris', { dev: 'bbbb2222', ip: '10.0.0.9', body: { ad: 'resimci', resim: 7 } }); ok('başka cihazdan doğru resimle girilir (kilit sadece o cihazda)', r.code === 200);
-    r = await api('profil', { tok: tokR }); ok('kayıtlı cihaz yeniden sormadan girer', r.code === 200 && r.j.kurtarmaVar === true);
+    r = await api('profil', { tok: tokR }); ok('kayıtlı cihaz yeniden sormadan girer', r.code === 200 && r.j.kurtarmaVar === undefined);
     // --- yeni cihaz ekle kodu ---
     r = await api('cihazkodu', { tok: tokR, body: {} }); const kod = r.j.kod; ok('yeni cihaz kodu (6 hane, 5 dk)', /^\d{6}$/.test(kod) && r.j.sureSn === 300);
     r = await api('kodla', { body: { kod } }); ok('kodla giriş', r.code === 200 && r.j.profil.name === 'Resimci');
     r = await api('kodla', { body: { kod } }); ok('kod tek kullanımlık', r.code === 401);
-    // --- kurtarma kodu ---
-    r = await api('kurtar', { body: { ad: 'Resimci', kod: 'YANLIS12', tur: 'pin', pin: '1111' } }); ok('yanlış kurtarma kodu', r.code === 401);
-    r = await api('kurtar', { body: { ad: 'resimci', kod: kurtar1.toLowerCase().replace('-', ' '), tur: 'pin', pin: '2468' } });
-    ok('kurtarma koduyla PIN belirlendi, yeni kurtarma kodu', r.code === 200 && r.j.tur === 'pin' && r.j.kurtarma && r.j.kurtarma !== kurtar1, r.j.kurtarma);
-    r = await api('profil', { tok: tokR }); ok('kurtarmadan sonra eski oturumlar kapandı', r.code === 401);
-    r = await api('giris', { body: { ad: 'Resimci', pin: '2468' } }); ok('yeni PIN ile giriş', r.code === 200); const tokR2 = r.j.token;
+    r = await api('kurtar', { body: { ad: 'Resimci', kod: 'ABCD1234', tur: 'pin', pin: '2468' } }); ok('kurtarma kodu kaldırıldı', r.code === 401 || r.code === 404);
+    r = await api('giris', { dev: 'dddd4444', ip: '10.0.0.7', body: { ad: 'Resimci', resim: 7 } }); const tokR2 = r.j.token; ok('başka cihazdan resimle giriş', r.code === 200);
+    r = await api('sifre', { tok: tokR2, body: { eski: { resim: 7 }, yeni: { tur: 'pin', pin: '2468' } } }); ok('şifre türü resim → PIN', r.code === 200 && r.j.tur === 'pin');
     r = await api('sifre', { tok: tokR2, body: { eski: { pin: '2468' }, yeni: { tur: 'resim', resim: 11 } } }); ok('şifre türü PIN → resim', r.code === 200 && r.j.tur === 'resim');
     r = await api('giris', { dev: 'cccc3333', ip: '10.0.0.5', body: { ad: 'Resimci', resim: 11 } }); ok('yeni resimle giriş', r.code === 200);
     // --- yönetici sıfırlama (yalnız sunucu içinden) ---
     let rr = await fetch(B + 'yonetici/sifirla', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '1.2.3.4' }, body: JSON.stringify({ ad: 'Resimci' }) });
     ok('dışarıdan yönetici sıfırlaması yasak', rr.status === 403);
     rr = await fetch(B + 'yonetici/sifirla', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ad: 'Resimci' }) }); const sf = await rr.json();
-    ok('sunucu içinden sıfırlama yeni PIN verir', rr.status === 200 && /^\d{4}$/.test(sf.pin), `PIN ${sf.pin}`);
+    ok('sunucu içinden sıfırlama yeni PIN verir', rr.status === 200 && /^\d{4}$/.test(sf.pin) && sf.kurtarma === undefined, `PIN ${sf.pin}`);
     r = await api('giris', { body: { ad: 'Resimci', pin: sf.pin } }); ok('sıfırlanan PIN ile giriş', r.code === 200);
     await sleep(2500);
     const saved = JSON.parse(fs.readFileSync(path.join(VERI, 'hesaplar.json'), 'utf8'));

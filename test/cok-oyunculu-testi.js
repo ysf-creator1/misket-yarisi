@@ -5,6 +5,8 @@
 // Kullanım: node test/cok-oyunculu-testi.js [parkur=1]  (Node 22+: yerleşik WebSocket)
 const path = require('path');
 const { spawn } = require('child_process');
+const fs = require('fs'), os = require('os');
+const VERI = fs.mkdtempSync(path.join(os.tmpdir(), 'misket-mp-')); // gerçek kayıtlara dokunma
 const PORT = 8795, URL0 = `ws://127.0.0.1:${PORT}/ws`;
 const trackId = +process.argv[2] || 1;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -37,7 +39,7 @@ class Client {
 const humanFlags = dv => { const n = dv.getUint8(1), out = []; for (let i = 0; i < n; i++) if (dv.getUint16(12 + i * 48 + 44, true) & 1024) out.push(i); return out; };
 
 (async () => {
-  const srv = spawn(process.execPath, [path.join(__dirname, '..', 'sunucu', 'oyun-sunucusu.js')], { env: Object.assign({}, process.env, { PORT }), stdio: ['ignore', 'pipe', 'pipe'] });
+  const srv = spawn(process.execPath, [path.join(__dirname, '..', 'sunucu', 'oyun-sunucusu.js')], { env: Object.assign({}, process.env, { PORT, VERI }), stdio: ['ignore', 'pipe', 'pipe'] });
   let srvLog = ''; srv.stdout.on('data', d => srvLog += d); srv.stderr.on('data', d => srvLog += d);
   for (let i = 0; i < 100 && !srvLog.includes('hazır'); i++) await sleep(100);
   try {
@@ -85,6 +87,19 @@ const humanFlags = dv => { const n = dv.getUint8(1), out = []; for (let i = 0; i
     ok('yarıştan sonra oda lobiye döndü', A.room.durum === 'lobi' && A.room.oyuncular.length === 3);
     for (const c of [A, B, C2]) c.close();
 
+    console.log('1b) Misafir adları');
+    const G1 = new Client('Misafir321', 3); await G1.hello(); const h1 = G1.msgs.find(m => m.t === 'hosgeldin');
+    ok('misafir kendi adıyla görünür', h1.ad === 'Misafir321');
+    G1.send({ t: 'merhaba', ad: 'Can Kardeş', acik: 3 }); await sleep(300);
+    ok('misafir adını değiştirebilir (şifresiz)', G1.msgs.filter(m => m.t === 'hosgeldin').pop().ad === 'Can Kardeş');
+    G1.close();
+    // kayıtlı bir adı şifresiz (oturumsuz) alamaz
+    const reg = await (await fetch(`http://127.0.0.1:${PORT}/api/kayit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ad: 'Kayıtlı Ece', pin: '1357' }) })).json();
+    const G2 = new Client('kayıtlı ece', 3); await G2.hello(); const h2 = G2.msgs.find(m => m.t === 'hosgeldin');
+    ok('misafir kayıtlı bir oyuncunun adını alamaz', /^Misafir\d{3}$/.test(h2.ad), h2.ad); G2.close();
+    const G3 = new Client('Kayıtlı Ece', 3); await G3.open; G3.send({ t: 'merhaba', ad: 'Kayıtlı Ece', acik: 3, token: reg.token }); await G3.wait(m => m.t === 'hosgeldin');
+    ok('hesabın sahibi (oturumla) kendi adını kullanır', G3.msgs.find(m => m.t === 'hosgeldin').ad === 'Kayıtlı Ece'); G3.close();
+
     console.log('2) Hızlı oyun: tek oyuncu, süre dolunca botlarla');
     const Q = new Client('Hızlı', 7); await Q.hello(); Q.send({ t: 'hizli' });
     const q0 = await Q.wait(m => m.t === 'oda');
@@ -100,6 +115,7 @@ const humanFlags = dv => { const n = dv.getUint8(1), out = []; for (let i = 0; i
   } catch (e) { fail++; console.log('  ✗ HATA', e.message); }
   srv.kill('SIGTERM');
   if (/hatası/.test(srvLog)) { fail++; console.log('  ✗ sunucu günlüğünde hata:\n' + srvLog.split('\n').filter(l => /hatası|Error/.test(l)).slice(0, 5).join('\n')); }
+  await sleep(600); try { fs.rmSync(VERI, { recursive: true, force: true }); } catch (e) { } // sunucu kapanırken son kaydı yazar
   console.log(`\n${pass} geçti, ${fail} kaldı`);
   process.exit(fail ? 1 : 0);
 })();

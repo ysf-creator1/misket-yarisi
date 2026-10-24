@@ -57,7 +57,7 @@ function roomInfo(room) {
   return {
     t: 'oda', kod: room.code, kurucu: room.host, parkur: room.track, hizli: room.quick, durum: room.state,
     bekleme: room.quick && room.state === 'lobi' ? Math.max(0, Math.ceil((room.quickAt - Date.now()) / 1000)) : null,
-    oyuncular: humansOf(room).map(p => ({ pid: p.pid, ad: p.name, misket: p.marble, hazir: p.ready, bagli: !!(p.ws && p.ws.readyState === 1), eq: p.eq, acik: p.unlocked })),
+    oyuncular: humansOf(room).map(p => ({ pid: p.pid, ad: p.name, misafir: !p.kayitli, misket: p.marble, hazir: p.ready, bagli: !!(p.ws && p.ws.readyState === 1), eq: p.eq, acik: p.unlocked })),
   };
 }
 const pushRoom = room => broadcast(room, roomInfo(room));
@@ -200,8 +200,11 @@ function onMessage(p, msg) {
   const room = p.room;
   switch (msg.t) {
     case 'merhaba': {
-      p.name = cleanName(msg.ad); p.eq = cleanEq(msg.eq); p.unlocked = clampTrack(msg.acik);
-      send(p, { t: 'hosgeldin', pid: p.pid, anahtar: p.key, parkurSayisi: MP.TRACKS.length });
+      // kayıtlı bir adı yalnızca o hesabın oturumu kullanabilir; değilse misafir adı verilir
+      const nm = hesaplar.mpName(cleanName(msg.ad), typeof msg.token === 'string' ? msg.token : '');
+      p.name = nm ? nm.name : 'Misafir' + (100 + crypto.randomInt(900)); p.kayitli = !!(nm && nm.kayitli);
+      p.eq = cleanEq(msg.eq); p.unlocked = clampTrack(msg.acik);
+      send(p, { t: 'hosgeldin', pid: p.pid, anahtar: p.key, parkurSayisi: MP.TRACKS.length, ad: p.name });
       if (p.room) { pushRoom(p.room); if (p.room.race && p.marble >= 0) { send(p, startMsg(p.room, p)); resendHand(p); } }
       return;
     }

@@ -33,6 +33,10 @@
   }
   function migratePlayer(p) { const d = newPlayer(p.name); for (const k in d) if (p[k] === undefined) p[k] = d[k]; return p; }
   for (const k in store.accounts) migratePlayer(store.accounts[k].profile);
+  // misafir oyuncu: sunucuda yok, yalnız bu cihazda
+  function ensureGuest() { if (!store.guest || !store.guest.profile) { store.guest = { profile: newPlayer(MI.guestName()), last: 0 }; keep(); } migratePlayer(store.guest.profile); return store.guest.profile; }
+  const isGuest = p => !!(p && store.guest && store.guest.profile === p);
+  const guestByName = name => store.guest && store.guest.profile && MI.key(store.guest.profile.name) === MI.key(name) ? store.guest : null;
 
   // ---- eski cihaz kayıtları (buluta taşınmamış) ----
   function legacyPlayers() {
@@ -58,8 +62,9 @@
   let state = 'ok', timer = null, busy = false;
   const setState = s => { if (s !== state) { state = s; Kayit.onStatus(); } };
   function persist() {
-    const a = Kayit.active && acc(Kayit.active.name);
     writeJSON(AYAR, save);
+    if (isGuest(Kayit.active)) { keep(); setState('guest'); return; } // misafir: yalnız bu cihaza
+    const a = Kayit.active && acc(Kayit.active.name);
     if (!a) return;
     a.profile = Kayit.active; a.dirty = true; keep();
     setState(state === 'off' ? 'off' : 'wait');
@@ -87,19 +92,19 @@
   const score = p => [p.earned || 0, p.races || 0];
   function ahead(a, b) { const x = score(a), y = score(b); return x[0] !== y[0] ? x[0] > y[0] : x[1] > y[1]; }
 
-  function remember(name, token, profil, rev, tur, kurtarmaVar) {
+  function remember(name, token, profil, rev, tur) {
     const k = MI.key(name);
     const p = migratePlayer(Object.assign(newPlayer(profil.name), profil));
-    store.accounts[k] = { token, rev, profile: p, dirty: false, last: Date.now(), tur: tur || 'pin', kurtarmaVar: kurtarmaVar !== false }; keep();
+    store.accounts[k] = { token, rev, profile: p, dirty: false, last: Date.now(), tur: tur || 'pin' }; keep();
     return p;
   }
-  // gelen giriş yanıtı → { profil, kurtarma? } ya da { hata, kalanSn, kalanHak }
-  function loggedIn(r, kurtarmaVar) {
+  // gelen giriş yanıtı → { profil } ya da { hata, kalanSn, kalanHak }
+  function loggedIn(r) {
     if (r.code !== 200) return { hata: r.j.hata || 'Giriş olmadı', kalanSn: r.j.kalanSn || 0, kalanHak: r.j.kalanHak };
     markMoved(r.j.profil.name);
     const old = acc(r.j.profil.name);
-    if (old && old.dirty && ahead(old.profile, r.j.profil)) { old.token = r.j.token; old.rev = r.j.rev; old.tur = r.j.tur; keep(); return { profil: old.profile, kurtarma: r.j.kurtarma }; } // cihazda bekleyen ilerleme
-    return { profil: remember(r.j.profil.name, r.j.token, r.j.profil, r.j.rev, r.j.tur, r.j.kurtarma ? true : kurtarmaVar), kurtarma: r.j.kurtarma };
+    if (old && old.dirty && ahead(old.profile, r.j.profil)) { old.token = r.j.token; old.rev = r.j.rev; old.tur = r.j.tur; keep(); return { profil: old.profile }; } // cihazda bekleyen ilerleme
+    return { profil: remember(r.j.profil.name, r.j.token, r.j.profil, r.j.rev, r.j.tur) };
   }
 
   const Kayit = G.Kayit = {
@@ -108,21 +113,35 @@
     status: () => state,
     persist, flush: k => push(k),
     // bu cihazda girilmiş hesaplar (son kullanılan önce)
-    players() { return Object.values(store.accounts).sort((a, b) => (b.last || 0) - (a.last || 0)).map(a => a.profile); },
-    get(name) { const a = acc(name); return a ? a.profile : null; },
+    players() { const L = Object.values(store.accounts); if (store.guest && store.guest.profile) L.push(store.guest); return L.sort((a, b) => (b.last || 0) - (a.last || 0)).map(a => a.profile); },
+    get(name) { const a = acc(name) || guestByName(name); return a ? a.profile : null; },
+    guest: ensureGuest, isGuest,
+    // misafirin görünen adını değiştir (şifresiz; kayıtlı bir oyuncunun adı alınamaz)
+    async renameGuest(ad) {
+      const g = store.guest; if (!g) return { hata: 'Misafir yok' };
+      ad = MI.tidy(ad); const e = MI.check(ad); if (e) return { hata: e };
+      if (!MI.guestLike(ad)) { const r = await Kayit.checkName(ad); if (r.var) return { hata: 'Bu ad kayıtlı bir oyuncunun, başka bir ad seç' }; if (r.uygun === null) return { hata: r.hata || 'Sunucuya ulaşılamadı' }; }
+      if (acc(ad)) return { hata: 'Bu cihazda bu adla bir hesap var' };
+      g.profile.name = ad; if (Kayit.active === g.profile) save.last = ad; keep(); writeJSON(AYAR, save);
+      return { ok: true };
+    },
+    // çok oyunculu sunucuya adın sahibi olduğunu göstermek için (misafirde boş)
+    token() { const a = Kayit.active && !isGuest(Kayit.active) && acc(Kayit.active.name); return a ? a.token : ''; },
     // oyuna gir: önce cihazdaki kopya, sonra buluttan tazele
     use(name) {
-      const a = acc(name); if (!a) return null;
+      const a = acc(name) || guestByName(name); if (!a) return null;
+      if (a === store.guest) { Kayit.active = a.profile; a.last = Date.now(); save.last = a.profile.name; keep(); writeJSON(AYAR, save); setState('guest'); return a.profile; }
       Kayit.active = a.profile; a.last = Date.now(); save.last = a.profile.name; keep(); writeJSON(AYAR, save);
       Kayit.refresh();
       return a.profile;
     },
     async refresh() {
+      if (isGuest(Kayit.active)) return;
       const a = Kayit.active && acc(Kayit.active.name); if (!a) return;
       if (a.dirty) { push(); return; }
       const r = await call('profil', { token: a.token });
       if (r.code === 200) {
-        a.tur = r.j.tur || a.tur; a.kurtarmaVar = !!r.j.kurtarmaVar; keep();
+        a.tur = r.j.tur || a.tur; keep();
         if (r.j.rev !== a.rev || ahead(r.j.profil, a.profile)) { const mine = a.profile; Object.keys(mine).forEach(k => delete mine[k]); Object.assign(mine, migratePlayer(r.j.profil)); a.rev = r.j.rev; keep(); Kayit.onProfile(); }
         setState('ok');
       } else if (r.code === 401) { setState('auth'); Kayit.onAuthLost(a.profile.name); }
@@ -130,32 +149,32 @@
     },
     checkName: async ad => { const e = MI.check(ad); if (e) return { uygun: false, hata: e }; const r = await call('isim?ad=' + encodeURIComponent(MI.tidy(ad))); return r.code === 200 ? r.j : { uygun: null, hata: r.j.hata }; },
     // yeni hesap; sifre = { tur: 'pin', pin } ya da { tur: 'resim', resim: 0..11 }; eski cihaz kaydı varsa onunla
+    // fromLegacy: eski cihaz kaydı ya da misafirin profili (ilerlemesi yeni hesaba taşınır)
     async register(ad, sifre, fromLegacy) {
       const r = await call('kayit', { body: Object.assign({ ad: MI.tidy(ad) }, sifre) });
       if (r.code !== 200) return { hata: r.j.hata || 'Kayıt olmadı' };
-      const out = loggedIn(r, true), p = out.profil;
+      const out = loggedIn(r), p = out.profil, wasGuest = isGuest(fromLegacy);
       if (fromLegacy) { // eski ilerlemeyi buluta yükle
         Object.assign(p, migratePlayer(Object.assign({}, fromLegacy, { name: p.name })));
         const a = store.accounts[MI.key(p.name)];
         const u = await call('profil', { method: 'PUT', token: a.token, body: { profil: p, rev: a.rev } });
         if (u.code === 200) a.rev = u.j.rev; else a.dirty = true;
-        keep(); markMoved(fromLegacy.name);
+        if (wasGuest) { if (Kayit.active === store.guest.profile) Kayit.active = null; delete store.guest; } else markMoved(fromLegacy.name);
+        keep();
       }
       return out;
     },
     // sifre = { pin } ya da { resim }
     login: async (ad, sifre) => loggedIn(await call('giris', { body: Object.assign({ ad: MI.tidy(ad) }, sifre) })),
-    // kurtarma koduyla yeni şifre
-    recover: async (ad, kod, sifre) => loggedIn(await call('kurtar', { body: Object.assign({ ad: MI.tidy(ad), kod }, sifre) })),
     // başka cihazda gösterilen 6 haneli kodla giriş
     codeLogin: async kod => loggedIn(await call('kodla', { body: { kod } })),
-    // girişli cihazda: yeni cihaz kodu / yeni kurtarma kodu
+    // girişli cihazda: yeni cihaz kodu
     async deviceCode() { const a = Kayit.active && acc(Kayit.active.name); if (!a) return { hata: 'Önce giriş yap' }; const r = await call('cihazkodu', { method: 'POST', token: a.token, body: {} }); return r.code === 200 ? r.j : { hata: r.j.hata }; },
-    async newRecovery() { const a = Kayit.active && acc(Kayit.active.name); if (!a) return { hata: 'Önce giriş yap' }; const r = await call('kurtarmakodu', { method: 'POST', token: a.token, body: {} }); if (r.code === 200) { a.kurtarmaVar = true; keep(); return r.j; } return { hata: r.j.hata }; },
-    // etkin hesabın şifre türü ve kurtarma kodu durumu
-    info() { const a = Kayit.active && acc(Kayit.active.name); return a ? { tur: a.tur || 'pin', kurtarmaVar: a.kurtarmaVar !== false } : null; },
+    // etkin hesabın şifre türü (misafirde null)
+    info() { const a = Kayit.active && acc(Kayit.active.name); return a ? { tur: a.tur || 'pin' } : null; },
     // bu cihazdan çıkış (bulut hesabı silinmez)
     async forget(name) {
+      if (guestByName(name)) { if (isGuest(Kayit.active)) Kayit.active = null; delete store.guest; keep(); return; } // misafir ilerlemesi silinir
       const a = acc(name); if (!a) return;
       if (a.dirty) await push();
       call('cikis', { method: 'POST', token: a.token });
