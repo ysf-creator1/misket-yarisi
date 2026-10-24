@@ -14,6 +14,8 @@
   const SIDE_KINDS = ['jump', 'tramp', 'funnelExit', 'drop'];
   const INTRO = 5.6; // giriş animasyonu (≈2,4 sn) + 3-2-1 geri sayımı
   const MEDAL = ['🥇', '🥈', '🥉'];
+  const OPEN_FREE = 10; // ilk 10 parkur herkese açık, sonrası sırayla açılır
+  const openUpTo = p => Math.min(MP.TRACKS.length, Math.max(p.unlocked || 1, OPEN_FREE));
   const CUP_POINTS = [10, 7, 5, 3, 2, 1];
   const pointsFor = id => MP.pointsFor(id); // 1. olana verilen puan (P): 100 → 265; 2. P/2, 3. P/4
   const prizeFor = (id, place) => { const P = pointsFor(id); return place === 1 ? P : place === 2 ? Math.round(P / 2) : place === 3 ? Math.round(P / 4) : 0; };
@@ -131,6 +133,7 @@
     state.view = Grafik.buildView(state.track);
   }
   function disposeRace() {
+    state.paused = false; state.pauseOpen = false; state.introHold = false; $('pauseBox').classList.add('hidden'); $('gucIntro').classList.add('hidden');
     for (const mv of state.mvs) Grafik.disposeMarble(mv);
     state.mvs = [];
     Grafik.clearTemps(); Grafik.Particles.clear();
@@ -249,6 +252,22 @@
   $('cards').addEventListener('click', e => { const b = e.target.closest('[data-card]'); if (b) pickCard(+b.dataset.card); });
 
   // ================= YARIŞ =================
+  // tüm güç kartları (ilk 3 parkurda yarış öncesi tanıtım, menüdeki Güç Kartları ekranı, duraklatma menüsü)
+  const TIER = { 1: 'Sık çıkar', 2: 'Orta', 3: 'Nadir · güçlü' };
+  function powerCardsHTML() {
+    const card = p => `<div class="gcard ${p.type}"><span class="gic">${p.icon}</span><span class="gtx"><span class="gtyp">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'} · ${TIER[p.tier]}</span><b>${p.name}</b><small>${p.desc}</small></span></div>`;
+    return `<h3>💪 Güçlen (kendine)</h3><div class="ggrid">${MG.POWERS.filter(p => p.type === 'self').map(card).join('')}</div><h3>🪤 Tuzak (rakiplere)</h3><div class="ggrid">${MG.POWERS.filter(p => p.type === 'attack').map(card).join('')}</div>`;
+  }
+  function showGucler() { toMenuScene(); $('gucList').innerHTML = powerCardsHTML(); show('scrGuc'); }
+  let introTimer = null;
+  function showPowerIntro() {
+    state.introHold = true; $('gucIntroList').innerHTML = powerCardsHTML(); $('gucIntro').classList.remove('hidden');
+    const t0 = performance.now(), D = 15000;
+    clearInterval(introTimer);
+    introTimer = setInterval(() => { const u = (performance.now() - t0) / D; $('gucIntroBar').style.width = Math.max(0, 100 * (1 - u)) + '%'; if (u >= 1) endPowerIntro(); }, 100);
+  }
+  function endPowerIntro() { clearInterval(introTimer); state.introHold = false; $('gucIntro').classList.add('hidden'); }
+  $('gucIntroGo').onclick = endPowerIntro;
   function startRace() {
     if (window.Ag && (Ag.room || state.mp)) leaveMp(); // tek oyunculu yarışa geçerken odadan çık
     ensureTrack(state.trackId);
@@ -270,6 +289,7 @@
     show(null); $('hud').classList.remove('hidden'); $('toasts').innerHTML = ''; $('slowmo').classList.add('hidden'); hideCards();
     buildHud(); updateHud(true);
     lastCount = null;
+    if (state.trackId <= 3 && !state.cup) showPowerIntro(); // ilk 3 parkurda: yarıştan önce tüm güç kartları
   }
   let lastCount = null;
   function countdownTick(dt) {
@@ -298,20 +318,29 @@
     const s = st(state.player);
     if (mine) { s.powers = (s.powers || 0) + 1; dailyAdd('guc'); if (P.type === 'attack') { s.traps = (s.traps || 0) + 1; dailyAdd('tuzak'); } }
     for (const bid of (e.blockedIds || []).concat(e.blocked && tg && !(e.blockedIds || []).length ? [tg.id] : [])) { Grafik.sparkle(r.marbles[bid].body.translation(), '#7fd8ff'); Ses.blocked(); if (bid === state.pick) { s.blocks = (s.blocks || 0) + 1; dailyAdd('kalkan'); } }
-    let msg;
-    if (P.type === 'self') msg = `${P.icon} ${mine ? 'Sen' : nameOf(r, e.id)}: ${P.name}`;
-    else if (e.power === 'ruzgar') msg = `${P.icon} ${mine ? 'Sen' : nameOf(r, e.id)} ters rüzgâr estirdi!` + (meHit ? ' (sana da!)' : '');
-    else if (e.power === 'bomba') {
-      const names = (e.targets || []).map(id => id === state.pick ? 'SEN' : nameOf(r, id));
-      msg = names.length ? `💣 ${mine ? 'Senin bomban' : nameOf(r, e.id) + ' bombası'} patladı: ${names.join(', ')} sersemledi!` : `🛡️ Bomba kalkanla engellendi!`;
-    }
-    else if (e.targets && e.power !== 'ruzgar') {
-      const names = e.targets.map(id => id === state.pick ? 'SANA' : nameOf(r, id));
-      msg = names.length ? `${P.icon} ${mine ? 'Sen' : nameOf(r, e.id)} → ${names.join(' ve ')}: ${P.name}` : `🛡️ ${P.name} saldırısı kalkanla engellendi!`;
-    }
-    else if (tg) msg = e.blocked ? `🛡️ ${tg.id === state.pick ? 'Kalkanın' : nameOf(r, tg.id) + ' kalkanla'} ${P.name} saldırısını engelledi!` : `${P.icon} ${mine ? 'Sen' : nameOf(r, e.id)} → ${tg.id === state.pick ? 'SANA' : nameOf(r, tg.id)}: ${P.name}`;
+    // bildirim: kim (renkli ad), hangi kart, kime — 3 sn
+    const who = mine ? 'Sen' : nameOf(r, e.id), nm = id => id === state.pick ? 'SEN' : nameOf(r, id);
+    let detail = P.desc, blockedAll = false;
+    if (e.power === 'ruzgar') detail = (e.targets || []).length ? 'Geri itilen: ' + e.targets.map(nm).join(', ') : 'Kimse etkilenmedi';
+    else if (e.power === 'bomba') { const n = (e.targets || []).map(nm); detail = n.length ? 'Sersemleyen: ' + n.join(', ') : 'Kalkanla engellendi'; blockedAll = !n.length; }
+    else if (e.targets && P.type === 'attack') { const n = e.targets.map(nm); detail = n.length ? 'Hedef: ' + n.join(' ve ') : 'Kalkanla engellendi'; blockedAll = !n.length; }
+    else if (tg) { detail = e.blocked ? `${nm(tg.id)} kalkanla engelledi` : 'Hedef: ' + nm(tg.id); blockedAll = !!e.blocked; }
     // telefonda ekran küçük: yalnızca seni ilgilendiren güç bildirimleri
-    if (msg && (mine || meHit || (!window.MOBIL && Math.random() < 0.6))) toast(msg, mine ? 'gold' : meHit ? 'bad' : '');
+    if (mine || meHit || (!window.MOBIL && Math.random() < 0.6)) powerToast({ icon: blockedAll ? '🛡️' : P.icon, who, color: state.colors[e.id], power: P.name, type: P.type, detail, cls: mine ? 'mine' : meHit ? 'hit' : P.type === 'self' ? 'self' : 'atk' });
+  }
+  function powerToast(o) {
+    const el = document.createElement('div'); el.className = 'pwt ' + o.cls;
+    const ic = document.createElement('span'); ic.className = 'pic'; ic.textContent = o.icon;
+    const body = document.createElement('div'); body.className = 'pbody';
+    const top = document.createElement('div');
+    const w = document.createElement('b'); w.textContent = o.who; w.style.color = o.color; if (o.who === 'Sen') w.style.color = '#ffd77a';
+    const tag = document.createElement('span'); tag.className = 'ptag ' + o.type; tag.textContent = o.type === 'self' ? 'GÜÇLEN' : 'TUZAK';
+    const pn = document.createElement('span'); pn.className = 'pname'; pn.textContent = o.power;
+    top.append(w, tag, pn);
+    const d = document.createElement('small'); d.textContent = o.detail;
+    body.append(top, d); el.append(ic, body);
+    $('toasts').appendChild(el); setTimeout(() => el.classList.add('out'), 2700); setTimeout(() => el.remove(), 3000);
+    while ($('toasts').children.length > (window.MOBIL ? 2 : 3)) $('toasts').firstChild.remove();
   }
   function handleEvents() {
     const r = state.race;
@@ -414,7 +443,7 @@
     if (place === 1) { p.wins++; if (state.wasLast) st(p).comeback = (st(p).comeback || 0) + 1; }
     let unlockedNew = false;
     // çok oyunculuda kilidi açık olmayan parkurda (arkadaşın seçtiği) ilk 3 sonraki parkuru açmaz
-    if (place <= 3) { p.podiums++; if (id + 1 > p.unlocked && id <= p.unlocked) { p.unlocked = id + 1; unlockedNew = true; } }
+    if (place <= 3) { p.podiums++; const lim = openUpTo(p); if (id + 1 > lim && id <= lim) { p.unlocked = id + 1; unlockedNew = true; } else if (id + 1 > p.unlocked && id < OPEN_FREE) p.unlocked = id + 1; }
     if (state.mp) { st(p).mpRaces = (st(p).mpRaces || 0) + 1; if (place === 1) st(p).mpWins = (st(p).mpWins || 0) + 1; }
     dailyAdd('yaris'); if (place <= 3) dailyAdd('ilk3'); if (place === 1) dailyAdd('birinci'); if (state.mp) dailyAdd('mp'); if (unlockedNew) dailyAdd('yeni');
     const b = p.best[id];
@@ -474,7 +503,7 @@
       $('btnResAgain').textContent = 'Tekrar Yarış ↻';
     }
     // sonraki parkura geç (açıksa); kupada gösterilmez
-    const nb = $('btnResNext'), hasNext = !state.cup && id < MP.TRACKS.length, nextOpen = hasNext && p.unlocked >= id + 1;
+    const nb = $('btnResNext'), hasNext = !state.cup && id < MP.TRACKS.length, nextOpen = hasNext && openUpTo(p) >= id + 1;
     nb.classList.toggle('hidden', !hasNext); nb.disabled = !nextOpen;
     nb.textContent = nextOpen ? 'Sonraki Parkur ▶' : '🔒 Sonraki Parkur (ilk 3 gerekli)';
     $('btnResAgain').classList.toggle('main', !nextOpen);
@@ -493,7 +522,8 @@
     const r = state.race;
     if (state.phase === 'replay') replayTick(dt);
     else if (r && (state.phase === 'countdown' || state.phase === 'race' || state.phase === 'ending')) {
-      if (state.phase === 'countdown') countdownTick(dt);
+      if (state.paused) { Grafik.render(); return; } // tek kişilikte duraklatıldı: her şey durur
+      if (state.phase === 'countdown' && !state.introHold) countdownTick(dt); // ilk parkurlarda güç kartları tanıtımı bitene kadar bekler
       // ağır çekim kaldırıldı (oyuncu isteği): yarış hep normal hızda akar
       r.step(dt);
       handleEvents();
@@ -519,8 +549,8 @@
   }
 
   // ================= EKRANLAR =================
-  const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch', 'scrMp', 'scrLider', 'scrSifre', 'scrCihaz'];
-  const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach', scrMp: 'mp', scrLider: 'lider', scrSifre: 'menu', scrCihaz: 'menu' };
+  const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch', 'scrMp', 'scrLider', 'scrSifre', 'scrCihaz', 'scrGuc'];
+  const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach', scrMp: 'mp', scrLider: 'lider', scrSifre: 'menu', scrCihaz: 'menu', scrGuc: 'menu' };
   function show(id) {
     SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id)); $('shopHint').classList.toggle('hidden', id !== 'scrShop');
     const navOn = id in NAV_OF && !!state.player;
@@ -534,7 +564,7 @@
     if (state.phase === 'shop' && to !== 'shop') leaveShop();
     if (to !== 'mp' && state.phase === 'result') leaveMp();
     if (to === 'menu') showMenu();
-    else if (to === 'tracks') { state.cup = null; showTracks(); }
+    else if (to === 'tracks') { state.cup = null; state.world = null; showTracks(); }
     else if (to === 'cups') { state.cup = null; showCups(); }
     else if (to === 'shop') { if (state.phase !== 'shop') { state.cup = null; showShop(); } }
     else if (to === 'ach') { state.cup = null; toMenuScene(); showAch(); }
@@ -785,6 +815,8 @@
   }
   $('btnSwitch').onclick = () => showProfiles();
   $('btnLider').onclick = () => showLider();
+  $('btnGuc').onclick = showGucler;
+  $('gucBack').onclick = showMenu;
   $('btnPin').onclick = showSifre;
   $('btnCihaz').onclick = showCihaz;
   $('mHesap').onclick = () => showProfiles('yeni');
@@ -798,25 +830,35 @@
     showMenu();
   };
 
-  function showTracks(world) {
+  // parkur seçimi: dünyalar akordiyon gibi; başlığa dokununca altında 10 parkuru açılır. Varsayılan: en son oynanan parkurun dünyası.
+  function showTracks(world, scroll = true) {
     toMenuScene();
-    const p = state.player, maxOpen = Math.min(p.unlocked, MP.TRACKS.length);
-    if (world == null) world = state.world != null ? state.world : MP.worldOf(maxOpen).id;
+    const p = state.player, maxOpen = openUpTo(p);
+    if (world == null) {
+      const last = state.trackId && state.trackId <= maxOpen ? state.trackId : maxOpen;
+      world = state.world != null ? state.world : MP.worldOf(last).id;
+    }
     state.world = world;
-    const tabs = MP.WORLDS.map(w => {
-      const first = w.id * 10 + 1, open = first <= p.unlocked, done = MP.TRACKS.filter(t => t.world === w.id && p.best[t.id] && p.best[t.id].place <= 3).length;
-      return `<button class="wtab${w.id === world ? ' on' : ''}${open ? '' : ' locked'}" ${open ? `data-world="${w.id}"` : 'disabled'} title="${esc(w.name)}"><span>${w.icon}</span><b>${esc(w.name)}</b><small>${open ? done + '/10' : '🔒'}</small></button>`;
+    $('tlist').innerHTML = MP.WORLDS.map(w => {
+      const first = w.id * 10 + 1, open = first <= maxOpen, on = open && w.id === world;
+      const done = MP.TRACKS.filter(t => t.world === w.id && p.best[t.id] && p.best[t.id].place <= 3).length;
+      const head = `<button class="acchead${on ? ' on' : ''}" ${open ? `data-world="${w.id}"` : 'disabled'}><span class="ic">${w.icon}</span><span class="nm"><b style="color:${open ? w.pal[0] : 'inherit'}">${esc(w.name)}</b><small>Parkur ${first}–${first + 9}${open ? '' : ' · 🔒 önceki dünyada ilerle'}</small></span><span class="dn">${open ? `${done}/10 ✓` : '🔒'}</span><span class="ar">${open ? (on ? '▴' : '▾') : ''}</span></button>`;
+      if (!on) return `<div class="acc${open ? '' : ' locked'}">${head}</div>`;
+      const ts = MP.TRACKS.filter(t => t.world === w.id);
+      return `<div class="acc open" id="accOpen">${head}<p class="muted" style="margin:6px 4px;font-size:12px;font-weight:700">Son 3 parkur dünya kupasıdır.</p><div class="tgrid">${ts.map(t => {
+        const topen = t.id <= maxOpen, b = p.best[t.id];
+        const sub = !topen ? "🔒 Önceki parkurda ilk 3'e gir" : `⏱ ~${t.target} sn · 🥇 ${pointsFor(t.id)} puan`;
+        return `<button class="tcard${topen ? '' : ' locked'}${t.id === state.trackId ? ' last' : ''}" ${topen ? `data-track="${t.id}"` : 'disabled'}><span class="num">PARKUR ${t.id}${t.hand ? ' · ⭐ ÖZEL' : ''}${t.id === state.trackId ? ' · son oynanan' : ''}</span><b>${esc(t.name)}</b><small>${sub}</small>${b ? `<small class="best">En iyi: ${MEDAL[b.place - 1] || b.place + '.'}${b.time ? ' · ' + b.time.toFixed(1) + ' sn' : ''}</small>` : ''}</button>`;
+      }).join('')}</div></div>`;
     }).join('');
-    const W = MP.WORLDS[world], ts = MP.TRACKS.filter(t => t.world === world);
-    $('tlist').innerHTML = `<div class="wtabs">${tabs}</div><div class="cuphead"><span>${W.icon}</span><span style="color:${W.pal[0]}">${esc(W.name)}</span><span class="muted" style="font-size:13px;font-weight:700">· parkur ${world * 10 + 1}–${world * 10 + 10} · son 3 parkur dünya kupasıdır</span></div><div class="tgrid">${ts.map(t => {
-      const open = t.id <= p.unlocked, b = p.best[t.id];
-      const sub = !open ? '🔒 Önceki parkurda ilk 3\'e gir' : `⏱ ~${t.target} sn · 🥇 ${pointsFor(t.id)} puan`;
-      return `<button class="tcard${open ? '' : ' locked'}" ${open ? `data-track="${t.id}"` : 'disabled'}><span class="num">PARKUR ${t.id}${t.hand ? ' · ⭐ ÖZEL' : ''}</span><b>${esc(t.name)}</b><small>${sub}</small>${b ? `<small class="best">En iyi: ${MEDAL[b.place - 1] || b.place + '.'}${b.time ? ' · ' + b.time.toFixed(1) + ' sn' : ''}</small>` : ''}</button>`;
-    }).join('')}</div>`;
     show('scrTracks');
+    if (scroll) requestAnimationFrame(() => { const el = $('accOpen'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
   }
-  $('tlist').addEventListener('click', e => { const w = e.target.closest('[data-world]'); if (w) { showTracks(+w.dataset.world); return; } });
-  $('tlist').addEventListener('click', e => { const b = e.target.closest('[data-track]'); if (b) { state.trackId = +b.dataset.track; showPick(); } });
+  $('tlist').addEventListener('click', e => {
+    const w = e.target.closest('[data-world]');
+    if (w) { const id = +w.dataset.world; showTracks(id === state.world ? -1 : id); return; } // açık başlığa dokununca kapanır
+    const b = e.target.closest('[data-track]'); if (b) { state.trackId = +b.dataset.track; showPick(); }
+  });
   $('btnTracksBack').onclick = showMenu;
 
   // ---- kupalar ----
@@ -825,7 +867,7 @@
     const p = state.player;
     $('clist').innerHTML = MP.CUPS.map(c => {
       const ts = c.tracks.map(id => MP.TRACKS[id - 1]), lastId = c.tracks[2];
-      const open = p.unlocked >= lastId, best = p.cups[c.id];
+      const open = openUpTo(p) >= lastId, best = p.cups[c.id];
       return `<button class="cupcard" ${open ? `data-cup="${c.id}"` : 'disabled'} style="${open ? '' : 'opacity:.5'}"><span class="ic">${c.icon}</span><span><b style="color:${c.color}">${esc(c.name)}</b><small>${ts.map(t => esc(t.name)).join(' · ')}</small><small>${open ? `Şampiyonluk ödülü: +${c.bonus} puan` : `🔒 ${lastId}. parkuru açınca oynanır`}${best ? ` · En iyi: ${MEDAL[best - 1] || best + '.'}` : ''}</small></span></button>`;
     }).join('');
     show('scrCups');
@@ -878,26 +920,39 @@
     else showPick();
   };
   $('btnResTracks').onclick = () => { state.cup = null; leaveMp(); showTracks(); };
-  $('btnResNext').onclick = () => { if (state.cup || state.trackId >= MP.TRACKS.length || state.player.unlocked < state.trackId + 1) return; state.trackId++; state.world = null; showPick(); };
+  $('btnResNext').onclick = () => { if (state.cup || state.trackId >= MP.TRACKS.length || openUpTo(state.player) < state.trackId + 1) return; state.trackId++; state.world = null; showPick(); };
   $('btnResMenu').onclick = () => { leaveMp(); showMenu(); };
   function cycleCam() { state.cam = (state.cam + 1) % CAMS.length; $('camName').textContent = CAMS[state.cam]; }
   $('btnCam').onclick = cycleCam;
-  function quitRace() {
+  function quitRace(sure) {
     if (state.mp) {
-      if ((state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') && !confirm('Yarıştan çıkılsın mı? (Misketini bot sürer, puan alınmaz)')) return;
+      if (!sure && (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') && !confirm('Yarıştan çıkılsın mı? (Misketini bot sürer, puan alınmaz)')) return;
       Ag.send({ t: 'ayril' }); disposeRace(); state.mp = null; showMp(); return;
     }
-    if (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') { if (!confirm('Yarıştan çıkılsın mı? (Puan alınmaz' + (state.betActive ? ', bahis iade edilir' : '') + ')')) return; }
+    if (!sure && (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending')) { if (!confirm('Yarıştan çıkılsın mı? (Puan alınmaz' + (state.betActive ? ', bahis iade edilir' : '') + ')')) return; }
     if (state.betActive) { state.player.points += state.betActive.amount; state.betActive = null; Kayit.persist(); }
     disposeRace(); state.cup = null; showTracks();
   }
-  $('btnQuit').onclick = quitRace;
+  $('btnQuit').onclick = () => openPause();
+  // duraklat: tek kişilikte yarış durur; çok kişilikte yarış sürer (sadece menü açılır)
+  function openPause() {
+    if (!['countdown', 'race', 'ending'].includes(state.phase) || state.pauseOpen) return;
+    state.pauseOpen = true; if (!state.mp) { state.paused = true; Ses.stopRolling(); }
+    $('pauseTitle').textContent = state.mp ? '⏸ Menü' : '⏸ Oyun durdu';
+    $('pauseSub').textContent = state.mp ? 'Çok oyunculu yarış sürüyor; misketin yarışmaya devam ediyor. Çıkarsan misketini bot sürer.' : 'Yarış duraklatıldı. Devam edebilir ya da yarıştan çıkabilirsin (puan alınmaz).';
+    $('pauseBox').classList.remove('hidden');
+  }
+  function closePause() { state.pauseOpen = false; state.paused = false; $('pauseBox').classList.add('hidden'); }
+  $('pauseGo').onclick = closePause;
+  $('pauseCards').onclick = () => { $('pauseCardList').classList.toggle('hidden'); if (!$('pauseCardList').innerHTML) $('pauseCardList').innerHTML = powerCardsHTML(); };
+  $('pauseQuit').onclick = () => { closePause(); quitRace(true); };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && !state.mp) openPause(); }); // başka uygulamaya geçince durur
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     if (state.phase === 'replay' && (e.key === ' ' || e.key === 'Escape' || e.key === 'Enter')) { endReplay(); return; }
     if (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') {
       if (e.key === 'c' || e.key === 'C') cycleCam();
-      if (e.key === 'Escape') quitRace();
+      if (e.key === 'Escape') { if (state.pauseOpen) closePause(); else openPause(); }
       if (e.key >= '1' && e.key <= '3') pickCard(+e.key - 1);
     }
   });
@@ -907,11 +962,11 @@
   // Fizik sunucuda (sunucu/oyun-sunucusu.js); burada lobi ve Ag.RemoteRace ile oynatma. Puanlar normal yarış gibi profile yazılır.
   let pendingRoom = null, joinAfter = null, mpMsgTimer = null;
   try { const q = new URLSearchParams(location.search).get('oda'); if (q && /^[A-Za-z0-9]{5}$/.test(q)) pendingRoom = q.toUpperCase(); } catch (e) { }
-  const agProfile = () => ({ ad: state.player.name, eq: state.player.eq, acik: state.player.unlocked, token: Kayit.token() }); // kayıtlı adın sahibi olduğunu göstermek için
+  const agProfile = () => ({ ad: state.player.name, eq: state.player.eq, acik: openUpTo(state.player), token: Kayit.token() }); // kayıtlı adın sahibi olduğunu göstermek için
   function showMp() {
     if (state.phase === 'shop') leaveShop();
     toMenuScene();
-    if (!Ag.connected) Ag.connect(agProfile());
+    Ag.connect(agProfile()); // bağlıysa güncel ad/kostüm yeniden bildirilir
     renderMp(); show('scrMp');
   }
   function leaveMp() { if (Ag.room) Ag.send({ t: 'ayril' }); Ag.room = null; state.mp = null; }
@@ -926,8 +981,9 @@
     const room = Ag.room, me = Ag.pid, ready = Ag.connected && !!me;
     $('mpStatus').textContent = ready ? '🟢 Sunucuya bağlısın' : Ag.want ? '⏳ Sunucuya bağlanılıyor…' : '🔴 Bağlı değil';
     const guest = Kayit.isGuest(state.player);
-    $('mpMe').innerHTML = `Bu oyunda adın: <b>${esc(Ag.ad || state.player.name)}</b>${guest ? ' <span class="pill" style="padding:0 6px;font-size:11px">misafir</span>' : ''}`;
-    $('mpRename').classList.toggle('hidden', !guest);
+    $('mpMe').classList.toggle('hidden', guest); $('mpGuest').classList.toggle('hidden', !guest);
+    if (!guest) $('mpMe').innerHTML = `Bu oyunda adın: <b>${esc(Ag.ad || state.player.name)}</b>`;
+    else if (document.activeElement !== $('mpName')) $('mpName').value = Ag.ad && Ag.ad !== state.player.name && !MI.guestLike(state.player.name) ? Ag.ad : state.player.name;
     $('mpHome').classList.toggle('hidden', !!room); $('mpRoom').classList.toggle('hidden', !room);
     for (const id of ['mpQuick', 'mpCreate', 'mpJoin']) $(id).disabled = !ready;
     if (!room) return;
@@ -937,16 +993,16 @@
     const canPick = host && !room.hizli && room.durum === 'lobi';
     $('mpTrack').classList.toggle('hidden', !canPick); $('mpTrackTxt').classList.toggle('hidden', canPick);
     if (canPick) {
-      const n = Math.min(state.player.unlocked, MP.TRACKS.length);
+      const n = openUpTo(state.player);
       if (n !== mpTrackN) { mpTrackN = n; $('mpTrack').innerHTML = MP.TRACKS.slice(0, n).map(t => `<option value="${t.id}">${t.id} · ${esc(t.name)} (${MP.WORLDS[t.world].icon} ~${t.target} sn)</option>`).join(''); }
       $('mpTrack').value = room.parkur;
     }
     $('mpTrackTxt').textContent = `${room.parkur} · ${T.name} (${MP.WORLDS[T.world].icon} ${MP.WORLDS[T.world].name}, ~${T.target} sn)`;
     $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' ? `Oyuncular bekleniyor… ${room.bekleme} sn içinde başlar (6 kişi olunca hemen). Eksik koltuklarda bot yarışır.` : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
     $('mpSlots').innerHTML = MF.MARBLES.map((info, i) => {
-      const q = room.oyuncular.find(x => x.misket === i), isMe = q && q.pid === me;
+      const q = room.oyuncular.find(x => x.misket === i), isMe = q && q.pid === me, lk = q ? Magaza.lookFor(info, q.eq || {}) : info; // kostüm rengi
       const who = q ? `<b>${esc(q.ad)}${isMe ? ' (sen)' : ''}${q.misafir ? ' 👤' : ''}${q.pid === room.kurucu && !room.hizli ? ' 👑' : ''}</b><small>${!q.bagli ? '📴 bağlantı koptu' : q.hazir ? '✅ hazır' : '⏳ hazırlanıyor'}</small>` : `<b>🤖 Bot</b><small>${room.durum === 'lobi' ? 'seçmek için dokun' : ''}</small>`;
-      return `<button class="mpslot${isMe ? ' me' : ''}${q ? '' : ' free'}" data-slot="${i}" ${q && !isMe ? 'disabled' : ''}><span class="ball" style="background:radial-gradient(circle at 35% 30%, ${info.color2}, ${info.color} 55%, #000 140%)"></span><span class="mn">${esc(info.name)}</span>${who}</button>`;
+      return `<button class="mpslot${isMe ? ' me' : ''}${q ? '' : ' free'}" data-slot="${i}" ${q && !isMe ? 'disabled' : ''}><span class="ball" style="background:radial-gradient(circle at 35% 30%, ${lk.color2 || '#ffffff'}, ${lk.color} 55%, #000 140%)"></span><span class="mn">${esc(info.name)}</span>${who}</button>`;
     }).join('');
     const n = room.oyuncular.length;
     $('mpReady').classList.toggle('hidden', room.hizli); $('mpReady').textContent = mine && mine.hazir ? '✅ Hazırsın' : 'Hazırım';
@@ -954,7 +1010,17 @@
     $('mpStart').textContent = `Yarışı Başlat ▶ (${n} kişi + ${6 - n} bot)`;
   }
   $('mpQuick').onclick = () => Ag.send({ t: 'hizli' });
-  $('mpRename').onclick = () => renameGuest(() => renderMp());
+  // misafir: adını kutuya yazıp kaydeder (şifresiz, sadece bu cihazda)
+  async function saveGuestName() {
+    const v = MI.tidy($('mpName').value); if (!v || v === state.player.name) { $('mpNameMsg').textContent = ''; return; }
+    $('mpNameMsg').textContent = '⏳'; const r = await Kayit.renameGuest(v);
+    if (r.hata) { $('mpNameMsg').textContent = '⚠️ ' + r.hata; $('mpNameMsg').className = 'namemsg bad'; return; }
+    $('mpNameMsg').textContent = '✅ Adın kaydedildi'; $('mpNameMsg').className = 'namemsg good';
+    Ag.connect(agProfile()); setTimeout(() => { if (/✅/.test($('mpNameMsg').textContent)) $('mpNameMsg').textContent = ''; }, 2500);
+  }
+  $('mpNameOk').onclick = saveGuestName;
+  $('mpName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.target.blur(); saveGuestName(); } });
+  $('mpName').addEventListener('focus', e => { if (MI.guestLike(e.target.value)) e.target.select(); }); // misafir adı dokununca seçilir, yazınca silinir
   $('mpCreate').onclick = () => Ag.send({ t: 'odaKur' });
   $('mpJoin').onclick = () => { const k = $('mpCode').value.trim().toUpperCase(); if (!/^[A-Z0-9]{5}$/.test(k)) { mpMsg('Oda kodu 5 harf/rakam olmalı'); return; } Ag.send({ t: 'katil', kod: k }); };
   $('mpCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('mpJoin').click(); });

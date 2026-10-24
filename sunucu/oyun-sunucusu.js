@@ -84,7 +84,10 @@ function joinRoom(p, room) {
   p.room = room; p.ready = room.quick; p.marble = freeMarble(room, p.wantMarble);
   room.players.set(p.pid, p); room.touched = Date.now();
   if (!room.host || !room.players.has(room.host)) room.host = p.pid;
-  if (room.quick) room.track = Math.min(...humansOf(room).map(q => clampTrack(q.unlocked)));
+  if (room.quick) { // hızlı oyun: herkesin açık olduğu son 5 parkurdan rastgele biri
+    const lim = Math.min(...humansOf(room).map(q => clampTrack(q.unlocked)));
+    if (!room.trackLim || lim < room.trackLim) { room.trackLim = lim; room.track = Math.max(1, lim - crypto.randomInt(Math.min(5, lim))); }
+  }
   pushRoom(room);
   if (room.quick && room.players.size >= 6) startRace(room);
 }

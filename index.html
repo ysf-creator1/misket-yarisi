@@ -83,6 +83,16 @@
   .wtab.on{border-color:var(--accent);background:rgba(255,194,61,.16)}
   .wtab.locked{opacity:.4}
   .tcard .best{color:#ffd77a}
+  .tcard.last{border-color:var(--accent)}
+  #tlist{display:flex;flex-direction:column;gap:6px}
+  .acc{border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.03);overflow:hidden;scroll-margin-top:80px}
+  .acc.open{border-color:rgba(255,194,61,.55);background:rgba(255,194,61,.05);padding-bottom:10px}
+  .acc.open .tgrid{padding:0 10px}
+  .acc.locked{opacity:.45}
+  .acchead{width:100%;display:grid;grid-template-columns:40px 1fr auto 22px;gap:10px;align-items:center;text-align:left;border:none;border-radius:0;background:none;padding:10px 12px;box-shadow:none}
+  .acchead .ic{font-size:26px;text-align:center} .acchead .nm{display:flex;flex-direction:column} .acchead .nm b{font-size:16px} .acchead .nm small{color:var(--muted);font-weight:700;font-size:12px}
+  .acchead .dn{color:var(--muted);font-weight:800;font-size:13px} .acchead .ar{font-size:16px;color:var(--muted)}
+  .acchead.on{background:rgba(255,194,61,.12)}
   .cupcard{text-align:left;padding:16px;border-radius:16px;display:flex;gap:14px;align-items:center;width:100%}
   .cupcard .ic{font-size:42px}
   .cupcard b{font-size:19px;display:block}
@@ -181,6 +191,28 @@
   .misafir{margin:12px 0 4px;padding:10px 12px;border:1px solid rgba(255,194,61,.45);border-radius:14px;background:rgba(255,194,61,.08);text-align:center}
   .misafir p{margin:0 0 8px;font-size:13px;font-weight:700;color:#ffe199}
   .carry{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer} .carry input{width:auto;accent-color:var(--accent)}
+  /* güç bildirimi */
+  .pwt{display:flex;gap:10px;align-items:center;padding:7px 14px 7px 10px;border-radius:14px;background:rgba(10,16,36,.88);border:1px solid var(--line);border-left:5px solid #7fd8ff;box-shadow:0 8px 24px rgba(0,0,0,.35);animation:tin .25s ease-out;transition:opacity .3s,transform .3s;min-width:260px}
+  .pwt.out{opacity:0;transform:translateY(-6px)}
+  .pwt.self{border-left-color:#7bd389} .pwt.atk{border-left-color:#ff8a5b} .pwt.mine{border-left-color:#ffd166;background:rgba(60,44,8,.9)} .pwt.hit{border-left-color:#ff4d6d;background:rgba(70,12,24,.9)}
+  .pwt .pic{font-size:30px;line-height:1} .pwt .pbody{display:flex;flex-direction:column;text-align:left}
+  .pwt .pbody>div{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-weight:900;font-size:15px}
+  .pwt .ptag{font-size:9.5px;padding:1px 6px;border-radius:6px;letter-spacing:.5px} .ptag.self{background:rgba(123,211,137,.22);color:#9ff0ad} .ptag.attack{background:rgba(255,138,91,.22);color:#ffb08f}
+  .pwt small{color:#cfd6e6;font-weight:700;font-size:12.5px}
+  /* güç kartları listesi */
+  .ggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .gcard{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-left:4px solid #7bd389}
+  .gcard.attack{border-left-color:#ff8a5b} .gcard .gic{font-size:28px;line-height:1} .gcard .gtx{display:flex;flex-direction:column;gap:2px}
+  .gcard .gtyp{font-size:10px;font-weight:900;letter-spacing:.5px;color:var(--muted)} .gcard b{font-size:15px} .gcard small{font-size:12px;color:#cfd6e6;font-weight:600}
+  .overlay{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(5,10,25,.62);padding:12px;overflow:auto}
+  .overlay .panel{max-height:94vh;overflow:auto}
+  .ibar{height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;margin:12px 0} .ibar i{display:block;height:100%;width:100%;background:var(--accent);transition:width .1s linear}
+  .pausebtns{display:flex;flex-direction:column;gap:8px} .pausebtns button{font-size:17px;padding:12px}
+  button.danger{border-color:rgba(255,77,109,.6);color:#ffb4c0}
+  #topright .pausebtn{font-size:18px;padding:8px 14px;background:linear-gradient(180deg,rgba(255,209,102,.95),rgba(255,159,28,.95));color:#2b1700;border:none;font-weight:900}
+  .mpguest{padding:10px 12px;margin:0 0 10px;border:1px solid rgba(255,194,61,.5);border-radius:14px;background:rgba(255,194,61,.07)}
+  .mpguest label{display:block;font-weight:800;margin-bottom:6px} .mpguest label small{color:var(--muted);font-weight:700}
+  #mpName{font-size:22px;font-weight:900;padding:10px 12px;border:2px dashed rgba(255,194,61,.7)}
   .note.ach{border-color:rgba(255,194,61,.6);color:#ffe199}
 
   /* üst menü çubuğu */
@@ -271,6 +303,9 @@
     .sgrid{grid-template-columns:repeat(3,1fr);gap:6px} .item{padding:7px 4px} .item b{font-size:11.5px} .item .ic{font-size:24px;height:30px}
     .alist{grid-template-columns:1fr;min-width:0}
     .rtable{width:100%} .rtable td{padding:5px 6px;font-size:13px} .rtable .medal{width:30px;font-size:18px}
+    .ggrid{grid-template-columns:1fr 1fr} .gcard{padding:8px} .gcard .gic{font-size:22px} .gcard small{font-size:11px}
+    .pwt{min-width:0;padding:5px 10px 5px 8px} .pwt .pic{font-size:22px} .pwt .pbody>div{font-size:12.5px} .pwt small{font-size:11px}
+    .acchead{grid-template-columns:32px 1fr auto 16px;padding:8px 10px} .acchead .nm b{font-size:14px}
     #topnav{gap:3px;padding:calc(6px + env(safe-area-inset-top)) 4px 6px;justify-content:space-between}
     #topnav button{flex:1;flex-direction:column;gap:1px;padding:5px 2px;font-size:10px;min-width:0;min-height:0}
     #topnav button span{font-size:19px} #topnav .navpts{display:none}
@@ -370,6 +405,7 @@
     <button id="btnShop"><span>🛒</span>Mağaza<small>Kostüm ve iz satın al</small></button>
     <button id="btnAch"><span>🏅</span>Başarımlar<small id="mAch">0 / 0</small></button>
     <button id="btnLider"><span>📊</span>Liderlik<small>En iyiler ve parkur rekorları</small></button>
+    <button id="btnGuc" class="wide"><span>⚡</span>Güç Kartları<small>Hangi kart ne işe yarar?</small></button>
     <button id="btnMp"><span>👥</span>Çok Oyunculu<small>Arkadaşlarınla ya da hızlı oyunla yarış (eksikler bot)</small></button>
   </div>
   <div class="row muted" id="mStats" style="font-size:14px;font-weight:700"></div>
@@ -391,7 +427,7 @@
 <!-- Parkurlar -->
 <div id="scrTracks" class="screen hidden"><div class="panel" style="width:min(780px,96vw)">
   <h2>Parkur Seç</h2>
-  <p class="sub">200 parkur, 20 dünya. Bir parkurda ilk 3'e girersen sonraki açılır; parkurlar giderek uzar ve zorlaşır.</p>
+  <p class="sub">200 parkur, 20 dünya. İlk 10 parkur herkese açık; sonrasında bir parkurda ilk 3'e girersen sonraki açılır. Bir dünyaya dokun, parkurları altında açılsın.</p>
   <div id="tlist"></div>
   <div class="row" style="margin-top:16px"><button id="btnTracksBack">← Geri</button></div>
 </div></div>
@@ -426,13 +462,28 @@
   <div id="cupBadge" class="box hidden"></div>
   <div id="prog" class="box"><div class="bar"></div><div class="flag">🏁</div><div id="progDots"></div></div>
   <div id="stand" class="box"></div>
-  <div id="topright"><div class="box" id="timer">0.0</div><button id="btnCam">🎥 <span id="camName">Benim misketim</span></button><button id="btnQuit">✕</button></div>
+  <div id="topright"><div class="box" id="timer">0.0</div><button id="btnCam">🎥 <span id="camName">Benim misketim</span></button><button id="btnQuit" class="pausebtn" title="Duraklat / çık">⏸</button></div>
   <div id="toasts"></div>
   <div id="cards" class="hidden"></div>
   <div id="count" class="hidden"></div>
   <div id="slowmo" class="hidden">◉ YAVAŞ ÇEKİM</div>
   <div id="help">1 · 2 · 3: güç seç · C: kamera · Esc: çık</div>
 </div>
+<!-- ilk 3 parkurda yarış öncesi güç kartları tanıtımı -->
+<div id="gucIntro" class="overlay hidden"><div class="panel" style="width:min(760px,96vw)">
+  <h2>⚡ Güç kartlarını tanı</h2>
+  <p class="sub">Yarışta bu kartlar çıkacak. 1 · 2 · 3 tuşlarıyla ya da dokunarak seçersin.</p>
+  <div id="gucIntroList"></div>
+  <div class="ibar"><i id="gucIntroBar"></i></div>
+  <div class="row"><button class="main" id="gucIntroGo">Anladım, başla ▶</button></div>
+</div></div>
+<!-- duraklatma -->
+<div id="pauseBox" class="overlay hidden"><div class="panel" style="width:min(440px,94vw);text-align:center">
+  <h2 id="pauseTitle">⏸ Oyun durdu</h2>
+  <p class="sub" id="pauseSub"></p>
+  <div class="pausebtns"><button class="main" id="pauseGo">▶ Devam et</button><button id="pauseCards">⚡ Güç kartları</button><button id="pauseQuit" class="danger">🚪 Yarıştan çık</button></div>
+  <div id="pauseCardList" class="hidden" style="text-align:left;max-height:46vh;overflow:auto;margin-top:10px"></div>
+</div></div>
 <div id="replayBar" class="hidden"><span class="rec"></span>TEKRAR<button class="sm" id="btnSkip" style="letter-spacing:0">Geç ⏭</button></div>
 
 <!-- Sonuç -->
@@ -472,6 +523,14 @@
   <div class="row"><button id="cdBack">← Geri</button><button id="cdNew">🔄 Yeni kod</button></div>
 </div></div>
 
+<!-- Güç kartları -->
+<div id="scrGuc" class="screen hidden"><div class="panel" style="width:min(720px,96vw)">
+  <h2>⚡ Güç Kartları</h2>
+  <p class="sub">Yarışta 15–20 saniyede bir 3 kart çıkar; 10 saniye içinde birini seçersin. Geride olana güçlü kart çıkma şansı daha yüksektir.</p>
+  <div id="gucList"></div>
+  <div class="row" style="margin-top:14px"><button id="gucBack">← Geri</button></div>
+</div></div>
+
 <!-- Liderlik -->
 <div id="scrLider" class="screen hidden"><div class="panel" style="width:min(560px,96vw)">
   <h2>📊 Liderlik</h2>
@@ -484,7 +543,12 @@
 <div id="scrMp" class="screen hidden"><div class="panel" style="width:min(660px,96vw)">
   <h2>👥 Çok Oyunculu</h2>
   <p class="sub" id="mpStatus">Sunucuya bağlanılıyor…</p>
-  <div class="row" style="margin:-6px 0 10px"><span id="mpMe"></span><button class="sm hidden" id="mpRename">✏️ Adımı değiştir</button></div>
+  <div class="row" style="margin:-6px 0 10px"><span id="mpMe"></span></div>
+  <div class="mpguest hidden" id="mpGuest">
+    <label for="mpName">✏️ Oyunda görünecek adın <small>(misafir adını silip istediğin adı yaz, şifre gerekmez)</small></label>
+    <div class="row" style="flex-wrap:nowrap"><input id="mpName" maxlength="16" autocomplete="off" autocapitalize="words"><button class="main" id="mpNameOk">Kaydet</button></div>
+    <small id="mpNameMsg" class="namemsg"></small>
+  </div>
   <div class="note hidden" id="mpMsg" style="margin-bottom:10px;text-align:center"></div>
   <div id="mpHome">
     <div class="menu">

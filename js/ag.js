@@ -49,7 +49,8 @@
     };
     ws.onerror = () => { };
   };
-  function hello() { const p = Ag.profile || {}; Ag.send({ t: 'merhaba', ad: p.ad, eq: p.eq, acik: p.acik }); }
+  // token: kayıtlı adın sahibi olduğunu gösterir (yoksa sunucu misafir adı verir); eq: kostüm (diğer oyuncular görür)
+  function hello() { const p = Ag.profile || {}; Ag.send({ t: 'merhaba', ad: p.ad, eq: p.eq, acik: p.acik, token: p.token || '' }); }
   Ag.disconnect = function () { Ag.want = false; Ag.room = null; if (Ag.ws) try { Ag.ws.close(); } catch (e) { } Ag.ws = null; Ag.connected = false; };
 
   // ================= uzak yarış =================

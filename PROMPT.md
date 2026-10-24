@@ -172,3 +172,14 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Sunucu: kurtarma kodu uçları ve alanları silindi; çok oyunculuda `hesaplar.mpName`: kayıtlı bir ad yalnızca o hesabın oturumuyla kullanılır, değilse sunucu Misafir### verir; lobide misafirler 👤.
 - Açılış: son oyuncu yoksa doğrudan misafirle menü; menüde misafir kutusu (Hesap oluştur / Giriş yap / Adımı değiştir); "Şifremi unuttum" artık yeni cihaz koduna ve yöneticiye yönlendirir.
 - Testler: hesap 43/43, çok oyunculu 25/25 (misafir adı, ad değiştirme, kayıtlı adın alınamaması), tarayıcıda misafir akışı + önceki bulut/resim/çok oyunculu/tek oyunculu testleri geçti.
+
+## 10. Güncelleme: oyuncu geri bildirimi (8 madde)
+1. Hata: çok oyunculuda kayıtlı oyuncuya misafir adı veriliyordu — `js/ag.js` merhaba mesajı oturum anahtarını (token) göndermiyordu. Düzeltildi.
+2. Misafir adı lobide büyük, kesik çizgili düzenlenebilir kutu; dokununca seçilir, yazınca silinir; "Kaydet"/Enter. Kayıtlı ad alınamaz.
+3. İlk 3 parkurda yarıştan önce 12 güç kartının tanıtımı (15 sn ya da "Anladım, başla"; geri sayım bekler). Menüde ⚡ Güç Kartları ekranı; duraklatma menüsünde de liste.
+4. Hata: kostümler çok oyunculuda görünmüyordu — lobiye girerken profil (kostüm) yeniden gönderilmiyordu. Artık her girişte gönderiliyor; lobide misket kutucukları da kostüm rengiyle.
+5. Güç bildirimi: renkli oyuncu adı, büyük simge, GÜÇLEN/TUZAK etiketi, kart adı ve hedef; 3 sn.
+6. İlk 10 parkur herkese açık (`OPEN_FREE`, `openUpTo`), sonrası sırayla; hızlı oyun herkesin açık olduğu son 5 parkurdan rastgele.
+7. Parkur seçimi akordiyon: dünya başlığına dokununca 10 parkuru altında açılır; en son oynanan parkurun dünyası açık gelir.
+8. Sağ üstte ⏸ düğmesi (ve Esc): tek kişilikte yarış durur (sekme değişince de), çok kişilikte yarış sürer; Devam / Güç kartları / Yarıştan çık.
+- Testler: hesap 43/43, çok oyunculu 25/25, güç senaryo 9/9; tarayıcıda kayıtlı ad + kostüm görünürlüğü, tanıtım, duraklatma, bildirim, misafir ad kutusu, bulut ve resimli şifre akışları geçti.
