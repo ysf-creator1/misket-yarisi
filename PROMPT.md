@@ -158,3 +158,9 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Giriş ekranı (Giriş yap / Yeni oyuncu, anlık "bu ad alınmış" uyarısı), menüde günlük görevler, 📊 Liderlik ekranı, 🔑 PIN değiştir.
 - Testler: `test/hesap-testi.js` 23/23; tarayıcıda 3 ayrı cihazla (kayıt, aynı ad uyarısı, yanlış/doğru PIN, eski kaydı taşıma, liderlik, yarış sonrası puanın diğer cihazda görünmesi) geçti; çok oyunculu ve tek oyunculu testler yeniden geçti.
 - Mac: `~/Library/LaunchAgents/com.misket.yedek.plist` her gün 12:30'da `sunucu/yedek-indir.sh` → `~/claude_mert/misket-yedekler/`.
+
+## 8. Güncelleme: resimli şifre ve unutmaya karşı
+- Kullanıcı isteği: PIN unutulabilir; isteyen 12 resimden 1'ini şifre seçsin; bir cihazda 3 yanlışta o tarayıcı 30 dk beklesin ve uyarı çıksın; giriş yapılan cihaz tekrar sormasın, başka cihazda sorsun; PIN'de bu kurala gerek yok.
+- Sunucu (`sunucu/hesaplar.js`): hesap türü `pin|resim`; resimde sayaçlar: cihaz (X-Cihaz) 3 yanlış → 30 dk, aynı IP saatte 20 → 30 dk (gizli sekme/başka tarayıcıyla aşmaya karşı), hesaba günde 10 → 30 dk. PIN: 5 yanlış → 10 dk (değişmedi). Kurtarma kodu (8 karakter, kayıtta bir kez), yeni cihaz kodu (6 hane, 5 dk, tek kullanım), şifre değiştirme (eski şifre gerekir, diğer oturumlar kapanır), yönetici sıfırlaması yalnız sunucu içinden (`sunucu/sifre-sifirla.sh`).
+- İstemci: giriş ekranında Giriş / Yeni oyuncu / Kodla gir sekmeleri, ad yazınca hesabın türüne göre PIN kutusu ya da her seferinde karışık dizilen resim ızgarası; bekleme geri sayımı; "Şifremi unuttum"; menüde 🔑 Şifre değiştir, 📱 Yeni cihaz ekle (QR: varliklar/qrcode.js, MIT), 🧾 Kurtarma kodu; kurtarma kodu olmayan eski hesaplara uyarı.
+- Testler: `test/hesap-testi.js` 43/43; tarayıcıda resimli kayıt, 3 yanlış → bekleme (sayfa yenilense de sürer, ızgara karışır), QR/kod ile giriş, kurtarma, şifre türü değiştirme; önceki bulut/çok oyunculu/tek oyunculu testleri yeniden geçti.

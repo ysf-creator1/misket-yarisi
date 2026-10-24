@@ -17,6 +17,8 @@ Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam
 - Puan, seviye, açılan parkurlar, eşyalar, başarımlar sunucuda saklanır; başka cihazdan adın + PIN'inle girersin. İnternet yoksa ilerleme cihazda bekler, bağlanınca gönderilir.
 - Bulut öncesi bu cihazda oynanmış kayıtlar giriş ekranında "eski kayıtlar" olarak görünür; PIN belirleyip buluta taşınır.
 - **Liderlik:** puan, galibiyet, en uzak parkur ve parkur rekorları. **Günlük görevler:** her gün 3 görev + giriş ödülü (art arda günlerde artar).
+- Şifre: **4 haneli PIN** ya da **resimli şifre** (12 resimden 1'i; bir cihazda 3 yanlışta o cihaz 30 dakika bekler). Giriş yapılan cihaz bir daha sormaz.
+- Unutunca: **📱 Yeni cihaz ekle** (girişli cihazda 6 haneli kod + QR, 5 dk), **🧾 kurtarma kodu** (kayıtta verilir; "Şifremi unuttum"), son çare yönetici: `bash sunucu/sifre-sifirla.sh "Ad"`.
 - Sunucu kayıtları her gün yedekler (30 gün); `bash sunucu/yedek-indir.sh` bir kopyayı bilgisayara indirir.
 
 ## 👥 Çok oyunculu
