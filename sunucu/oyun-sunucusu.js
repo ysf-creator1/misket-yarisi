@@ -237,7 +237,11 @@ function resendHand(p) {
 
 // ================= HTTP + WebSocket =================
 const server = http.createServer((req, res) => {
-  if (req.url.startsWith('/api/')) { const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim(); return void hesaplar.handle(req, res, ip); }
+  if (req.url.startsWith('/api/')) {
+    const xff = req.headers['x-forwarded-for'], ip = (xff || req.socket.remoteAddress || '').split(',')[0].trim();
+    const local = !xff && /^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress || ''); // yönetici komutları yalnız sunucunun içinden
+    return void hesaplar.handle(req, res, ip, local);
+  }
   if (req.url === '/durum') {
     let racing = 0, online = 0; for (const r of rooms.values()) if (r.race) racing++;
     for (const p of players.values()) if (p.ws && p.ws.readyState === 1) online++;

@@ -169,6 +169,15 @@
   .authform{display:flex;flex-direction:column;gap:8px;max-width:360px;margin:0 auto}
   .namemsg{min-height:16px;font-weight:700;font-size:13px;margin-top:-4px} .namemsg.good{color:var(--good)} .namemsg.bad{color:#ffb4a8}
   .autherr{min-height:18px;margin:2px 0 0;text-align:center;font-weight:800;font-size:14px;color:#ffb4a8} .autherr.info{color:var(--muted)}
+  .rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .rbtn{font-size:34px;line-height:1;padding:12px 0;border-radius:14px;min-height:62px}
+  .rbtn.on{background:rgba(255,194,61,.25);border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+  .rbtn:disabled{opacity:.35}
+  .authform .seg{display:flex;justify-content:center} .authform .seg button{flex:1;padding:9px 8px;font-size:14px}
+  .linkbtn{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:13px;padding:2px;min-height:0;box-shadow:none}
+  .codein{text-align:center;letter-spacing:4px;font-weight:800;font-size:20px}
+  .bigcode{font-size:40px;font-weight:900;letter-spacing:6px;color:#ffd77a;margin:8px 0;font-variant-numeric:tabular-nums}
+  .qrbox{width:200px;height:200px;margin:8px auto;background:#fff;border-radius:12px;padding:6px} .qrbox:empty{display:none} .qrbox svg{width:100%;height:100%}
   .note.ach{border-color:rgba(255,194,61,.6);color:#ffe199}
 
   /* üst menü çubuğu */
@@ -327,16 +336,22 @@
     <p class="sub" style="font-size:13px;margin-bottom:6px">Henüz buluta taşınmadı. Dokun, bir PIN belirle; ilerlemen kaybolmadan buluta geçsin.</p>
     <div class="plist" id="legacyList"></div>
   </div>
-  <div class="tabs" id="authTabs" style="margin-top:14px"><button data-auth="giris" class="on">🔑 Giriş yap</button><button data-auth="yeni">➕ Yeni oyuncu</button></div>
+  <div class="tabs" id="authTabs" style="margin-top:14px"><button data-auth="giris" class="on">🔑 Giriş yap</button><button data-auth="yeni">➕ Yeni oyuncu</button><button data-auth="kod">📱 Kodla gir</button></div>
   <div class="authform">
     <input id="authName" maxlength="16" placeholder="Adın" autocomplete="username" autocapitalize="off">
     <small id="authNameMsg" class="namemsg"></small>
-    <input id="authPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4 haneli PIN" autocomplete="current-password">
+    <input id="authKod" class="hidden codein" inputmode="numeric" pattern="[0-9]*" maxlength="7" placeholder="6 haneli kod" autocomplete="one-time-code">
+    <input id="authKurtar" class="hidden codein" maxlength="9" placeholder="Kurtarma kodu (ör. K7M2-P9XQ)" autocapitalize="characters" autocomplete="off">
+    <div class="seg hidden" id="authType"><button data-tur="pin" class="on">🔢 PIN</button><button data-tur="resim">🖼️ Resimli şifre</button></div>
+    <input id="authPin" class="hidden" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4 haneli PIN" autocomplete="current-password">
     <input id="authPin2" class="hidden" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="PIN tekrar" autocomplete="new-password">
+    <small id="authTypeHint" class="muted hidden" style="text-align:center;font-weight:700"></small>
+    <div class="rgrid hidden" id="authGrid"></div>
     <button class="main" id="btnAuth">Giriş yap</button>
     <p class="autherr" id="authErr"></p>
+    <button class="linkbtn" id="authForgot">Şifremi unuttum</button>
   </div>
-  <p class="sub" style="font-size:12px;margin:8px 0 0">Adın tekildir; puanların bulutta saklanır. Başka cihazdan adın ve PIN'inle girersin. PIN'ini kimseyle paylaşma.</p>
+  <p class="sub" style="font-size:12px;margin:8px 0 0">Adın tekildir; puanların bulutta saklanır. Bu cihaz seni hatırlar; başka cihazdan adın ve şifrenle (PIN ya da resim) girersin. Şifreni kimseyle paylaşma.</p>
   <div class="savestatus" id="saveStatus1"></div>
 </div></div>
 
@@ -355,11 +370,14 @@
   </div>
   <div class="row muted" id="mStats" style="font-size:14px;font-weight:700"></div>
   <div class="gunluk" id="mGunluk"></div>
+  <div class="note hidden" id="mKurtarUyari" style="margin-top:8px;text-align:center">⚠️ Kurtarma kodun yok. Şifreni unutursan diye <b>🧾 Kurtarma kodu</b> düğmesiyle bir tane al.</div>
   <div class="settings">
     <button class="sm" id="btnSound">🔊 Ses: Açık</button>
     <button class="sm" id="btnGfx">🖥️ Grafik: Yüksek</button>
     <button class="sm" id="btnSwitch">👤 Oyuncu değiştir</button>
-    <button class="sm" id="btnPin">🔑 PIN değiştir</button>
+    <button class="sm" id="btnPin">🔑 Şifre değiştir</button>
+    <button class="sm" id="btnCihaz">📱 Yeni cihaz ekle</button>
+    <button class="sm" id="btnKurtar">🧾 Kurtarma kodu</button>
   </div>
   <div class="savestatus" id="saveStatus2"></div>
 </div></div>
@@ -421,6 +439,41 @@
   <div class="row" id="resButtons"><button id="btnResMenu">Ana Menü</button><button id="btnResTracks">Parkurlar</button><button class="main" id="btnResAgain">Tekrar Yarış ↻</button><button class="main hidden" id="btnResNext">Sonraki Parkur ▶</button></div>
 </div></div>
 
+<!-- Kurtarma kodu -->
+<div id="scrKod" class="screen hidden"><div class="panel" style="width:min(440px,96vw);text-align:center">
+  <h2>🧾 Kurtarma kodun</h2>
+  <p class="sub" id="rcText"></p>
+  <div class="bigcode" id="rcCode">----</div>
+  <div class="row" style="margin-top:14px"><button id="rcCopy">📋 Kopyala</button><button class="main" id="rcDone">Kaydettim, devam ▶</button></div>
+</div></div>
+
+<!-- Şifre değiştir -->
+<div id="scrSifre" class="screen hidden"><div class="panel" style="width:min(460px,96vw)">
+  <h2>🔑 Şifre değiştir</h2>
+  <div class="authform">
+    <b id="sfOldTxt" style="text-align:center"></b>
+    <input id="sfOldPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Şu anki PIN" autocomplete="current-password">
+    <div class="rgrid" id="sfOldGrid"></div>
+    <h3 style="text-align:center">Yeni şifre</h3>
+    <div class="seg" id="sfType"><button data-tur="pin">🔢 PIN</button><button data-tur="resim">🖼️ Resimli şifre</button></div>
+    <input id="sfNewPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Yeni PIN (4 rakam)" autocomplete="new-password">
+    <input id="sfNewPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Yeni PIN tekrar" autocomplete="new-password">
+    <div class="rgrid" id="sfNewGrid"></div>
+    <div class="row"><button id="sfBack">← Geri</button><button class="main" id="sfSave">Kaydet</button></div>
+    <p class="autherr" id="sfErr"></p>
+  </div>
+</div></div>
+
+<!-- Yeni cihaz ekle -->
+<div id="scrCihaz" class="screen hidden"><div class="panel" style="width:min(420px,96vw);text-align:center">
+  <h2>📱 Yeni cihaz ekle</h2>
+  <p class="sub">Yeni cihazda oyunu aç → <b>📱 Kodla gir</b> → bu kodu yaz. Telefonla QR'ı okutursan doğrudan girer.</p>
+  <div class="bigcode" id="cdKod">······</div>
+  <div class="qrbox" id="cdQr"></div>
+  <p class="sub" id="cdSure"></p>
+  <div class="row"><button id="cdBack">← Geri</button><button id="cdNew">🔄 Yeni kod</button></div>
+</div></div>
+
 <!-- Liderlik -->
 <div id="scrLider" class="screen hidden"><div class="panel" style="width:min(560px,96vw)">
   <h2>📊 Liderlik</h2>
@@ -478,6 +531,7 @@
 </script>
 <script src="kayit/kayit.js"></script>
 <script src="js/isim.js"></script>
+<script src="varliklar/qrcode.js"></script>
 <script src="three.min.js"></script>
 <script src="varliklar/RGBELoader.js"></script>
 <script src="varliklar/dokular.js"></script>

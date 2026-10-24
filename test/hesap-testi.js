@@ -8,7 +8,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const ok = (name, cond, info) => { if (cond) pass++; else fail++; console.log((cond ? '  ✓ ' : '  ✗ ') + name + (info ? '  (' + info + ')' : '')); };
 const api = async (route, opt = {}) => {
-  const r = await fetch(B + route, { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: Object.assign({ 'Content-Type': 'application/json', Origin: 'https://ysf-creator1.github.io' }, opt.tok ? { Authorization: 'Bearer ' + opt.tok } : {}), body: opt.body ? JSON.stringify(opt.body) : undefined });
+  const r = await fetch(B + route, { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: Object.assign({ 'Content-Type': 'application/json', Origin: 'https://ysf-creator1.github.io', 'X-Forwarded-For': opt.ip || '10.0.0.1' }, opt.tok ? { Authorization: 'Bearer ' + opt.tok } : {}, opt.dev ? { 'X-Cihaz': opt.dev } : {}), body: opt.body ? JSON.stringify(opt.body) : undefined });
   return { code: r.status, cors: r.headers.get('access-control-allow-origin'), j: await r.json().catch(() => null) };
 };
 (async () => {
@@ -46,9 +46,38 @@ const api = async (route, opt = {}) => {
     r = await api('liderlik'); ok('liderlik tablosu', r.j.puan.length === 2 && r.j.puan[0].ad === 'ysf' && r.j.oyuncu === 2, r.j.puan.map(x => `${x.ad}:${x.deger}`).join(', '));
     r = await api('rekor?parkur=2'); ok('parkur rekoru', r.j.liste.length === 1 && r.j.liste[0].ad === 'Ali' && r.j.liste[0].sure === 58.4);
     r = await fetch(B + 'profil', { method: 'OPTIONS', headers: { Origin: 'https://kotu-site.com' } }); ok('başka siteye CORS izni yok', !r.headers.get('access-control-allow-origin'));
+    // --- resimli şifre ---
+    r = await api('kayit', { body: { ad: 'Resimci', tur: 'resim', resim: 7 } });
+    ok('resimli şifreyle kayıt + kurtarma kodu', r.code === 200 && r.j.tur === 'resim' && /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(r.j.kurtarma), r.j.kurtarma);
+    const kurtar1 = r.j.kurtarma, tokR = r.j.token;
+    r = await api('isim?ad=resimci'); ok('isim sorgusu şifre türünü söyler', r.j.var && r.j.tur === 'resim');
+    r = await api('giris', { dev: 'aaaa1111', body: { ad: 'resimci', resim: 3 } }); ok('yanlış resim: 2 hak kaldı', r.code === 401 && r.j.kalanHak === 2, r.j.hata);
+    r = await api('giris', { dev: 'aaaa1111', body: { ad: 'resimci', resim: 4 } }); ok('yanlış resim: 1 hak kaldı', r.j.kalanHak === 1);
+    r = await api('giris', { dev: 'aaaa1111', body: { ad: 'resimci', resim: 5 } }); ok('3. yanlışta 30 dk bekleme', r.code === 429 && r.j.kalanSn > 1700, r.j.hata);
+    r = await api('giris', { dev: 'aaaa1111', body: { ad: 'resimci', resim: 7 } }); ok('beklemedeyken doğru resim de kabul edilmez', r.code === 429);
+    r = await api('giris', { dev: 'bbbb2222', ip: '10.0.0.9', body: { ad: 'resimci', resim: 7 } }); ok('başka cihazdan doğru resimle girilir (kilit sadece o cihazda)', r.code === 200);
+    r = await api('profil', { tok: tokR }); ok('kayıtlı cihaz yeniden sormadan girer', r.code === 200 && r.j.kurtarmaVar === true);
+    // --- yeni cihaz ekle kodu ---
+    r = await api('cihazkodu', { tok: tokR, body: {} }); const kod = r.j.kod; ok('yeni cihaz kodu (6 hane, 5 dk)', /^\d{6}$/.test(kod) && r.j.sureSn === 300);
+    r = await api('kodla', { body: { kod } }); ok('kodla giriş', r.code === 200 && r.j.profil.name === 'Resimci');
+    r = await api('kodla', { body: { kod } }); ok('kod tek kullanımlık', r.code === 401);
+    // --- kurtarma kodu ---
+    r = await api('kurtar', { body: { ad: 'Resimci', kod: 'YANLIS12', tur: 'pin', pin: '1111' } }); ok('yanlış kurtarma kodu', r.code === 401);
+    r = await api('kurtar', { body: { ad: 'resimci', kod: kurtar1.toLowerCase().replace('-', ' '), tur: 'pin', pin: '2468' } });
+    ok('kurtarma koduyla PIN belirlendi, yeni kurtarma kodu', r.code === 200 && r.j.tur === 'pin' && r.j.kurtarma && r.j.kurtarma !== kurtar1, r.j.kurtarma);
+    r = await api('profil', { tok: tokR }); ok('kurtarmadan sonra eski oturumlar kapandı', r.code === 401);
+    r = await api('giris', { body: { ad: 'Resimci', pin: '2468' } }); ok('yeni PIN ile giriş', r.code === 200); const tokR2 = r.j.token;
+    r = await api('sifre', { tok: tokR2, body: { eski: { pin: '2468' }, yeni: { tur: 'resim', resim: 11 } } }); ok('şifre türü PIN → resim', r.code === 200 && r.j.tur === 'resim');
+    r = await api('giris', { dev: 'cccc3333', ip: '10.0.0.5', body: { ad: 'Resimci', resim: 11 } }); ok('yeni resimle giriş', r.code === 200);
+    // --- yönetici sıfırlama (yalnız sunucu içinden) ---
+    let rr = await fetch(B + 'yonetici/sifirla', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '1.2.3.4' }, body: JSON.stringify({ ad: 'Resimci' }) });
+    ok('dışarıdan yönetici sıfırlaması yasak', rr.status === 403);
+    rr = await fetch(B + 'yonetici/sifirla', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ad: 'Resimci' }) }); const sf = await rr.json();
+    ok('sunucu içinden sıfırlama yeni PIN verir', rr.status === 200 && /^\d{4}$/.test(sf.pin), `PIN ${sf.pin}`);
+    r = await api('giris', { body: { ad: 'Resimci', pin: sf.pin } }); ok('sıfırlanan PIN ile giriş', r.code === 200);
     await sleep(2500);
     const saved = JSON.parse(fs.readFileSync(path.join(VERI, 'hesaplar.json'), 'utf8'));
-    ok('dosyaya yazıldı', Object.keys(saved.players).length === 2 && !JSON.stringify(saved).includes('"1234"'));
+    ok('dosyaya yazıldı', Object.keys(saved.players).length === 3 && !JSON.stringify(saved).includes('"1234"'));
     await sleep(3000);
     ok('günlük yedek alındı', fs.readdirSync(path.join(VERI, 'yedek')).some(n => /^hesaplar-\d{4}-\d{2}-\d{2}\.json$/.test(n)));
   } catch (e) { fail++; console.log('  ✗ HATA', e.stack); }

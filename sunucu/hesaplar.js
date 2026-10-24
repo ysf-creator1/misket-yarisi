@@ -1,6 +1,8 @@
-/* Misket Yarışı — bulut oyuncu hesapları (ad + 4 haneli PIN)
- * Kayıtlar tek JSON dosyasında (VERI/hesaplar.json), her değişiklikten 2 sn sonra güvenli yazılır; her gün yedeklenir (30 gün).
- * HTTP: /api/isim, /api/kayit, /api/giris, /api/profil (GET/PUT), /api/pin, /api/cikis, /api/liderlik, /api/rekor
+/* Misket Yarışı — bulut oyuncu hesapları
+ * Şifre türü: 4 haneli PIN ya da 12 resimden 1'i (resimli şifre). Giriş yapılan cihaz hatırlanır, yeni cihazda yeniden sorulur.
+ * Unutmaya karşı: kurtarma kodu (kayıtta bir kez gösterilir), "yeni cihaz ekle" kodu (5 dk, tek kullanımlık), yönetici sıfırlaması.
+ * Kayıtlar tek JSON dosyasında (VERI/hesaplar.json), değişiklikten 2 sn sonra güvenli yazılır; her gün yedeklenir (30 gün).
+ * HTTP: /api/isim, kayit, giris, kurtar, kodla, profil (GET/PUT), sifre, cihazkodu, kurtarmakodu, cikis, liderlik, rekor, yonetici/sifirla (yalnız sunucu içinden)
  */
 'use strict';
 const fs = require('fs');
@@ -12,13 +14,17 @@ const { MI } = globalThis;
 const VERI = process.env.VERI || path.join(__dirname, '..', '..', 'veri');
 const DOSYA = path.join(VERI, 'hesaplar.json'), YEDEK = path.join(VERI, 'yedek');
 const MAX_BODY = 64 * 1024, MAX_TOKENS = 10, KEEP_DAYS = 30;
+const RESIM_SAYISI = 12;                       // resimli şifrede seçenek sayısı (js/oyun.js RESIMLER ile aynı)
+const RESIM_HAK = 3, RESIM_BEKLE = 30 * 60e3;  // resimli şifre: cihaz başına 3 yanlışta 30 dk bekleme
 const ALLOWED_ORIGINS = [/^https:\/\/ysf-creator1\.github\.io$/, /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/, /^null$/];
+const KOD_CH = 'ABCDEFGHJKLMNPRSTUVYZ23456789';
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), '[hesap]', ...a);
 
 fs.mkdirSync(YEDEK, { recursive: true });
 let db = { players: {}, tokens: {}, created: Date.now() };
 try { db = JSON.parse(fs.readFileSync(DOSYA, 'utf8')); db.players = db.players || {}; db.tokens = db.tokens || {}; log('yüklendi:', Object.keys(db.players).length, 'oyuncu'); }
 catch (e) { if (e.code !== 'ENOENT') { log('OKUNAMADI, yedekten devam edilmeli:', e.message); throw e; } }
+for (const a of Object.values(db.players)) if (!a.tur) a.tur = 'pin'; // eski hesaplar
 
 let saveTimer = null;
 function save(now) {
@@ -34,20 +40,46 @@ function dailyBackup() {
 setInterval(() => { try { dailyBackup(); } catch (e) { log('yedek hatası', e.message); } }, 3600 * 1000).unref();
 setTimeout(() => { try { dailyBackup(); } catch (e) { } }, 5000).unref();
 
-// ---- PIN ve oturum anahtarı ----
-const hashPin = (pin, salt) => crypto.scryptSync(String(pin), salt, 32).toString('hex');
+// ---- şifre, oturum, kurtarma kodu ----
+const hashS = (v, salt) => crypto.scryptSync(String(v), salt, 32).toString('hex');
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
+const eq = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+const resimOk = r => Number.isInteger(r) && r >= 0 && r < RESIM_SAYISI;
+// gelen şifre (tür + değer) → saklanacak dize; geçersizse null
+function secretOf(tur, b) {
+  if (tur === 'pin') return MI.pinOk(b.pin) ? 'p:' + b.pin : null;
+  if (tur === 'resim') return resimOk(b.resim) ? 'r:' + b.resim : null;
+  return null;
+}
+function setSecret(acc, tur, secret) { acc.tur = tur; acc.salt = crypto.randomBytes(8).toString('hex'); acc.pin = hashS(secret, acc.salt); }
+function checkSecret(acc, b) { const s = secretOf(acc.tur, b); return !!s && eq(hashS(s, acc.salt), acc.pin) || (acc.tur === 'pin' && !!b.pin && eq(hashS(b.pin, acc.salt), acc.pin)); } // ikinci koşul: türsüz eski PIN kaydı
+const newRecovery = () => Array.from({ length: 8 }, () => KOD_CH[crypto.randomInt(KOD_CH.length)]).join('');
+const normCode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const showCode = c => c.slice(0, 4) + '-' + c.slice(4);
+function giveRecovery(acc) { const c = newRecovery(); acc.kurtarma = hashS(c, acc.salt + 'k'); acc.kurtarmaSalt = acc.salt; return showCode(c); }
+function checkRecovery(acc, code) { return !!acc.kurtarma && eq(hashS(normCode(code), (acc.kurtarmaSalt || acc.salt) + 'k'), acc.kurtarma); }
+
 function newToken(k) {
   const tok = crypto.randomBytes(24).toString('hex'), h = sha(tok), acc = db.players[k];
   acc.tokens = (acc.tokens || []).concat(h);
   while (acc.tokens.length > MAX_TOKENS) delete db.tokens[acc.tokens.shift()];
   db.tokens[h] = k; return tok;
 }
+function revokeOthers(acc, keepTok) { for (const h of acc.tokens || []) if (!keepTok || h !== sha(keepTok)) delete db.tokens[h]; acc.tokens = keepTok ? [sha(keepTok)] : []; }
 const accOf = tok => { const k = tok && db.tokens[sha(tok)]; return k && db.players[k] ? db.players[k] : null; };
-// yanlış PIN denemeleri: ad başına 5 hatada 10 dk kilit, IP başına saatte 40
+
+// ---- yanlış deneme sayaçları (bellekte) ----
+// f = { n, t (ilk hatanın zamanı), lock (kilidin bitişi) }
 const fails = new Map();
-function failCheck(id, max, win) { const f = fails.get(id); return f && f.n >= max && Date.now() - f.t < win; }
-function failAdd(id) { const f = fails.get(id) || { n: 0, t: 0 }; if (Date.now() - f.t > 3600e3) f.n = 0; f.n++; f.t = Date.now(); fails.set(id, f); }
+function locked(id) { const f = fails.get(id); return f && f.lock > Date.now() ? Math.ceil((f.lock - Date.now()) / 1000) : 0; }
+function fail(id, max, win, lockMs) {
+  const now = Date.now(); let f = fails.get(id);
+  if (!f || now - f.t > win || (f.lock && f.lock <= now)) f = { n: 0, t: now, lock: 0 };
+  f.n++; if (f.n >= max) { f.lock = now + lockMs; } fails.set(id, f); return Math.max(0, max - f.n);
+}
+setInterval(() => { const now = Date.now(); for (const [k, f] of fails) if (f.lock < now && now - f.t > 864e5) fails.delete(k); }, 3600e3).unref();
+// "yeni cihaz ekle" kodları: kod → { k, until }
+const deviceCodes = new Map();
 
 // ---- profil temizliği (istemciden gelen) ----
 const num = (v, max = 1e9) => Number.isFinite(+v) ? Math.max(0, Math.min(max, Math.round(+v))) : 0;
@@ -94,77 +126,135 @@ function readBody(req) {
     req.on('error', rej);
   });
 }
-async function handle(req, res, ip) {
+const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+function loginOk(acc, reply, extra) { const token = newToken(acc.key); save(); return reply(200, Object.assign({ token, profil: acc.profile, rev: acc.rev, tur: acc.tur }, extra || {})); }
+
+async function handle(req, res, ip, local) {
   const origin = req.headers.origin;
   const allowed = origin && ALLOWED_ORIGINS.some(r => r.test(origin));
   const head = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
-  if (allowed) Object.assign(head, { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Vary': 'Origin' });
+  if (allowed) Object.assign(head, { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Cihaz', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Vary': 'Origin' });
   const reply = (code, obj) => { res.writeHead(code, head); res.end(JSON.stringify(obj)); };
   if (req.method === 'OPTIONS') { res.writeHead(204, head); return res.end(); }
   const url = new URL(req.url, 'http://x'), route = url.pathname.replace(/^\/api\//, '');
   const tok = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const dev = String(req.headers['x-cihaz'] || '').replace(/[^a-f0-9]/gi, '').slice(0, 40) || 'ip:' + ip; // tarayıcı kimliği (yoksa IP)
   try {
     if (route === 'isim' && req.method === 'GET') {
-      const ad = MI.tidy(url.searchParams.get('ad')), err = MI.check(ad);
-      return reply(200, { uygun: !err && !db.players[MI.key(ad)], hata: err || (db.players[MI.key(ad)] ? 'Bu ad alınmış, başka bir ad seç' : null) });
+      const ad = MI.tidy(url.searchParams.get('ad')), err = MI.check(ad), acc = db.players[MI.key(ad)];
+      return reply(200, { uygun: !err && !acc, var: !!acc, tur: acc ? acc.tur : null, hata: err || (acc ? 'Bu ad alınmış, başka bir ad seç' : null) });
     }
     if (route === 'kayit' && req.method === 'POST') {
-      const b = await readBody(req), ad = MI.tidy(b.ad), err = MI.check(ad), k = MI.key(ad);
+      const b = await readBody(req), ad = MI.tidy(b.ad), err = MI.check(ad), k = MI.key(ad), tur = b.tur === 'resim' ? 'resim' : 'pin';
       if (err) return reply(400, { hata: err });
-      if (!MI.pinOk(b.pin)) return reply(400, { hata: 'PIN 4 rakam olmalı' });
+      const secret = secretOf(tur, b);
+      if (!secret) return reply(400, { hata: tur === 'pin' ? 'PIN 4 rakam olmalı' : 'Bir resim seç' });
       if (db.players[k]) return reply(409, { hata: 'Bu ad alınmış, başka bir ad seç' });
-      if (failCheck('kayit:' + ip, 20, 3600e3)) return reply(429, { hata: 'Çok fazla deneme, biraz sonra tekrar dene' });
-      failAdd('kayit:' + ip); // IP başına saatte en fazla 20 yeni hesap
-      const salt = crypto.randomBytes(8).toString('hex');
-      db.players[k] = { key: k, salt, pin: hashPin(b.pin, salt), profile: newProfile(ad), rev: 1, created: Date.now(), upd: Date.now(), tokens: [] };
-      const token = newToken(k); save(); board = null;
-      log('yeni oyuncu', ad);
-      return reply(200, { token, profil: db.players[k].profile, rev: 1 });
+      if (locked('kayit:' + ip)) return reply(429, { hata: 'Çok fazla yeni oyuncu açıldı, biraz sonra tekrar dene' });
+      fail('kayit:' + ip, 20, 3600e3, 3600e3); // IP başına saatte en fazla 20 yeni hesap
+      const acc = db.players[k] = { key: k, profile: newProfile(ad), rev: 1, created: Date.now(), upd: Date.now(), tokens: [] };
+      setSecret(acc, tur, secret);
+      const kurtarma = giveRecovery(acc); board = null;
+      log('yeni oyuncu', ad, tur);
+      return loginOk(acc, reply, { kurtarma });
     }
     if (route === 'giris' && req.method === 'POST') {
       const b = await readBody(req), k = MI.key(b.ad), acc = db.players[k];
-      if (failCheck('ip:' + ip, 40, 3600e3) || failCheck('ad:' + k, 5, 600e3)) return reply(429, { hata: 'Çok fazla yanlış deneme. 10 dakika sonra tekrar dene.' });
-      if (!acc || !MI.pinOk(b.pin) || hashPin(b.pin, acc.salt) !== acc.pin) { failAdd('ip:' + ip); failAdd('ad:' + k); return reply(401, { hata: acc ? 'PIN yanlış' : 'Bu adla oyuncu yok' }); }
+      if (!acc) return reply(401, { hata: 'Bu adla oyuncu yok' });
+      if (acc.tur === 'resim') {
+        const ids = ['rc:' + k + ':' + dev, 'ri:' + ip, 'ra:' + k];
+        const w = Math.max(...ids.map(locked));
+        if (w) return reply(429, { hata: `3 kez yanlış resim seçildi. Bu cihazda ${mmss(w)} dakika beklemen gerekiyor.`, kalanSn: w });
+        if (checkSecret(acc, b)) { fails.delete(ids[0]); return loginOk(acc, reply); }
+        const left = fail(ids[0], RESIM_HAK, RESIM_BEKLE, RESIM_BEKLE);
+        fail(ids[1], 20, 3600e3, RESIM_BEKLE);  // aynı ağdan çok deneme (gizli sekme / başka tarayıcıyla aşmaya karşı)
+        fail(ids[2], 10, 864e5, RESIM_BEKLE);   // hesaba günde 10 yanlış
+        const w2 = Math.max(...ids.map(locked));
+        if (w2) return reply(429, { hata: `3 kez yanlış resim seçildi. Bu cihazda ${mmss(w2)} dakika beklemen gerekiyor.`, kalanSn: w2 });
+        return reply(401, { hata: `Yanlış resim. ${left} hakkın kaldı.`, kalanHak: left });
+      }
+      if (locked('ip:' + ip) || locked('ad:' + k)) return reply(429, { hata: 'Çok fazla yanlış deneme. 10 dakika sonra tekrar dene.', kalanSn: Math.max(locked('ip:' + ip), locked('ad:' + k)) });
+      if (!checkSecret(acc, b)) { fail('ip:' + ip, 40, 3600e3, 600e3); fail('ad:' + k, 5, 3600e3, 600e3); return reply(401, { hata: 'PIN yanlış' }); }
       fails.delete('ad:' + k);
-      const token = newToken(k); save();
-      return reply(200, { token, profil: acc.profile, rev: acc.rev });
+      return loginOk(acc, reply);
+    }
+    if (route === 'kurtar' && req.method === 'POST') { // kurtarma koduyla yeni şifre
+      const b = await readBody(req), k = MI.key(b.ad), acc = db.players[k], id = 'ku:' + k, id2 = 'kui:' + ip;
+      if (locked(id) || locked(id2)) return reply(429, { hata: 'Çok fazla yanlış deneme. Bir saat sonra tekrar dene.' });
+      if (!acc || !checkRecovery(acc, b.kod)) { fail(id, 5, 3600e3, 3600e3); fail(id2, 15, 3600e3, 3600e3); return reply(401, { hata: acc ? 'Kurtarma kodu yanlış' : 'Bu adla oyuncu yok' }); }
+      const tur = b.tur === 'resim' ? 'resim' : 'pin', secret = secretOf(tur, b);
+      if (!secret) return reply(400, { hata: tur === 'pin' ? 'Yeni PIN 4 rakam olmalı' : 'Yeni resmini seç' });
+      setSecret(acc, tur, secret); revokeOthers(acc, null);
+      for (const key of [...fails.keys()]) if (key.includes(k)) fails.delete(key);
+      const kurtarma = giveRecovery(acc); log('kurtarma koduyla şifre yenilendi', acc.profile.name);
+      return loginOk(acc, reply, { kurtarma });
+    }
+    if (route === 'kodla' && req.method === 'POST') { // "yeni cihaz ekle" koduyla giriş
+      const b = await readBody(req), kod = String(b.kod || '').replace(/\D/g, ''), id = 'kod:' + ip;
+      if (locked(id)) return reply(429, { hata: 'Çok fazla yanlış kod. 10 dakika sonra tekrar dene.' });
+      const d = deviceCodes.get(kod);
+      if (!d || d.until < Date.now() || !db.players[d.k]) { fail(id, 10, 600e3, 600e3); return reply(401, { hata: 'Kod yanlış ya da süresi doldu' }); }
+      deviceCodes.delete(kod);
+      return loginOk(db.players[d.k], reply);
     }
     if (route === 'liderlik' && req.method === 'GET') return reply(200, leaderboard());
     if (route === 'rekor' && req.method === 'GET') return reply(200, { parkur: num(url.searchParams.get('parkur'), 200), liste: records(num(url.searchParams.get('parkur'), 200)) });
+    if (route === 'yonetici/sifirla' && req.method === 'POST') { // yalnızca sunucunun içinden (ssh): unutan oyuncuya yeni PIN
+      if (!local) return reply(403, { hata: 'yasak' });
+      const b = await readBody(req), acc = db.players[MI.key(b.ad)];
+      if (!acc) return reply(404, { hata: 'Bu adla oyuncu yok' });
+      const pin = String(crypto.randomInt(10000)).padStart(4, '0');
+      setSecret(acc, 'pin', 'p:' + pin); revokeOthers(acc, null);
+      for (const key of [...fails.keys()]) if (key.includes(acc.key)) fails.delete(key);
+      const kurtarma = giveRecovery(acc); save(); log('yönetici sıfırladı', acc.profile.name);
+      return reply(200, { ad: acc.profile.name, pin, kurtarma });
+    }
     // buradan sonrası oturum ister
     const acc = accOf(tok);
     if (!acc) return reply(401, { hata: 'Oturum geçersiz, yeniden giriş yap' });
-    if (route === 'profil' && req.method === 'GET') return reply(200, { profil: acc.profile, rev: acc.rev });
+    if (route === 'profil' && req.method === 'GET') return reply(200, { profil: acc.profile, rev: acc.rev, tur: acc.tur, kurtarmaVar: !!acc.kurtarma });
     if (route === 'profil' && req.method === 'PUT') {
       const b = await readBody(req);
       if (b.rev !== acc.rev) return reply(409, { hata: 'çakışma', profil: acc.profile, rev: acc.rev }); // başka cihaz daha yeni kaydetmiş
       acc.profile = cleanProfile(b.profil, acc.profile.name); acc.rev++; acc.upd = Date.now(); save(); board = null;
       return reply(200, { rev: acc.rev });
     }
-    if (route === 'pin' && req.method === 'POST') {
-      const b = await readBody(req);
-      if (hashPin(b.eski, acc.salt) !== acc.pin) return reply(401, { hata: 'Eski PIN yanlış' });
-      if (!MI.pinOk(b.yeni)) return reply(400, { hata: 'Yeni PIN 4 rakam olmalı' });
-      acc.pin = hashPin(b.yeni, acc.salt);
-      for (const h of acc.tokens || []) if (h !== sha(tok)) delete db.tokens[h]; // diğer cihazlardan çıkış
-      acc.tokens = [sha(tok)]; save();
-      return reply(200, { ok: true });
+    if ((route === 'sifre' || route === 'pin') && req.method === 'POST') { // şifre değiştir (PIN ↔ resim); eski şifre gerekir
+      const b = await readBody(req), id = 'sf:' + acc.key;
+      if (locked(id)) return reply(429, { hata: 'Çok fazla yanlış deneme, biraz sonra tekrar dene.' });
+      const old = b.eski && typeof b.eski === 'object' ? b.eski : { pin: b.eski };
+      if (!checkSecret(acc, old)) { fail(id, 5, 3600e3, 1800e3); return reply(401, { hata: acc.tur === 'resim' ? 'Şu anki resmin yanlış' : 'Şu anki PIN yanlış' }); }
+      const yeni = b.yeni && typeof b.yeni === 'object' ? b.yeni : { tur: 'pin', pin: b.yeni };
+      const tur = yeni.tur === 'resim' ? 'resim' : 'pin', secret = secretOf(tur, yeni);
+      if (!secret) return reply(400, { hata: tur === 'pin' ? 'Yeni PIN 4 rakam olmalı' : 'Yeni resmini seç' });
+      setSecret(acc, tur, secret); revokeOthers(acc, tok);
+      if (acc.kurtarma) acc.kurtarmaSalt = acc.kurtarmaSalt || acc.salt; // kurtarma kodu geçerli kalır
+      save();
+      return reply(200, { ok: true, tur });
     }
+    if (route === 'cihazkodu' && req.method === 'POST') { // yeni cihaz eklemek için 6 haneli kod (5 dk, tek kullanım)
+      for (const [c, d] of deviceCodes) if (d.k === acc.key || d.until < Date.now()) deviceCodes.delete(c);
+      let kod; do { kod = String(crypto.randomInt(1000000)).padStart(6, '0'); } while (deviceCodes.has(kod));
+      deviceCodes.set(kod, { k: acc.key, until: Date.now() + 5 * 60e3 });
+      return reply(200, { kod, sureSn: 300 });
+    }
+    if (route === 'kurtarmakodu' && req.method === 'POST') { const kurtarma = giveRecovery(acc); save(); return reply(200, { kurtarma }); }
     if (route === 'cikis' && req.method === 'POST') { const h = sha(tok); delete db.tokens[h]; acc.tokens = (acc.tokens || []).filter(x => x !== h); save(); return reply(200, { ok: true }); }
     return reply(404, { hata: 'yok' });
   } catch (e) { log('istek hatası', e.message); return reply(400, { hata: 'Geçersiz istek' }); }
 }
 
-// bir kerelik aktarım (sunucuda komut satırından): node sunucu/hesaplar.js aktar dosya.json  → her oyuncu için rastgele PIN yazdırır
+// bir kerelik aktarım (sunucuda, servis durdurulmuşken): node sunucu/hesaplar.js aktar dosya.json → her oyuncu için rastgele PIN yazdırır
 if (require.main === module && process.argv[2] === 'aktar') {
   const src = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
   for (const p of Object.values(src.players || {})) {
     const ad = MI.tidy(p.name), k = MI.key(ad);
     if (MI.check(ad)) { console.log('ATLANDI (ad uygun değil):', ad); continue; }
     if (db.players[k]) { console.log('ATLANDI (zaten var):', ad); continue; }
-    const pin = String(crypto.randomInt(10000)).padStart(4, '0'), salt = crypto.randomBytes(8).toString('hex');
-    db.players[k] = { key: k, salt, pin: hashPin(pin, salt), profile: cleanProfile(p, ad), rev: 1, created: Date.now(), upd: Date.now(), tokens: [], aktarildi: true };
-    console.log(`AKTARILDI: ${ad} | PIN ${pin} | puan ${db.players[k].profile.points} | açık parkur ${db.players[k].profile.unlocked}`);
+    const pin = String(crypto.randomInt(10000)).padStart(4, '0');
+    const acc = db.players[k] = { key: k, profile: cleanProfile(p, ad), rev: 1, created: Date.now(), upd: Date.now(), tokens: [], aktarildi: true };
+    setSecret(acc, 'pin', 'p:' + pin); const kurtarma = giveRecovery(acc);
+    console.log(`AKTARILDI: ${ad} | PIN ${pin} | kurtarma ${kurtarma} | puan ${acc.profile.points} | açık parkur ${acc.profile.unlocked}`);
   }
   save(true); process.exit(0);
 }

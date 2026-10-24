@@ -5,7 +5,7 @@
  */
 (function (G) {
   'use strict';
-  const STORE = 'misket-bulut-v1', AYAR = 'misket-ayar', OLD_KEY = 'misket-yarisi-v1', MOVED = 'misket-eski-tasindi';
+  const STORE = 'misket-bulut-v1', AYAR = 'misket-ayar', OLD_KEY = 'misket-yarisi-v1', MOVED = 'misket-eski-tasindi', CIHAZ = 'misket-cihaz';
   const MI = G.MI;
   // sunucu adresi: js/ag.js ile aynı kural (?sunucu=ws://… yerel test)
   let api = 'https://misket-yarisi.swedencentral.cloudapp.azure.com/api/';
@@ -13,6 +13,8 @@
     const q = new URLSearchParams(location.search).get('sunucu') || sessionStorage.getItem('misket-sunucu');
     if (q && /^wss?:\/\//.test(q)) api = q.replace(/^ws/, 'http').replace(/\/ws\/?$/, '') + '/api/';
   } catch (e) { }
+  // bu tarayıcının kimliği: resimli şifrede yanlış deneme kilidi cihaza göre tutulur
+  let device = null; try { device = localStorage.getItem(CIHAZ); if (!device) { device = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join(''); localStorage.setItem(CIHAZ, device); } } catch (e) { device = null; }
   const readJSON = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } };
 
@@ -46,7 +48,7 @@
   async function call(route, opt = {}) {
     let r;
     try {
-      r = await fetch(api + route, { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: Object.assign({ 'Content-Type': 'application/json' }, opt.token ? { Authorization: 'Bearer ' + opt.token } : {}), body: opt.body ? JSON.stringify(opt.body) : undefined, keepalive: !!opt.keepalive });
+      r = await fetch(api + route, { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: Object.assign({ 'Content-Type': 'application/json' }, device ? { 'X-Cihaz': device } : {}, opt.token ? { Authorization: 'Bearer ' + opt.token } : {}), body: opt.body ? JSON.stringify(opt.body) : undefined, keepalive: !!opt.keepalive });
     } catch (e) { return { code: 0, j: { hata: 'Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.' } }; }
     let j = null; try { j = await r.json(); } catch (e) { }
     return { code: r.status, j: j || {} };
@@ -85,11 +87,19 @@
   const score = p => [p.earned || 0, p.races || 0];
   function ahead(a, b) { const x = score(a), y = score(b); return x[0] !== y[0] ? x[0] > y[0] : x[1] > y[1]; }
 
-  function remember(name, token, profil, rev) {
+  function remember(name, token, profil, rev, tur, kurtarmaVar) {
     const k = MI.key(name);
     const p = migratePlayer(Object.assign(newPlayer(profil.name), profil));
-    store.accounts[k] = { token, rev, profile: p, dirty: false, last: Date.now() }; keep();
+    store.accounts[k] = { token, rev, profile: p, dirty: false, last: Date.now(), tur: tur || 'pin', kurtarmaVar: kurtarmaVar !== false }; keep();
     return p;
+  }
+  // gelen giriş yanıtı → { profil, kurtarma? } ya da { hata, kalanSn, kalanHak }
+  function loggedIn(r, kurtarmaVar) {
+    if (r.code !== 200) return { hata: r.j.hata || 'Giriş olmadı', kalanSn: r.j.kalanSn || 0, kalanHak: r.j.kalanHak };
+    markMoved(r.j.profil.name);
+    const old = acc(r.j.profil.name);
+    if (old && old.dirty && ahead(old.profile, r.j.profil)) { old.token = r.j.token; old.rev = r.j.rev; old.tur = r.j.tur; keep(); return { profil: old.profile, kurtarma: r.j.kurtarma }; } // cihazda bekleyen ilerleme
+    return { profil: remember(r.j.profil.name, r.j.token, r.j.profil, r.j.rev, r.j.tur, r.j.kurtarma ? true : kurtarmaVar), kurtarma: r.j.kurtarma };
   }
 
   const Kayit = G.Kayit = {
@@ -112,33 +122,38 @@
       if (a.dirty) { push(); return; }
       const r = await call('profil', { token: a.token });
       if (r.code === 200) {
+        a.tur = r.j.tur || a.tur; a.kurtarmaVar = !!r.j.kurtarmaVar; keep();
         if (r.j.rev !== a.rev || ahead(r.j.profil, a.profile)) { const mine = a.profile; Object.keys(mine).forEach(k => delete mine[k]); Object.assign(mine, migratePlayer(r.j.profil)); a.rev = r.j.rev; keep(); Kayit.onProfile(); }
         setState('ok');
       } else if (r.code === 401) { setState('auth'); Kayit.onAuthLost(a.profile.name); }
       else setState('off');
     },
     checkName: async ad => { const e = MI.check(ad); if (e) return { uygun: false, hata: e }; const r = await call('isim?ad=' + encodeURIComponent(MI.tidy(ad))); return r.code === 200 ? r.j : { uygun: null, hata: r.j.hata }; },
-    // yeni hesap (eski cihaz kaydı varsa onunla)
-    async register(ad, pin, fromLegacy) {
-      const r = await call('kayit', { body: { ad: MI.tidy(ad), pin } });
+    // yeni hesap; sifre = { tur: 'pin', pin } ya da { tur: 'resim', resim: 0..11 }; eski cihaz kaydı varsa onunla
+    async register(ad, sifre, fromLegacy) {
+      const r = await call('kayit', { body: Object.assign({ ad: MI.tidy(ad) }, sifre) });
       if (r.code !== 200) return { hata: r.j.hata || 'Kayıt olmadı' };
-      let p = remember(r.j.profil.name, r.j.token, r.j.profil, r.j.rev);
+      const out = loggedIn(r, true), p = out.profil;
       if (fromLegacy) { // eski ilerlemeyi buluta yükle
         Object.assign(p, migratePlayer(Object.assign({}, fromLegacy, { name: p.name })));
-        const u = await call('profil', { method: 'PUT', token: r.j.token, body: { profil: p, rev: r.j.rev } });
-        if (u.code === 200) store.accounts[MI.key(p.name)].rev = u.j.rev; else store.accounts[MI.key(p.name)].dirty = true;
+        const a = store.accounts[MI.key(p.name)];
+        const u = await call('profil', { method: 'PUT', token: a.token, body: { profil: p, rev: a.rev } });
+        if (u.code === 200) a.rev = u.j.rev; else a.dirty = true;
         keep(); markMoved(fromLegacy.name);
       }
-      return { profil: p };
+      return out;
     },
-    async login(ad, pin) {
-      const r = await call('giris', { body: { ad: MI.tidy(ad), pin } });
-      if (r.code !== 200) return { hata: r.j.hata || 'Giriş olmadı' };
-      const old = acc(r.j.profil.name);
-      if (old && old.dirty && ahead(old.profile, r.j.profil)) { old.token = r.j.token; old.rev = r.j.rev; keep(); return { profil: old.profile }; } // cihazda bekleyen ilerleme
-      markMoved(r.j.profil.name);
-      return { profil: remember(r.j.profil.name, r.j.token, r.j.profil, r.j.rev) };
-    },
+    // sifre = { pin } ya da { resim }
+    login: async (ad, sifre) => loggedIn(await call('giris', { body: Object.assign({ ad: MI.tidy(ad) }, sifre) })),
+    // kurtarma koduyla yeni şifre
+    recover: async (ad, kod, sifre) => loggedIn(await call('kurtar', { body: Object.assign({ ad: MI.tidy(ad), kod }, sifre) })),
+    // başka cihazda gösterilen 6 haneli kodla giriş
+    codeLogin: async kod => loggedIn(await call('kodla', { body: { kod } })),
+    // girişli cihazda: yeni cihaz kodu / yeni kurtarma kodu
+    async deviceCode() { const a = Kayit.active && acc(Kayit.active.name); if (!a) return { hata: 'Önce giriş yap' }; const r = await call('cihazkodu', { method: 'POST', token: a.token, body: {} }); return r.code === 200 ? r.j : { hata: r.j.hata }; },
+    async newRecovery() { const a = Kayit.active && acc(Kayit.active.name); if (!a) return { hata: 'Önce giriş yap' }; const r = await call('kurtarmakodu', { method: 'POST', token: a.token, body: {} }); if (r.code === 200) { a.kurtarmaVar = true; keep(); return r.j; } return { hata: r.j.hata }; },
+    // etkin hesabın şifre türü ve kurtarma kodu durumu
+    info() { const a = Kayit.active && acc(Kayit.active.name); return a ? { tur: a.tur || 'pin', kurtarmaVar: a.kurtarmaVar !== false } : null; },
     // bu cihazdan çıkış (bulut hesabı silinmez)
     async forget(name) {
       const a = acc(name); if (!a) return;
@@ -147,10 +162,12 @@
       delete store.accounts[MI.key(name)]; keep();
       if (Kayit.active && MI.key(Kayit.active.name) === MI.key(name)) Kayit.active = null;
     },
-    async changePin(eski, yeni) {
+    // eski = { pin } | { resim }, yeni = { tur, pin | resim }
+    async changeSecret(eski, yeni) {
       const a = Kayit.active && acc(Kayit.active.name); if (!a) return { hata: 'Önce giriş yap' };
-      const r = await call('pin', { token: a.token, body: { eski, yeni } });
-      return r.code === 200 ? { ok: true } : { hata: r.j.hata || 'PIN değişmedi' };
+      const r = await call('sifre', { token: a.token, body: { eski, yeni } });
+      if (r.code === 200) { a.tur = r.j.tur; keep(); return { ok: true }; }
+      return { hata: r.j.hata || 'Şifre değişmedi' };
     },
     leaderboard: async () => { const r = await call('liderlik'); return r.code === 200 ? r.j : null; },
     records: async id => { const r = await call('rekor?parkur=' + id); return r.code === 200 ? r.j.liste : null; },
