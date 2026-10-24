@@ -6,6 +6,11 @@ set -euo pipefail
 HOST="${HOST:-misket@misket-yarisi.swedencentral.cloudapp.azure.com}"
 KEY="${KEY:-$HOME/.ssh/misket_azure}"
 BODY=$(python3 -c 'import json,sys; print(json.dumps({"ad": sys.argv[1]}))' "$1")
-ssh -i "$KEY" "$HOST" "curl -s -X POST http://127.0.0.1:8790/api/yonetici/sifirla -H 'Content-Type: application/json' --data-binary @-" <<< "$BODY" | python3 -c '
-import json,sys; j=json.load(sys.stdin)
-print(f"✅ {j[\"ad\"]}: yeni PIN {j[\"pin\"]} | kurtarma kodu {j[\"kurtarma\"]}" if "pin" in j else "⚠️ " + j.get("hata","hata"))'
+ssh -i "$KEY" "$HOST" "curl -s -X POST http://127.0.0.1:8790/api/yonetici/sifirla -H 'Content-Type: application/json' --data-binary @-" <<< "$BODY" > /tmp/misket-sifirla.$$
+python3 - /tmp/misket-sifirla.$$ <<'PY'
+import json, sys
+j = json.load(open(sys.argv[1]))
+if 'pin' in j: print('✅ %s: yeni PIN %s | kurtarma kodu %s' % (j['ad'], j['pin'], j['kurtarma']))
+else: print('⚠️ ' + j.get('hata', 'hata'))
+PY
+rm -f /tmp/misket-sifirla.$$
