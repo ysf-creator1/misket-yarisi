@@ -145,3 +145,16 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - `js/guclar.js`: `PowerSystem` birden çok insan oyuncu (`humans`), duvarlara numara.
 - İstemci `js/ag.js`: bağlantı + `RemoteRace` (Race arayüzünü taklit eder, 120 ms tampon + ara değer) → kamera, HUD, kartlar, efektler değişmeden çalışır. Lobi ekranı `scrMp`, üst çubukta 👥.
 - Testler: `test/cok-oyunculu-testi.js` 21/21; tarayıcıda iki profil (bilgisayar + telefon) yerel ve canlı sunucuyla uçtan uca; yük testi Azure'da 20 oda: CPU %69 (tek çekirdek), döngü 10,6 ms / 16,7 ms, bellek 342 MB. Canlı gecikme ≈74 ms.
+
+## 7. Güncelleme: bulut oyuncu hesapları
+
+### Prompt
+> Bilgisayardaki oyuncu isimlerini, seviyelerini ve puanlarını hem bilgisayarda hem internetten açılan oyunda görmek istiyorum. İsimler tekil olsun, aynı isim gelince uyarsın. İsimler ve puanlar bulutta saklansın. (Kararlar: 4 haneli PIN; mevcut kayıtlar bir kerelik aktarılsın; ek olarak liderlik tablosu, uygunsuz isim filtresi, günlük yedek, günlük görev + ödül.)
+
+### Yapılanlar
+- `js/isim.js` (tarayıcı + sunucu ortak): ad kuralları, tekil anahtar (Türkçe küçük harf), Zirve'deki uygunsuz ad filtresi.
+- `sunucu/hesaplar.js`: /api/isim, kayit, giris, profil (GET/PUT, sürüm numarasıyla çakışma koruması), pin, cikis, liderlik, rekor. PIN scrypt + tuz; oturum anahtarı sha256 ile saklanır; yanlış PIN: ad başına 5 hatada 10 dk kilit, IP başına saatte 40. CORS yalnızca GitHub Pages, 127.0.0.1/localhost ve dosyadan açılış. Veri `/opt/misket/veri/hesaplar.json` (2 sn gecikmeli güvenli yazım), günlük yedek 30 gün. Bir kerelik aktarım: `node sunucu/hesaplar.js aktar kayit.json` (rastgele PIN yazar).
+- `js/kayit-sistemi.js` buluta geçti: cihazda hatırlanan hesaplar, çevrimdışı bekletme, iki cihaz çakışmasında daha ilerlemiş kayıt kalır, eski cihaz kayıtlarını taşıma.
+- Giriş ekranı (Giriş yap / Yeni oyuncu, anlık "bu ad alınmış" uyarısı), menüde günlük görevler, 📊 Liderlik ekranı, 🔑 PIN değiştir.
+- Testler: `test/hesap-testi.js` 23/23; tarayıcıda 3 ayrı cihazla (kayıt, aynı ad uyarısı, yanlış/doğru PIN, eski kaydı taşıma, liderlik, yarış sonrası puanın diğer cihazda görünmesi) geçti; çok oyunculu ve tek oyunculu testler yeniden geçti.
+- Mac: `~/Library/LaunchAgents/com.misket.yedek.plist` her gün 12:30'da `sunucu/yedek-indir.sh` → `~/claude_mert/misket-yedekler/`.

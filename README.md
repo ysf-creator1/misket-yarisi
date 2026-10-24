@@ -12,6 +12,13 @@ Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam
 - **Güç kartları:** 15–20 saniyede bir 3 kart çıkar; kendini güçlendir (Turbo, Kalkan, Işınlanma…) ya da öndeki rakiplere tuzak kur (Yavaşlatma, Bomba, Duvar…). Botlar da güç kullanır.
 - **Mağaza:** renk, desen, forma, gözlük, şapka ve iz (144 ürün). **Kupalar**, **bahis**, **başarımlar**, **seviye**.
 
+## ☁️ Oyuncu hesapları (bulut)
+- Oyuncu adı **tekildir** (büyük/küçük harf farkı aynı sayılır); uygunsuz adlar kabul edilmez. Her oyuncunun **4 haneli PIN**'i vardır.
+- Puan, seviye, açılan parkurlar, eşyalar, başarımlar sunucuda saklanır; başka cihazdan adın + PIN'inle girersin. İnternet yoksa ilerleme cihazda bekler, bağlanınca gönderilir.
+- Bulut öncesi bu cihazda oynanmış kayıtlar giriş ekranında "eski kayıtlar" olarak görünür; PIN belirleyip buluta taşınır.
+- **Liderlik:** puan, galibiyet, en uzak parkur ve parkur rekorları. **Günlük görevler:** her gün 3 görev + giriş ödülü (art arda günlerde artar).
+- Sunucu kayıtları her gün yedekler (30 gün); `bash sunucu/yedek-indir.sh` bir kopyayı bilgisayara indirir.
+
 ## 👥 Çok oyunculu
 Menüdeki **Çok Oyunculu** düğmesinden:
 - **Hızlı Oyun:** bekleyen oyuncularla eşleşirsin (en fazla 20 sn bekler), eksik koltuklarda bot yarışır.
