@@ -617,6 +617,9 @@
     if (del) { e.stopPropagation(); if (confirm(`"${del.dataset.legdel}" eski kaydı gizlensin mi? (Buluta taşınmaz)`)) { Kayit.dismissLegacy(del.dataset.legdel); showProfiles(); } return; }
     const b = e.target.closest('[data-legacy]'); if (!b) return;
     authLegacy = Kayit.legacyPlayers().find(p => MI.key(p.name) === MI.key(b.dataset.legacy)) || null;
+    Kayit.checkName(b.dataset.legacy).then(r => { // bu ad bulutta zaten varsa (taşınmışsa) PIN ile giriş
+      if (r.uygun === false && /alınmış/.test(r.hata || '')) setAuth('giris', b.dataset.legacy, `"${b.dataset.legacy}" bulutta zaten kayıtlı. PIN'inle giriş yap.`);
+    });
     setAuth('legacy', b.dataset.legacy, '');
     $('authErr').textContent = `"${b.dataset.legacy}" için bir PIN belirle: ilerlemen (${authLegacy ? authLegacy.points || 0 : 0} puan) buluta taşınacak.`; $('authErr').classList.add('info');
   });
