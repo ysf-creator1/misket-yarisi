@@ -57,6 +57,8 @@ const humanFlags = dv => { const n = dv.getUint8(1), out = []; for (let i = 0; i
     ok('misket seçimi', A.room.oyuncular.find(p => p.ad === 'Ayşe').misket === 5);
     B.send({ t: 'baslat' }); await sleep(200);
     ok('kurucu olmayan başlatamaz', A.room.durum === 'lobi');
+    A.send({ t: 'parkur', id: 150 }); await sleep(200);
+    ok('çok oyunculuda kurucu açmadığı parkuru da seçebiliyor', A.room.parkur === 150, `parkur ${A.room.parkur}`);
     A.send({ t: 'parkur', id: trackId }); for (const c of [A, B, C]) c.autoCard = true;
     A.send({ t: 'baslat' });
     await A.wait(m => m.t === 'basla');
@@ -127,6 +129,21 @@ const humanFlags = dv => { const n = dv.getUint8(1), out = []; for (let i = 0; i
     await sleep(1500);
     ok('herkes ayrılınca yarış botlarla bitmeden de devam/temizlenir', true);
     Q.close();
+    console.log('3) Hızlı oyun: açık oda yoksa ilk gelen parkuru seçer');
+    const K = new Client('Kurucu', 1), L = new Client('Gelen', 1); await K.hello(); await L.hello();
+    K.send({ t: 'hizli', sec: true });
+    ok('açık hızlı oda yokken parkur seçmesi isteniyor', !!(await K.wait(m => m.t === 'hizliSec')) && !K.room);
+    K.send({ t: 'hizli', sec: true, parkur: 120 });
+    const k0 = await K.wait(m => m.t === 'oda');
+    ok('seçtiği parkurla hızlı oda kuruldu (açmadığı parkur da olur)', k0.hizli && k0.parkur === 120 && k0.secildi && k0.kurucu === K.pid, `parkur ${k0.parkur}`);
+    L.send({ t: 'hizli', sec: true }); const l0 = await L.wait(m => m.t === 'oda');
+    ok('sonra gelen seçim yapmadan aynı odaya katılıyor', l0.kod === k0.kod && !L.msgs.some(m => m.t === 'hizliSec'), l0.kod);
+    K.send({ t: 'parkur', id: 77 }); await sleep(300);
+    ok('hızlı odayı kuran beklerken parkuru değiştirebiliyor', L.room.parkur === 77, `parkur ${L.room.parkur}`);
+    L.send({ t: 'parkur', id: 5 }); await sleep(300);
+    ok('kurucu olmayan değiştiremiyor', K.room.parkur === 77);
+    for (const c of [K, L]) { c.send({ t: 'ayril' }); c.close(); }
+    await sleep(500);
     const d = await (await fetch(`http://127.0.0.1:${PORT}/durum`)).json();
     ok('/durum çalışıyor', d.ok === true, JSON.stringify(d));
   } catch (e) { fail++; console.log('  ✗ HATA', e.message); }

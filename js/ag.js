@@ -39,6 +39,8 @@
         case 'elGitti': if (Ag.race) Ag.race.events.push({ type: 'handGone', id: Ag.race.me }); break;
         case 'sonuc': if (Ag.race) Ag.race.onResult(m); emit('sonuc', m); break;
         case 'hata': emit('hata', m); break;
+        case 'bilgi': emit('bilgi', m); break;
+        case 'hizliSec': emit('hizliSec', m); break; // açık hızlı oda yok: parkuru sen seç
         case 'surumEski': emit('surumEski', m); break; // sunucu daha yeni: sayfa yenilenmeli
       }
     };
@@ -60,7 +62,7 @@
     constructor() { this.p = { x: 0, y: 0, z: 0 }; this.q = { x: 0, y: 0, z: 0, w: 1 }; this.v = { x: 0, y: 0, z: 0 }; }
     translation() { return this.p; } rotation() { return this.q; } linvel() { return this.v; } mass() { return 1; }
   }
-  const FX_BITS = [['shield', 2], ['turbo', 4], ['slow', 8], ['small', 16], ['ghost', 32], ['iron', 64], ['wind', 128], ['stun', 256]];
+  const FX_BITS = [['shield', 2], ['turbo', 4], ['slow', 8], ['small', 16], ['ghost', 32], ['iron', 64], ['wind', 128], ['stun', 256], ['magnet', 2048]];
 
   class RemoteRace {
     // start: sunucunun 'basla' mesajı

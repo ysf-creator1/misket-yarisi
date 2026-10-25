@@ -276,7 +276,23 @@
   .mpslot.me{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
   .mpslot.free{opacity:.75}
   .mpslot:disabled{opacity:1;cursor:default}
-  #mpTrack{background:rgba(0,0,0,.35);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px}
+  /* çok oyunculu parkur seçici: önce dünya, sonra o dünyanın 10 parkuru */
+  .mptrk{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
+  .mptrk .cur{display:flex;align-items:center;gap:10px;flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04)}
+  .mptrk .cur .i{font-size:28px} .mptrk .cur b{display:block;font-size:16px} .mptrk .cur small{color:var(--muted);font-weight:700;font-size:12px}
+  .tpick{border:1px solid var(--line);border-radius:14px;padding:10px;background:rgba(0,0,0,.2);margin:0 0 10px}
+  .tpick h4{margin:2px 2px 8px;font-size:13px;color:var(--muted)}
+  .tpw{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px;margin-bottom:12px}
+  .tpw button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border-radius:12px;font-size:11.5px;font-weight:800;line-height:1.15;min-height:58px;justify-content:center}
+  .tpw button .i{font-size:22px}
+  .tpw button.on{border-color:var(--accent);background:rgba(255,194,61,.16)}
+  .tpt{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+  .tpt button{text-align:left;padding:8px 10px;border-radius:12px;display:flex;flex-direction:column;gap:2px}
+  .tpt button .n{font-size:11px;color:var(--muted);font-weight:900}
+  .tpt button small{color:var(--muted);font-weight:700;font-size:12px}
+  .tpt button.on{border-color:var(--accent);background:rgba(255,194,61,.16)}
+  .tpick .row{margin-top:10px}
+  @media (max-width:600px){ .tpw{grid-template-columns:repeat(4,1fr)} .tpw button{font-size:10.5px;min-height:52px} .tpt{grid-template-columns:repeat(2,1fr)} }
 
   /* mağaza */
   #scrShop{justify-content:flex-end;background:linear-gradient(90deg,rgba(5,10,25,0) 0%,rgba(5,10,25,0) 38%,rgba(5,10,25,.55) 55%)}
@@ -601,8 +617,14 @@
   <div class="note hidden" id="mpMsg" style="margin-bottom:10px;text-align:center"></div>
   <div id="mpHome">
     <div class="menu">
-      <button id="mpQuick"><span>⚡</span>Hızlı Oyun<small>Bekleyenlerle eşleş</small></button>
+      <button id="mpQuick"><span>⚡</span>Hızlı Oyun<small>Bekleyenlerle eşleş, oda yoksa parkuru sen seç</small></button>
       <button id="mpCreate"><span>🏠</span>Oda Kur<small>Arkadaşlarını davet et</small></button>
+    </div>
+    <div id="mpQuickPick" class="hidden">
+      <h3>⚡ Açık hızlı oda yok: parkuru sen seç</h3>
+      <p class="sub" style="margin:-4px 0 8px">Seçtiğin parkurla hızlı oda kurulur; gelenler katılır, 20 sn sonra eksiklere bot girer.</p>
+      <div class="tpick" id="mpQuickPicker"></div>
+      <div class="row"><button id="mpQuickCancel">✖ Vazgeç</button><button class="main" id="mpQuickGo">⚡ Hızlı odayı kur</button></div>
     </div>
     <h3>Oda koduyla katıl</h3>
     <div class="row" style="flex-wrap:nowrap"><input id="mpCode" maxlength="5" placeholder="Ör: K7M2P" autocomplete="off" style="text-transform:uppercase;letter-spacing:3px;font-weight:800"><button class="main" id="mpJoin">Katıl</button></div>
@@ -610,7 +632,8 @@
   </div>
   <div id="mpRoom" class="hidden">
     <div class="row" style="justify-content:space-between"><b id="mpTitle">🏠 Özel oda</b><span>Oda kodu: <b id="mpRoomCode" class="mpcode"></b></span><button class="sm" id="mpCopy">🔗 Davet linki</button></div>
-    <div class="row" style="margin:10px 0"><span class="muted" style="font-weight:800">Parkur:</span><select id="mpTrack" style="max-width:100%"></select><b id="mpTrackTxt"></b></div>
+    <div class="mptrk"><div class="cur" id="mpTrackCur"></div><button class="sm" id="mpTrackBtn">🔄 Parkuru değiştir</button></div>
+    <div class="tpick hidden" id="mpTrackPick"></div>
     <p class="sub" id="mpQuickInfo" style="margin:4px 0 8px"></p>
     <div id="mpVote" class="hidden" style="margin-bottom:10px"></div>
     <div class="mpslots" id="mpSlots"></div>
@@ -642,27 +665,27 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=19"></script>
-<script src="js/dil-en.js?v=19"></script>
-<script src="js/dil.js?v=19"></script>
+<script src="js/surum.js?v=20"></script>
+<script src="js/dil-en.js?v=20"></script>
+<script src="js/dil.js?v=20"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=19"></script>
-<script src="varliklar/qrcode.js?v=19"></script>
-<script src="three.min.js?v=19"></script>
-<script src="varliklar/RGBELoader.js?v=19"></script>
-<script src="varliklar/dokular.js?v=19"></script>
-<script src="rapier.js?v=19"></script>
-<script src="js/parcalar.js?v=19"></script>
-<script src="js/parkurlar.js?v=19"></script>
-<script src="js/dunyalar.js?v=19"></script>
-<script src="js/fizik.js?v=19"></script>
-<script src="js/guclar.js?v=19"></script>
-<script src="js/kayit-sistemi.js?v=19"></script>
-<script src="js/magaza.js?v=19"></script>
-<script src="js/ses.js?v=19"></script>
-<script src="js/cevre.js?v=19"></script>
-<script src="js/grafik.js?v=19"></script>
-<script src="js/ag.js?v=19"></script>
-<script src="js/oyun.js?v=19"></script>
+<script src="js/isim.js?v=20"></script>
+<script src="varliklar/qrcode.js?v=20"></script>
+<script src="three.min.js?v=20"></script>
+<script src="varliklar/RGBELoader.js?v=20"></script>
+<script src="varliklar/dokular.js?v=20"></script>
+<script src="rapier.js?v=20"></script>
+<script src="js/parcalar.js?v=20"></script>
+<script src="js/parkurlar.js?v=20"></script>
+<script src="js/dunyalar.js?v=20"></script>
+<script src="js/fizik.js?v=20"></script>
+<script src="js/guclar.js?v=20"></script>
+<script src="js/kayit-sistemi.js?v=20"></script>
+<script src="js/magaza.js?v=20"></script>
+<script src="js/ses.js?v=20"></script>
+<script src="js/cevre.js?v=20"></script>
+<script src="js/grafik.js?v=20"></script>
+<script src="js/ag.js?v=20"></script>
+<script src="js/oyun.js?v=20"></script>
 </body>
 </html>

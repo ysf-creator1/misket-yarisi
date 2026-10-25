@@ -155,5 +155,44 @@ RAPIER.init().then(() => {
     }
     ok('Hayalet çivilere çarpmadan geçiyor', straightRuns >= N - 1, `${straightRuns}/${N} düz geçiş`);
   }
+  // 7) mıknatıs öndeki rakibe yaklaştırır
+  {
+    let closer = 0, N = 6;
+    for (let k = 0; k < N; k++) {
+      const gaps = [];
+      for (const mag of [false, true]) {
+        const { race, ps } = setup(tr), a = race.marbles[0], b = race.marbles[1];
+        place(race, a, tr, 8, (k % 3 - 1) * 0.5, 3); place(race, b, tr, 22, 0, 3);
+        run(race, 0.2); for (const m of race.marbles) race._progress(m, false);
+        if (mag) ps.activate(a, 'miknatis');
+        run(race, 2.5); gaps.push(b.s - a.s);
+        race.dispose();
+      }
+      if (gaps[1] < gaps[0] - 2) closer++;
+    }
+    ok('Mıknatıs öndeki rakibe yaklaştırıyor', closer >= N - 1, `${closer}/${N}`);
+  }
+  // 8) yer değiştirme: hemen öndekiyle yer değişir; kalkanlı rakipte işlemez; önde kimse yoksa boşa gider
+  {
+    const { race, ps } = setup(tr), a = race.marbles[0], b = race.marbles[1], c = race.marbles[2];
+    place(race, a, tr, 8, 0, 2); place(race, b, tr, 20, 0, 2); place(race, c, tr, 30, 0, 2);
+    run(race, 0.2); for (const m of race.marbles) race._progress(m, false);
+    const sa = a.s, sb = b.s;
+    ps.activate(a, 'takas'); const ev = race.events.filter(e => e.type === 'power').pop();
+    run(race, 0.3); for (const m of race.marbles) race._progress(m, false);
+    ok('Yer Değiştir hemen öndekiyle yer değiştiriyor', ev.target === b.id && Math.abs(a.s - sb) < 2 && Math.abs(b.s - sa) < 2, `a ${sa.toFixed(0)}→${a.s.toFixed(0)}, b ${sb.toFixed(0)}→${b.s.toFixed(0)}`);
+    ok('Geri düşen misket ileri konmuyor (rekoru geri alındı)', b.bestS < sb - 5, `rekor ${b.bestS.toFixed(0)}`);
+    race.dispose();
+  }
+  {
+    const { race, ps } = setup(tr), a = race.marbles[0], b = race.marbles[1];
+    place(race, a, tr, 8, 0, 2); place(race, b, tr, 20, 0, 2);
+    run(race, 0.2); for (const m of race.marbles) race._progress(m, false);
+    ps.activate(b, 'kalkan'); const sb = b.s; ps.activate(a, 'takas'); const ev = race.events.filter(e => e.type === 'power').pop();
+    ok('Kalkan yer değiştirmeyi engelliyor', ev.blocked && Math.abs(b.s - sb) < 1, '');
+    const ev2 = (ps.activate(b, 'takas'), race.events.filter(e => e.type === 'power').pop());
+    ok('Önünde rakip yokken yer değiştirme boşa gidiyor', ev2.none === true, '');
+    race.dispose();
+  }
   console.log(`\n${pass} geçti, ${fail} kaldı`);
 });

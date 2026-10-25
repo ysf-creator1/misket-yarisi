@@ -53,7 +53,7 @@
         w.createCollider(d, fixed);
       }
       this.gateCols = []; this.spinners = []; this.pistons = []; this.kins = []; this.clock = 0;
-      this.belts = track.belts || [];
+      this.belts = track.belts || []; this.fans = track.fans || [];
       for (const pr of track.prims) {
         let d;
         if (pr.type === 'spinner') { this._spinner(pr); continue; }
@@ -120,6 +120,10 @@
     _kin(pr) {
       const R = this.R, w = this.world, P0 = MF.kinPose(pr, 0);
       const body = w.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(P0.p[0], P0.p[1], P0.p[2]).setRotation(P0.q));
+      if (pr.kind === 'tambur') { // dönen tambur: oluk gibi (hayalet de içinden geçemez), sürtünmesi misketi döndürüp kaldırır
+        for (const pt of pr.parts) w.createCollider(R.ColliderDesc.cuboid(pt.half[0], pt.half[1], pt.half[2]).setTranslation(pt.p[0], pt.p[1], pt.p[2]).setRotation(pt.q).setFriction(pt.fin ? 0.3 : 0.6).setRestitution(0.25), body);
+        this.kins.push({ body, pr }); return;
+      }
       let d;
       if (pr.kind === 'kazik') d = R.ColliderDesc.cylinder(pr.hh, pr.r).setRestitution(0.5).setFriction(0.1);
       else if (pr.kind === 'sarkac') d = R.ColliderDesc.ball(pr.bob).setRestitution(0.7).setFriction(0.1);
@@ -174,6 +178,14 @@
           const k = b.accel * mass * dt; m.body.applyImpulse({ x: sm.T[0] * k, y: sm.T[1] * k, z: sm.T[2] * k }, true);
         }
       }
+      // vantilatörler: açıkken önlerinden geçen misketi karşı duvara iter
+      if (this.fans.length) for (const m of this.marbles) {
+        if (m.finished) continue;
+        for (const f of this.fans) {
+          if (m.s < f.s0 || m.s > f.s1 || !MF.fanOn(f, this.clock)) continue;
+          const k = f.accel * m.body.mass() * dt; m.body.applyImpulse({ x: f.dir[0] * k, y: f.dir[1] * k, z: f.dir[2] * k }, true);
+        }
+      }
       for (const sp of this.spinners) {
         sp.ang = this.clock * sp.pr.speed;
         sp.body.setNextKinematicRotation(MP.qmul(sp.pr.q, MP.qY(sp.ang)));
@@ -225,7 +237,8 @@
       const lim = zone ? P.zoneStuckTime : P.stuckTime, idle = Math.min(this.t - m.lastGain, this.t - (m.anchorT || 0));
       if (idle > lim) { this._respawn(m, 'stuck'); return; }
       // bir engelin önünde dengede kalan misket: gerçekteki küçük sarsıntı gibi hafifçe yana it
-      if (idle > (zone ? 4 : 2) && m.speed < 0.6 && this.t - (m.lastNudge || 0) > 1 && m.lastSample) {
+      // (yerinde ileri geri sallanan misket de: hızı var ama 1 m'den fazla yer değiştirmiyor)
+      if (idle > (zone ? 4 : 2) && m.speed < 3 && this.t - (m.lastNudge || 0) > 1 && m.lastSample) {
         const R = m.lastSample.R, T = m.lastSample.T, side = this.rand() < 0.5 ? -1 : 1, mass = m.body.mass();
         m.body.applyImpulse({ x: (R[0] * side * 2.2 + T[0] * 0.8) * mass, y: 0.8 * mass, z: (R[2] * side * 2.2 + T[2] * 0.8) * mass }, true);
         m.lastNudge = this.t; m.nudges = (m.nudges || 0) + 1;
@@ -237,7 +250,7 @@
       // zıplama/turbo gibi bir güç sırasında düşen misket zaman kaybetmesin: ulaştığı yere geri konur
       // güç sırasında ya da atlama/trambolin/delik/düşüş bölgesinde düşen misket zaman kaybetmesin: ulaştığı yere konur
       const kind = m.lastSample && m.lastSample.kind;
-      const safe = why === 'fall' && (!!(m.fx && m.fx.safe > this.t) || !!m.inZone || kind === 'jump' || kind === 'tramp' || kind === 'funnelExit' || kind === 'drop');
+      const safe = why === 'fall' && (!!(m.fx && m.fx.safe > this.t) || !!m.inZone || kind === 'jump' || kind === 'tramp' || kind === 'funnelExit' || kind === 'drop' || kind === 'tambur');
       const target = safe ? m.bestS + 1 : Math.max(0, m.bestS - 2.5);
       let sm = null;
       for (const q of this.safe) { if (q.s <= target) sm = q; else break; }
@@ -295,11 +308,15 @@
       return { p: add3(add3(pr.pivot, pr.R, Math.sin(th) * pr.armL), pr.U, -Math.cos(th) * pr.armL), q: { x: 0, y: 0, z: 0, w: 1 }, th };
     }
     if (pr.kind === 'tabla') return { p: pr.p, q: G.MP.qmul(pr.q, G.MP.qY(t * pr.speed)) };
+    if (pr.kind === 'tambur') { const h = t * pr.speed / 2, s = Math.sin(h); return { p: pr.p, q: G.MP.qmul({ x: pr.A[0] * s, y: pr.A[1] * s, z: pr.A[2] * s, w: Math.cos(h) }, pr.q) }; }
     // kapı: zeminden yükselir, 1,1 sn yolu kapatır, iner
     const u = ((t / pr.period) + pr.phase) % 1, up = 0.09, hold = 0.26;
     const e = u < up ? sm3(u / up) : u < up + hold ? 1 : u < 2 * up + hold ? 1 - sm3((u - up - hold) / up) : 0;
     return { p: add3(pr.p, pr.U, lerpN(-0.75, 0.6, e)), q: pr.q };
   };
+
+  // vantilatör açık mı (fizik ve görüntü aynı saati kullanır): her periyodun ilk yarısı eser
+  MF.fanOn = (f, t) => ((t / f.period + f.phase) % 1 + 1) % 1 < 0.5;
 
   function lowerBound(S, s) { let a = 0, b = S.length; while (a < b) { const m = (a + b) >> 1; if (S[m].s < s) a = m + 1; else b = m; } return a; }
   function shuffle(a, rand) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }

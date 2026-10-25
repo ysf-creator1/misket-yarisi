@@ -1,7 +1,7 @@
 /* Misket Yarışı — 20 dünya, 200 parkur, kupalar ve parkur üreticisi
  * Her dünya 10 parkurdur ve kendine özgü bir çevresi vardır (ev odaları, şehir, lunapark, dünyanın ilginç yerleri…).
  * Parkurlar numarasına göre hep aynı şekilde üretilir (tohumlu rastgele). Zorluk ve süre 1 → 200 yavaş yavaş artar:
- * 1. parkur ≈ 60 sn, 200. parkur ≈ 180 sn. Elle yapılmış 12 özel parkur, süresi uyan sıralara yerleştirilmiştir.
+ * 1. parkur ≈ 66 sn, 200. parkur ≈ 198 sn (MP.UZUNLUK). Elle yapılmış 12 özel parkur, süresi uyan sıralara yerleştirilmiştir.
  */
 (function (G) {
   'use strict';
@@ -14,27 +14,27 @@
   MP.WORLDS = [
     W(0, 'Yeşil Vadi', '🌲', 'doga', ['#3d8bff', '#ff6b6b', '#ffd166', '#06d6a0'], { duz: 1.3, slalom: 1.2 },
       ['Çaylak Tepesi', 'Çam Yokuşu', 'Dere Kenarı', 'Mantar Patikası', 'Rüzgârlı Sırt', 'Göl Kıyısı', 'Kozalak Yolu', 'Yaban Çayırı', 'Şelale Başı', 'Vadi Finali']),
-    W(1, 'Mutfak', '🍳', 'mutfak', ['#ff6b35', '#f7c548', '#2ec4b6', '#e71d36'], { huni: 1.6, civi: 1.3 },
+    W(1, 'Mutfak', '🍳', 'mutfak', ['#ff6b35', '#f7c548', '#2ec4b6', '#e71d36'], { huni: 1.6, civi: 1.3, tambur: 1.3 },
       ['Tezgâh Kaydırağı', 'Çaydanlık Virajı', 'Kaşık Köprüsü', 'Buzdolabı İnişi', 'Tabak Hunisi', 'Lavabo Yolu', 'Fırın Rampası', 'Baharat Rafı', 'Kahvaltı Masası', 'Tencere Turu']),
     W(2, 'Salon', '🛋️', 'salon', ['#8e5bd8', '#f2a541', '#3aa7a3', '#e5446d'], { tampon: 1.4, slalom: 1.3 },
       ['Koltuk Tepesi', 'Halı Yolu', 'Kitaplık Rampası', 'Sehpa Virajı', 'Şömine Önü', 'Televizyon Kanyonu', 'Yastık Dağı', 'Lamba Kulesi', 'Perde Şelalesi', 'Salon Finali']),
-    W(3, 'Çocuk Odası', '🧸', 'cocuk', ['#ff595e', '#ffca3a', '#8ac926', '#1982c4'], { trambolin: 1.6, tampon: 1.3 },
+    W(3, 'Çocuk Odası', '🧸', 'cocuk', ['#ff595e', '#ffca3a', '#8ac926', '#1982c4'], { trambolin: 1.6, tampon: 1.3, merdiven: 1.4 },
       ['Lego Kalesi', 'Oyuncak Kutusu', 'Ranza Kaydırağı', 'Ayıcık Tepesi', 'Renkli Küpler', 'Tren Rayı', 'Uçurtma Yolu', 'Boya Kalemi Virajı', 'Masal Kitabı', 'Uyku Vakti']),
-    W(4, 'Banyo', '🛁', 'banyo', ['#4cc9f0', '#f72585', '#b8f2e6', '#ffd166'], { huni: 1.7, catal2: 1.2 },
+    W(4, 'Banyo', '🛁', 'banyo', ['#4cc9f0', '#f72585', '#b8f2e6', '#ffd166'], { huni: 1.7, catal2: 1.2, tambur: 1.7 },
       ['Küvet Kaydırağı', 'Köpük Yolu', 'Lavabo Hunisi', 'Havlu Rampası', 'Fayans Labirenti', 'Sabun Kaydırağı', 'Diş Fırçası Köprüsü', 'Duş Şelalesi', 'Ayna Virajı', 'Banyo Finali']),
-    W(5, 'Şehir Merkezi', '🏙️', 'sehir', ['#ffb703', '#219ebc', '#e63946', '#8ecae6'], { piston: 1.7, slalom: 1.3 },
+    W(5, 'Şehir Merkezi', '🏙️', 'sehir', ['#ffb703', '#219ebc', '#e63946', '#8ecae6'], { piston: 1.7, slalom: 1.3, vantilator: 1.5 },
       ['Gökdelen Rampası', 'Trafik Işıkları', 'Metro Tüneli', 'Köprü Geçidi', 'Çatı Katı', 'Meydan Turu', 'Otobüs Durağı', 'Neon Caddesi', 'Kule İnişi', 'Şehir Maratonu']),
     W(6, 'Oyun Parkı', '🛝', 'park', ['#ff70a6', '#70d6ff', '#ffd670', '#9b5de5'], { trambolin: 1.5, atlama: 1.5 },
       ['Kaydırak Başı', 'Salıncak Virajı', 'Kum Havuzu', 'Tahterevalli', 'Tırmanma Duvarı', 'Top Havuzu', 'Park Yolu', 'Fıskiye Meydanı', 'Ağaç Ev', 'Park Şampiyonası']),
-    W(7, 'Lunapark', '🎡', 'lunapark', ['#ff006e', '#ffbe0b', '#3a86ff', '#8338ec'], { spiral: 1.8, pervane: 1.6 },
+    W(7, 'Lunapark', '🎡', 'lunapark', ['#ff006e', '#ffbe0b', '#3a86ff', '#8338ec'], { spiral: 1.8, pervane: 1.6, tambur: 1.5 },
       ['Dönme Dolap', 'Atlıkarınca', 'Çarpışan Arabalar', 'Pamuk Şeker', 'Hız Treni', 'Korku Tüneli', 'Balon Patlatma', 'Gece Işıkları', 'Ayna Labirenti', 'Lunapark Gecesi']),
-    W(8, 'Spor Salonu', '🏀', 'spor', ['#f77f00', '#003049', '#fcbf49', '#d62828'], { tampon: 1.6, trambolin: 1.4 },
+    W(8, 'Spor Salonu', '🏀', 'spor', ['#f77f00', '#003049', '#fcbf49', '#d62828'], { tampon: 1.6, trambolin: 1.4, vantilator: 1.3 },
       ['Basket Potası', 'Tribün İnişi', 'Voleybol Filesi', 'Koşu Bandı', 'Halter Rampası', 'Jimnastik Barı', 'Penaltı Noktası', 'Smaç Virajı', 'Soyunma Odası', 'Final Maçı']),
-    W(9, 'Kapadokya', '🎈', 'kapadokya', ['#e76f51', '#f4a261', '#2a9d8f', '#e9c46a'], { atlama: 1.4, huni: 1.2 },
+    W(9, 'Kapadokya', '🎈', 'kapadokya', ['#e76f51', '#f4a261', '#2a9d8f', '#e9c46a'], { atlama: 1.4, huni: 1.2, merdiven: 1.4 },
       ['Peri Bacaları', 'Balon Turu', 'Güvercinlik Vadisi', 'Uçhisar Kalesi', 'Kızıl Vadi', 'Yeraltı Şehri', 'Aşk Vadisi', 'Gün Doğumu', 'Ihlara Kanyonu', 'Göreme Finali']),
     W(10, 'Pamukkale', '⛰️', 'pamukkale', ['#48cae4', '#ffffff', '#ffb4a2', '#90e0ef'], { catal3: 1.5, huni: 1.3 },
       ['Beyaz Teraslar', 'Travertenler', 'Antik Havuz', 'Kireç Şelalesi', 'Hierapolis', 'Pamuk Kalesi', 'Mavi Göletler', 'Termal Yol', 'Gün Batımı Terası', 'Pamukkale Finali']),
-    W(11, 'Mısır Piramitleri', '🐪', 'misir', ['#e9c46a', '#264653', '#e76f51', '#2a9d8f'], { civi: 1.4, catal2: 1.3 },
+    W(11, 'Mısır Piramitleri', '🐪', 'misir', ['#e9c46a', '#264653', '#e76f51', '#2a9d8f'], { civi: 1.4, catal2: 1.3, merdiven: 1.8 },
       ['Büyük Piramit', 'Sfenks Yolu', 'Nil Kıyısı', 'Çöl Fırtınası', 'Firavun Mezarı', 'Vaha Molası', 'Kum Tepeleri', 'Hiyeroglif Duvarı', 'Deve Kervanı', 'Giza Finali']),
     W(12, 'Paris', '🗼', 'paris', ['#003f88', '#ffffff', '#d90429', '#ffd60a'], { spiral: 1.4, slalom: 1.3 },
       ['Eyfel Kulesi', 'Sen Nehri', 'Zafer Takı', 'Montmartre Merdivenleri', 'Louvre Piramidi', 'Kafe Köşesi', 'Şanzelize', 'Notre Dame', 'Işık Şehri', 'Paris Finali']),
@@ -42,7 +42,7 @@
       ['Gondol Yolu', 'Rialto Köprüsü', 'Büyük Kanal', 'San Marco Meydanı', 'Maske Festivali', 'İç Çekiş Köprüsü', 'Murano Camı', 'Lagün Turu', 'Dar Sokaklar', 'Venedik Finali']),
     W(14, 'Japon Bahçesi', '🌸', 'japon', ['#ff8fab', '#ffffff', '#d62828', '#52b788'], { slalom: 1.5, pervane: 1.2 },
       ['Kiraz Çiçekleri', 'Pagoda Kulesi', 'Torii Kapısı', 'Koi Göleti', 'Bambu Ormanı', 'Taş Fenerler', 'Zen Bahçesi', 'Fuji Manzarası', 'Çay Evi', 'Sakura Finali']),
-    W(15, 'Kutup', '🐧', 'kutup', ['#a2d2ff', '#ffffff', '#cdb4db', '#ffafcc'], { spiral: 1.4, atlama: 1.4 },
+    W(15, 'Kutup', '🐧', 'kutup', ['#a2d2ff', '#ffffff', '#cdb4db', '#ffafcc'], { spiral: 1.4, atlama: 1.4, vantilator: 1.6 },
       ['Buz Dağı', 'Penguen Kaydırağı', 'İglo Köyü', 'Kuzey Işıkları', 'Kar Fırtınası', 'Buz Mağarası', 'Fok Kıyısı', 'Donmuş Göl', 'Kızak Yolu', 'Kutup Finali']),
     W(16, 'Tropik Ada', '🏝️', 'tropik', ['#00b4d8', '#ffb703', '#fb8500', '#52b788'], { trambolin: 1.4, huni: 1.3 },
       ['Palmiye Sahili', 'Mercan Resifi', 'Hindistan Cevizi', 'Lagün Kıyısı', 'Gün Batımı Plajı', 'Korsan Koyu', 'Şelale Ormanı', 'Volkan Adası', 'Kum Kalesi', 'Ada Finali']),
@@ -50,12 +50,15 @@
       ['Kızıl Kayalar', 'Kanyon Kenarı', 'Kartal Yuvası', 'Kaktüs Vadisi', 'Colorado Nehri', 'Rüzgâr Kayası', 'Masa Dağı', 'Kayıp Patika', 'Gün Batımı Kanyonu', 'Kanyon Finali']),
     W(18, 'Volkan', '🌋', 'volkan', ['#d00000', '#ffba08', '#6a040f', '#f48c06'], { trambolin: 1.4, piston: 1.4 },
       ['Lav Nehri', 'Kül Bulutu', 'Magma Odası', 'Kraterin Ağzı', 'Obsidyen Yol', 'Duman Bacası', 'Ateş Çemberi', 'Sıcak Kaynak', 'Bazalt Sütunlar', 'Volkan Finali']),
-    W(19, 'Uzay', '🚀', 'uzay', ['#7b2cbf', '#00f5d4', '#f15bb5', '#fee440'], { spiral: 1.6, pervane: 1.5, huni: 1.3 },
+    W(19, 'Uzay', '🚀', 'uzay', ['#7b2cbf', '#00f5d4', '#f15bb5', '#fee440'], { spiral: 1.6, pervane: 1.5, huni: 1.3, tambur: 1.3 },
       ['Ay Yüzeyi', 'Asteroit Kuşağı', 'Mars Kanyonu', 'Satürn Halkası', 'Kara Delik', 'Uzay İstasyonu', 'Meteor Yağmuru', 'Samanyolu', 'Nebula Yolu', 'Şampiyonlar Galaksisi']),
   ];
 
   // ---- süre, puan, kupa ----
-  MP.targetFor = id => Math.round(60 + 120 * (id - 1) / (NT - 1));
+  // UZUNLUK: üretilen parkurların uzunluk çarpanı (1,1 = %10 uzun); hedef süre de aynı oranda uzar (elle yapılmış parkurlar hariç)
+  MP.UZUNLUK = 1.1;
+  const baseTarget = id => 60 + 120 * (id - 1) / (NT - 1);
+  MP.targetFor = id => Math.round(baseTarget(id) * MP.UZUNLUK);
   MP.pointsFor = id => Math.round((100 + 165 * (id - 1) / (NT - 1)) / 5) * 5; // 1. olana verilen puan: 100 → 265
   MP.worldOf = id => MP.WORLDS[Math.floor((id - 1) / PER)];
   MP.CUPS = MP.WORLDS.map(w => ({
@@ -73,7 +76,7 @@
   for (let id = 1; id <= NT; id++) {
     const w = MP.worldOf(id), k = (id - 1) % PER;
     MP.TRACKS.push({
-      id, world: w.id, name: w.names[k], target: MP.targetFor(id), hand: HAND_IDS[id] || null,
+      id, world: w.id, name: w.names[k], target: HAND_IDS[id] ? Math.round(baseTarget(id)) : MP.targetFor(id), hand: HAND_IDS[id] || null,
       theme: { env: w.env, palette: w.pal, world: w.id, trackMat: MAT[w.env] || 'tahta' }, build: true,
     });
   }
@@ -94,7 +97,8 @@
     catal2: { t: 6.2, w: () => 0.9, f: (b, r) => b.split({ lanes: 2, lw: 1.2, len: 16 + Math.round(r() * 4), drop: 2.1 * MP.EGIM, spread: 2.4, laneOpts: [{ spread: 3 }, { spread: 1, profile: MP.humps(0.2, 0.75, 3, 0.11) }] }) },
     catal3: { t: 6.8, w: d => 0.2 + d, f: (b, r) => b.split({ lanes: 3, lw: 1.15, len: 18 + Math.round(r() * 4), drop: 2.4 * MP.EGIM, spread: 2.4, laneOpts: [{ spread: 3.2 }, { profile: MP.humps(0.25, 0.7, 2, 0.11) }, { spread: 1.6 }] }) },
     atlama: { t: 4.3, w: () => 0.9, f: (b, r, d) => b.jump({ run: 7, gap: 3 + d * 1.5 + r() * 0.5 }) },
-    huni: { t: 11.5, w: d => 0.35 + 0.5 * d, f: (b, r) => b.funnel({ R: 5.5 + r() * 1.5, side: sign(r), depth: 3.2 + r() * 0.6 }) },
+    // huni: büyüklük, ileri konum ve duvar MP.HUNI'den (js/parcalar.js) → dik parkurda hızlı gelen misket karşı duvarı aşmaz
+    huni: { t: 13.5, w: d => 0.35 + 0.5 * d, f: (b, r) => b.funnel({ R: 5.5 + r() * 1.5, side: sign(r), depth: 3.2 + r() * 0.6 }) },
     pervane: { t: 5.0, w: d => 0.3 + 0.8 * d, f: (b, r, d) => b.spinner({ len: 11, arms: d > 0.4 && r() < 0.5 ? 3 : 2, speed: 1.3 + d * 0.6, dir: sign(r) }) },
     piston: { t: 5.8, w: d => 0.1 + 1.1 * d, f: (b, r, d) => b.pistons({ len: 14, count: 2 + (d > 0.5 && r() < 0.6 ? 1 : 0), period: 2.8 - d * 0.8 }) },
     trambolin: { t: 5.4, w: d => 0.2 + 0.8 * d, f: (b, r) => b.trampoline({ fall: 3.4 + r() * 0.7 }) },
@@ -106,6 +110,10 @@
     tabla: { t: 3.0, w: d => d < 0.15 ? 0 : 0.25 + 0.6 * d, final: true, f: (b, r) => b.tabla({ len: 12, dir: sign(r) }) },
     kapi: { t: 2.8, w: d => d < 0.2 ? 0 : 0.2 + 0.6 * d, final: true, f: (b, r, d) => b.kapi({ len: 12, period: 4.4 - d, phase: r() }) },
     dusus: { t: 2.0, w: d => d < 0.08 ? 0 : 0.35, f: (b, r) => b.dusus({ fall: 4 + r() * 1.2 }) },
+    // yeni engeller: merdiven (hoplayarak inen basamaklar), vantilatör (sırayla esen yan fanlar), dönen tambur
+    merdiven: { t: 2.3, w: d => d < 0.03 ? 0 : 0.55, f: (b, r, d) => b.merdiven({ steps: 4 + Math.round(r() + d), rise: 0.55 + r() * 0.2, stepLen: 2.6 + r() * 0.6 }) },
+    vantilator: { t: 1.9, w: d => d < 0.06 ? 0 : 0.3 + 0.6 * d, final: true, f: (b, r, d) => b.vantilator({ len: 14 + Math.round(r() * 4), count: 2 + (d > 0.45 && r() < 0.5 ? 1 : 0), side: sign(r), period: 2.4 - d * 0.6, power: 12 + d * 3 }) },
+    tambur: { t: 4.4, w: d => d < 0.1 ? 0 : 0.25 + 0.55 * d, f: (b, r, d) => b.tambur({ len: 8 + Math.round(r() * 3), speed: 1.3 + d * 0.6, dir: sign(r) }) },
   };
   // son %25: sürpriz final (bu engeller daha sık, son düzlükte atlama/trambolin)
   ['catal2', 'atlama', 'trambolin'].forEach(k => PIECES[k].final = true);
@@ -129,7 +137,7 @@
     for (let i = 0; i < keys.length; i++) { q -= ws[i]; if (q <= 0) return keys[i]; }
     return keys[keys.length - 1];
   }
-  MP.timeScale = 0.88; // gerçek/tahmini süre oranı (EĞİM 1,35 ile parkurlar daha hızlı → daha uzun üretilir); test/parkur-testi.js ornek ile ölçüldü
+  MP.timeScale = 0.87; // gerçek/tahmini süre oranı (EĞİM 1,35 ile parkurlar daha hızlı → daha uzun üretilir); test/parkur-testi.js ornek -g ile ölçüldü
 
   function genTrack(def, variant) {
     const r = MP.rng(def.id * 7919 + variant * 104729 + 17), d = (def.id - 1) / (NT - 1), w = MP.WORLDS[def.world];

@@ -91,6 +91,10 @@
     return pts;
   }
 
+  // huni ayarları (hepsi: üretilen ve elle yapılmış parkurlar). Dik parkurda hızlı gelen misket karşı duvarı aşmasın diye
+  // huni büyük ve merkezi yolun ucundan ileride; test: huni ölçümü (duvar üstüne çıkan / dışarı uçan oranı)
+  MP.HUNI = { olcek: 1.4, derinlik: 1.15, ileri: 0.3, yan: 0.4, wallH: 1.7, above: 3.0 };
+
   // ---------- parkur kurucu ----------
   class Builder {
     constructor(o = {}) {
@@ -352,12 +356,19 @@
 
     // Huni: misketler teğet olarak girer, dönerek ortadaki delikten alttaki yola düşer
     funnel(o = {}) {
-      const Rr = o.R || 6, depth = o.depth || 3.2, hole = o.hole || 1.15, side = o.side || 1, above = o.above || 2.6;
-      const wallH = o.wallH || 1.3, exitTurn = (o.exitTurn || 0) * DEG, hw = this.hw;
-      const dd = Rr - hw - 0.7, la = Math.sqrt(Rr * Rr - dd * dd) + 1.5;
+      // tüm hunilerin ortak ayarı (MP.HUNI): büyüklük çarpanı, merkezin yolun ucundan ne kadar ileride olduğu, duvar ve düşüş yüksekliği
+      const H = MP.HUNI;
+      const Rr = (o.R || 6) * H.olcek, depth = (o.depth || 3.2) * H.derinlik, hole = o.hole || 1.15, side = o.side || 1, above = o.above || H.above;
+      const wallH = o.wallH || H.wallH, exitTurn = (o.exitTurn || 0) * DEG, hw = this.hw;
+      // fwd: huninin merkezi yolun ucundan bu kadar ileride → hızlı gelen misket karşı duvara varmadan huniye iner
+      // dd: yol merkezden yana bu kadar uzakta (teğet giriş); yavaş misket yolun dış kenarından düşse de huninin içine düşer
+      const fwd = o.fwd != null ? o.fwd : Rr * H.ileri;
+      // H.yan verilirse yol merkeze daha yakından geçer (kaydırak huninin içine daha çok uzanır)
+      const dd = H.yan && o.fwd == null ? Math.max(hw + 0.3, Rr * H.yan) : fwd ? Math.sqrt(Math.max(1, (Rr - 1.2) ** 2 - fwd * fwd)) - hw + 0.5 : Rr - hw - 0.7;
+      const la = Math.sqrt(Rr * Rr - dd * dd) - fwd + 1.5;
       this.straight({ len: la, drop: la * 0.05 }); // yaklaşma: huninin kenarının üstünden geçer
-      const E = this.pos.slice(), yaw = this.yaw;
-      const c = add(E, mul(leftOf(yaw), side * dd)), yRim = E[1] - above; c[1] = yRim;
+      const E0 = this.pos.slice(), yaw = this.yaw, E = add(E0, mul(dirOf(yaw), fwd));
+      const c = add(E, mul(leftOf(yaw), side * dd)), yRim = E0[1] - above; c[1] = yRim;
       const yAt = r => yRim - depth * ((Rr / r - 1) / (Rr / hole - 1));
       const m = new Mesh('funnel', this._color(o.color), { friction: o.friction });
       const NR = 24, NS = 64, top = add(c, [0, 60, 0]);
@@ -391,7 +402,7 @@
       }
       this.meshes.push(w);
       const Lf = 2.4 * Rr, s0 = this.s;
-      this.zones.push({ kind: 'funnel', c, R: Rr, hole, yTop: yRim + 1.9, yBot: yAt(hole) - 0.35, s0, s1: s0 + Lf });
+      this.zones.push({ kind: 'funnel', c, R: Rr, hole, yTop: yRim + Math.max(1.9, wallH + 0.6), yBot: yAt(hole) - 0.35, s0, s1: s0 + Lf });
       this.decor.push({ type: 'funnel', c, R: Rr, yRim, yHole: yAt(hole), hole, wallH });
       // çıkış: deliğin altından başlayan, arkası kapalı, yüksek duvarlı oluk
       const yaw2 = yaw + exitTurn, d2 = dirOf(yaw2), yHole = yAt(hole);
@@ -599,6 +610,79 @@
       this.decor.push({ type: 'selale', p: p0, yaw: this.yaw, hw: hw0, fall });
     }
 
+    // Merdiven: yol kısa basamaklarla iner, misket her basamakta hoplayarak düşer
+    // her basamak bir öncekinin ucunun altından (0,6 m geriden) başlar; aradaki cep misketten alçak, misket sıkışmaz
+    merdiven(o = {}) {
+      const n = o.steps || 5, stepL = o.stepLen || 2.8, rise = Math.min(0.8, o.rise || 0.65), back = 0.6;
+      const hw0 = this.hw, wh0 = this.wh, whS = wh0 + 0.3, d = dirOf(this.yaw), Rv = mul(leftOf(this.yaw), -1);
+      const qR = quatFromBasis(Rv, UP, cross(Rv, UP)), cols = [this._color(o.color), this._color(o.color2)];
+      this.straight({ len: 1.5, drop: 0.12, wh: whS, color: cols[1] });
+      for (let k = 0; k < n; k++) {
+        const p0 = this.pos.slice(), s0 = this.s, Lk = stepL + back, col = cols[k % 2];
+        // rıht: üst basamağın altındaki boşluğu dolduran blok (geri seken misket alttan kaçmasın)
+        this.prims.push({ type: 'box', riser: true, p: [p0[0] - d[0] * (back / 2 - 0.01), p0[1] - rise / 2 - 0.03, p0[2] - d[2] * (back / 2 - 0.01)], half: [hw0 - 0.15, rise / 2 - 0.01, back / 2 + 0.01], q: qR, color: col });
+        this.pos = [p0[0] - d[0] * back, p0[1] - rise, p0[2] - d[2] * back]; this.s = s0 + 0.01;
+        // duvarın üst kenarı basamaktan basamağa kesintisiz iner (basamak başında duvar 'rise' kadar yüksek);
+        // üst üste binen duvarlar titreşmesin diye basamaklar sırayla 4 cm geniş
+        const hwk = hw0 + (k % 2 ? 0 : 0.04);
+        this.straight({ len: Lk, drop: Lk * 0.07, hw0: hwk, hw: hwk, wh0: whS + rise, wh: whS, color: col, kindOf: t => t * Lk < back + 0.8 ? 'drop' : null });
+      }
+      this.straight({ len: 2, drop: 0.15, hw0, hw: hw0, wh: wh0, color: cols[(n + 1) % 2] });
+    }
+
+    // Vantilatör: duvarların üstündeki fanlar sırayla eser, misketi karşı duvara savurur (rüzgâr fizik.js'te)
+    vantilator(o = {}) {
+      const L = o.len || 15, drop = o.drop != null ? o.drop : L * 0.1 * this.egim, n = o.count || 2;
+      const { hw0, wh0 } = this._widths(o), whF = wh0 + 0.55;
+      const d = dirOf(this.yaw), p0 = this.pos.slice(), nf = Math.ceil(L / 0.5);
+      const env = t => smooth(Math.min(t / 0.12, (1 - t) / 0.12, 1));
+      const F = this._frames(nf, t => ({ p: [p0[0] + d[0] * L * t, p0[1] - drop * t, p0[2] + d[2] * L * t], hw: hw0, wh: lerp(wh0, whF, env(t)) }));
+      this._sweep(F, o);
+      const A = this._arc(F), s0 = this.s;
+      this._samples(F, k => s0 + A[k], o);
+      const side0 = o.side || 1, period = o.period || 2.2;
+      this.fans = this.fans || [];
+      for (let k = 0; k < n; k++) {
+        const i = Math.round((k + 0.5) / n * (F.length - 1)), f = F[i], side = (k % 2 ? -1 : 1) * side0;
+        const blow = mul(f.R, -side); // fan +side duvarının üstünde, karşı duvara doğru eser
+        this.fans.push({ s0: s0 + A[i] - 2.5, s1: s0 + A[i] + 2.5, dir: blow, accel: o.power || 13, period, phase: k / n + (o.phase || 0) });
+        const c = add(add(f.p, mul(f.R, side * (f.hw + 0.35))), mul(f.U, whF + 0.55));
+        this.decor.push({ type: 'fan', p: c, N: norm(add(blow, mul(f.U, -0.35))), U: f.U, T: f.T, r: 0.72, fan: this.fans.length - 1, wallTop: add(add(f.p, mul(f.R, side * (f.hw + 0.07))), mul(f.U, whF)) });
+      }
+      this._advance(F, s0 + A[A.length - 1], this.yaw);
+    }
+
+    // Dönen tambur: misket, içi kanatlı dönen bir silindirin içinden yuvarlanarak geçer (çubukların yarısı cam)
+    tambur(o = {}) {
+      const L = o.len || 9, Rd = o.r || 1.55, th = 0.12, ns = 14, hw0 = this.hw, wh0 = this.wh, spd = (o.speed || 1.5) * (o.dir || 1);
+      const drop = L * 0.12 * this.egim;
+      // giriş: yol daralır, misketler ortaya toplanıp tamburun dibine yuvarlanır
+      this.straight({ len: 3.5, drop: 0.35, hw: 1.05, wh: 0.9 });
+      const yaw = this.yaw, Rv = mul(leftOf(yaw), -1), E = this.pos.slice(), s0 = this.s;
+      const Ax = norm([Math.sin(yaw) * L, -drop, Math.cos(yaw) * L]), X = leftOf(yaw), Y = norm(cross(Ax, X)), Lax = Math.hypot(L, drop);
+      const a0 = add(add(E, mul(Y, Rd - 0.15)), mul(Ax, 0.05)); // eksenin başı: tamburun iç dibi yolun 0,15 m altında
+      const ctr = add(a0, mul(Ax, Lax / 2));
+      // parçalar (tamburun kendi ekseninde): çubuklar (aralar misketten çok dar) ve misketi kaldıran 3 kanat
+      const parts = [], rho = Rd + th / 2, w = 2 * rho * Math.sin(Math.PI / ns) - 0.1;
+      const qz = a => ({ x: 0, y: 0, z: Math.sin(a / 2), w: Math.cos(a / 2) });
+      for (let k = 0; k < ns; k++) {
+        const ph = 2 * Math.PI * k / ns;
+        parts.push({ p: [rho * Math.cos(ph), rho * Math.sin(ph), 0], q: qz(ph - Math.PI / 2), half: [w / 2, th / 2, Lax / 2], glass: k % 2 === 1 });
+      }
+      for (let k = 0; k < 3; k++) {
+        const ph = 2 * Math.PI * k / 3 + 0.3, fh = 0.24;
+        parts.push({ p: [(Rd - fh / 2) * Math.cos(ph), (Rd - fh / 2) * Math.sin(ph), 0], q: qz(ph - Math.PI / 2), half: [0.06, fh / 2, Lax / 2 - 0.15], fin: true });
+      }
+      this.prims.push({ type: 'kin', kind: 'tambur', p: ctr, q: quatFromBasis(X, Y, Ax), A: Ax, speed: spd, parts, r: Rd, th, L: Lax, color: this._color(o.color) });
+      for (let x = 0; x <= Lax + 1e-6; x += 0.5) {
+        this.samples.push({ p: add(add(a0, mul(Ax, x)), mul(Y, -(Rd - 0.55))), s: s0 + x, T: Ax, R: Rv, U: Y, hw: Rd * 0.7, safe: false, lane: 0, kind: 'tambur' });
+      }
+      // çıkış: tamburun ucunun altından başlayan, duvarları tambura sarılan oluk (tamburun altına misket sığmaz, geri kaçamaz)
+      const ax1 = add(a0, mul(Ax, Lax - 1.2)), hwE = Rd + th + 0.06;
+      this.pos = [ax1[0], ax1[1] - (Rd + th) * Y[1] - 0.3, ax1[2]]; this.s = s0 + Lax; this.hw = hwE; this.wh = 1.7;
+      this.straight({ len: 7, drop: 0.75, hw0: hwE, hw: hw0, wh0: 1.7, wh: wh0, kindOf: t => t < 0.3 ? 'tambur' : null });
+    }
+
     // Bitiş çizgisi ve sonrasında misketlerin durduğu alan
     finish(o = {}) {
       this.straight({ len: o.before || 6, drop: 0.35 });
@@ -637,7 +721,7 @@
       return {
         id: def.id, name: def.name, meshes: this.meshes, prims: this.prims, samples: S, zones: this.zones, decor: this.decor,
         slots: this.slots, finishS: this.finishS, startS: this.startS, groundY, bounds: { minX, maxX, minY, maxY, minZ, maxZ },
-        target: def.target, theme: def.theme || {}, warnings: this.warnings || [], belts: this.belts || [],
+        target: def.target, theme: def.theme || {}, warnings: this.warnings || [], belts: this.belts || [], fans: this.fans || [],
       };
     }
   }

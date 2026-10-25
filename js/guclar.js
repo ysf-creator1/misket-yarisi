@@ -13,14 +13,18 @@
     { id: 'demir', name: 'Demir Misket', icon: '🔩', type: 'self', tier: 2, value: 0.75, desc: '6 sn ağır ve hızlı ol, duvarı kır' },
     { id: 'hayalet', name: 'Hayalet', icon: '👻', type: 'self', tier: 2, value: 0.65, desc: '4 sn misket ve engellerin içinden geç' },
     { id: 'isinlan', name: 'Işınlanma', icon: '🌀', type: 'self', tier: 3, value: 1.3, desc: 'Biraz ileri ışınlan' },
+    { id: 'miknatis', name: 'Mıknatıs', icon: '🧲', type: 'self', tier: 2, value: 0.9, desc: '5 sn öndeki rakibe doğru çekil' },
     { id: 'balcik', name: 'Yapışkan Balçık', icon: '🟢', type: 'attack', tier: 1, value: 0.9, desc: 'Rakibin yoluna yapışkan balçık dök' },
     { id: 'duvar', name: 'Engel Duvarı', icon: '🧱', type: 'attack', tier: 2, value: 1.0, desc: 'Rakibin önüne duvar dik' },
     { id: 'yavas', name: 'Yavaşlatma', icon: '🐌', type: 'attack', tier: 1, value: 0.9, desc: 'Yakındaki 2 rakibi 4 sn yavaşlat' },
     { id: 'kucult', name: 'Küçült', icon: '🤏', type: 'attack', tier: 2, value: 0.7, desc: 'Yakındaki 2 rakibi 6 sn küçült' },
     { id: 'ruzgar', name: 'Ters Rüzgâr', icon: '💨', type: 'attack', tier: 3, value: 1.1, desc: 'Öndekileri 2,5 sn geri it' },
     { id: 'bomba', name: 'Bomba', icon: '💣', type: 'attack', tier: 2, value: 1.0, desc: 'Rakip kalabalığında patla, sersemlet' },
+    { id: 'takas', name: 'Yer Değiştir', icon: '🔄', type: 'attack', tier: 3, value: 1.2, desc: 'Hemen öndeki rakiple yer değiştir' },
   ];
   MG.byId = Object.fromEntries(MG.POWERS.map(p => [p.id, p]));
+  // lidere yetişme ayarları: lastik (lidere uzak kalan hafifçe itilir), rüzgâr tüneli (öndekinin arkasında çekilme), kaçan lider eşiği
+  MG.DENGE = { lastikBas: 10, lastikK: 0.09, lastikMax: 2.4, tunelMax: 6, tunelA: 1.8, kacan: 10, liderFren: 0.1 };
   MG.FLY = { bomba: 0.7, balcik: 0.62, ruzgar: 0.5 }; // uçuş süresi (sn): atan misketten hedefe
   MG.PERSONALITIES = [
     { id: 'saldirgan', name: 'Saldırgan', attack: 1.6, self: 0.9, shield: 0.7 },
@@ -126,7 +130,12 @@
       let best = 0, bv = -1;
       cards.forEach((id, k) => {
         const p = MG.byId[id]; let v = p.value;
-        if (p.type === 'attack') {
+        if (id === 'takas') { // yer değiştirme: önündeki ne kadar uzaksa o kadar değerli; önünde kimse yoksa işe yaramaz
+          const o = this._swapTarget(m), gap = o ? o.s - m.s : 0;
+          v *= o ? per.attack * Math.max(0.3, Math.min(1.6, gap / 10)) * (1 + 0.5 * frac) : 0;
+        } else if (id === 'miknatis') {
+          const o = this._pullTarget(m); v *= per.self * (o ? Math.max(0.5, Math.min(1.5, (o.s - m.s) / 12)) : 0.3);
+        } else if (p.type === 'attack') {
           v *= per.attack;
           if (idx === 0) v *= 0.6;
           if (dist > 0 && dist < 12) v *= 1.4; else if (dist < 0 && dist > -7) v *= 1.2; else if (Math.abs(dist) > 30) v *= 0.5;
@@ -233,7 +242,13 @@
         else if (pid === 'kalkan') { fx.shield = t + 8; fx.slow = fx.stun = fx.wind = 0; if (m._small) { fx.small = 0; m.col.setRadius(r.P.r); m._small = false; } }
         else if (pid === 'demir') { fx.iron = t + 6; fx.safe = t + 6; m.body.setAdditionalMass(mass * 3, true); m._iron = true; }
         else if (pid === 'hayalet') { fx.ghost = t + 4; fx.safe = t + 4; m._ghost = true; this._groups(m); }
+        else if (pid === 'miknatis') { fx.magnet = t + 5; fx.safe = t + 5.5; }
         else if (pid === 'isinlan') { const from = m.body.translation(); ev.from = [from.x, from.y, from.z]; this._teleport(m, 9); const to = m.body.translation(); ev.to = [to.x, to.y, to.z]; }
+      } else if (pid === 'takas') {
+        const tg = this._swapTarget(m);
+        if (!tg) ev.none = true;
+        else if (tg.fx.shield > t || tg.fx.ghost > t) { ev.target = tg.id; ev.blocked = true; }
+        else { ev.target = tg.id; this._swap(m, tg, ev); }
       } else if (pid === 'ruzgar') {
         const list = forced || this._windList(m);
         ev.targets = [];
@@ -316,11 +331,35 @@
       }
       ev.blocked = !ev.targets.length && ev.blockedIds.length > 0;
     }
-    // lider 2.'den çok öndeyse (15 m+) ve m lider değilse lideri döndür: geridekilerin umudu kalsın
+    // lider 2.'den çok öndeyse (MG.DENGE.kacan m+) ve m lider değilse lideri döndür: geridekilerin umudu kalsın
     _farLeader(m) {
       const st = this.race.standings().filter(o => !o.finished), idx = st.indexOf(m);
       if (st.length < 2 || idx <= 0 || idx > 2) return null; // sadece kovalayan ilk 3 lidere uzanır; gerisi önündekine
-      return st[0].s - st[1].s > 15 ? st[0] : null;
+      return st[0].s - st[1].s > MG.DENGE.kacan ? st[0] : null;
+    }
+    // yer değiştirme hedefi: önündeki en yakın (bitirmemiş) rakip, 35 m içinde
+    _swapTarget(m) {
+      let best = null;
+      for (const o of this.race.marbles) { if (o === m || o.finished || o.s <= m.s + 0.5 || o.s - m.s > 35) continue; if (!best || o.s < best.s) best = o; }
+      return best;
+    }
+    // mıknatısın çektiği rakip: önündeki en yakın, 45 m içinde
+    _pullTarget(m) {
+      let best = null;
+      for (const o of this.race.marbles) { if (o === m || o.finished || o.s <= m.s + 0.3 || o.s - m.s > 45) continue; if (!best || o.s < best.s) best = o; }
+      return best;
+    }
+    // iki misket yer değiştirir: konum, hız, parkurdaki ilerleme; geri düşen misketin rekoru da geri alınır (kaldığı yere geri konmasın)
+    _swap(m, o, ev) {
+      const r = this.race, t = r.t, a = m.body.translation(), b = o.body.translation(), va = m.body.linvel(), vb = o.body.linvel();
+      const A = { x: a.x, y: a.y, z: a.z }, B = { x: b.x, y: b.y, z: b.z }, VA = { x: va.x, y: va.y, z: va.z }, VB = { x: vb.x, y: vb.y, z: vb.z };
+      m.body.setTranslation(B, true); o.body.setTranslation(A, true); m.body.setLinvel(VB, true); o.body.setLinvel(VA, true);
+      const sm = m.s, so = o.s, lm = m.lastSample, lo = o.lastSample, zm = m.inZone, zo = o.inZone;
+      m.s = so; m.lastSample = lo; m.inZone = zo; m.bestS = Math.max(m.bestS, so);
+      o.s = sm; o.lastSample = lm; o.inZone = zm; o.bestS = sm;
+      for (const q of [m, o]) { q.lastGain = t; q.anchor = null; }
+      this._ignore(m, o, t + 1); this._ignore(o, m, t + 1);
+      ev.from = [A.x, A.y, A.z]; ev.to = [B.x, B.y, B.z];
     }
     // demir misket Engel Duvarı'na değerse duvar kırılır, demir etkisi biter
     _ironWalls() {
@@ -365,18 +404,31 @@
     _apply(m, dt) {
       const r = this.race, t = r.t, fx = m.fx;
       if (!r.started || m.finished) return;
-      const mass = m.body.mass(), v = m.body.linvel(), sp = Math.hypot(v.x, v.y, v.z), sm = m.lastSample, T = sm ? sm.T : null;
+      // hunide parkur yönü yoktur (son örnek huniye girmeden önceki yol): yöne bağlı itişler (turbo, mıknatıs, lastik, rüzgâr…)
+      // misketi huni duvarına ve dışarı sürüyordu → hunideyken kapalı
+      const mass = m.body.mass(), v = m.body.linvel(), sp = Math.hypot(v.x, v.y, v.z), sm = m.lastSample, T = sm && !m.inZone ? sm.T : null;
       if (fx.jumpFwdAt && t >= fx.jumpFwdAt && T) { // engelin üstüne çıktı: şimdi ileri
         const h = Math.hypot(T[0], T[2]) || 1; m.body.setLinvel({ x: T[0] / h * fx.jumpFwd, y: v.y, z: T[2] / h * fx.jumpFwd }, true); fx.jumpFwdAt = 0;
       }
-      // liderden çok geride kalan hafifçe yetişir (lastik etkisi): yarıştan kopmasın
+      // liderden geride kalan hafifçe yetişir (lastik etkisi): yarıştan kopmasın, lider rahat kaçamasın
+      const D = MG.DENGE;
       if (T && sp < 12.5) {
-        const lead = r.marbles.reduce((a, o) => !o.finished && o.s > a ? o.s : a, 0), gap = lead - m.s;
-        if (gap > 18 && !(fx.slow > t) && !(fx.stun > t)) { const a = Math.min(1.6, (gap - 18) * 0.06) * mass * dt; m.body.applyImpulse({ x: T[0] * a, y: T[1] * a, z: T[2] * a }, true); }
+        let lead = 0, second = 0;
+        for (const o of r.marbles) { if (o.finished) continue; if (o.s > lead) { second = lead; lead = o.s; } else if (o.s > second) second = o.s; }
+        const gap = lead - m.s;
+        if (gap > D.lastikBas && !(fx.slow > t) && !(fx.stun > t)) { const a = Math.min(D.lastikMax, (gap - D.lastikBas) * D.lastikK) * mass * dt; m.body.applyImpulse({ x: T[0] * a, y: T[1] * a, z: T[2] * a }, true); }
+        // tek başına kaçan lider (2.'den 8 m+ önde) çok hafif frenlenir: önü boş olduğu için çarpışmasız gidiyordu
+        if (gap <= 0 && lead - second > 8 && D.liderFren > 0 && !(fx.turbo > t) && !(fx.magnet > t)) { const k = Math.min(0.5, D.liderFren * Math.min(2, (lead - second - 8) / 8)) * dt; m.body.applyImpulse({ x: -v.x * k * mass, y: 0, z: -v.z * k * mass }, true); }
+      }
+      // mıknatıs: öndeki en yakın rakibe doğru çekilir (yaklaştıkça içinden geçer); önünde kimse yoksa hafif itiş
+      if (fx.magnet > t && T && sp < 13) {
+        const o = this._pullTarget(m), gap = o ? o.s - m.s : 0, a = (o ? 6 + Math.min(4, gap * 0.15) : 2.5) * mass * dt;
+        m.body.applyImpulse({ x: T[0] * a, y: Math.min(0, T[1]) * a, z: T[2] * a }, true);
+        if (o && gap < 3) this._ignore(m, o, t + 0.4);
       }
       // zıplarken ve turboda misket yolu takip etsin: viraj dönerken oluktan dışarı çıkmasın
-      const homing = t - (fx.jumpAt || -9) < 1.6 ? 7 : fx.turbo > t ? 3 : 0;
-      if (homing && sm) {
+      const homing = t - (fx.jumpAt || -9) < 1.6 ? 7 : (fx.turbo > t || fx.magnet > t) ? 3 : 0;
+      if (homing && T) {
         const p = m.body.translation(), h = Math.hypot(T[0], T[2]) || 1, tx = T[0] / h, tz = T[2] / h;
         const along = v.x * tx + v.z * tz, lx = v.x - tx * along, lz = v.z - tz * along;   // yana kayan hız
         const ox = p.x - sm.p[0], oz = p.z - sm.p[2], oa = ox * tx + oz * tz, olx = ox - tx * oa, olz = oz - tz * oa; // orta çizgiden sapma
@@ -386,14 +438,15 @@
         const off = Math.hypot(olx, olz), lim = Math.max(0.4, (sm.hw || 2) - 0.6);
         if (off > lim) { const vin = (lx * olx + lz * olz) / off; if (vin > 0) m.body.applyImpulse({ x: -olx / off * vin * mass, y: 0, z: -olz / off * vin * mass }, true); }
       }
-      // rüzgâr tüneli: hemen öndeki misketin 0,8–4 m arkasındaysan hafifçe öne çekilirsin (arkadan yetişme şansı)
-      if (T && sp < 11) {
+      // rüzgâr tüneli: hemen öndeki misketin 0,8–6 m arkasındaysan hafifçe öne çekilirsin (arkadan yetişme şansı)
+      // yalnız ikisi de ilerliyorsa (≥2 m/sn): çukurda birikmiş misketleri sallayıp takılı tutmasın
+      if (T && sp < 11 && v.x * T[0] + v.y * T[1] + v.z * T[2] > 2) {
         const p = m.body.translation();
         for (const o of r.marbles) {
-          if (o === m || o.finished) continue;
-          const ds = o.s - m.s; if (ds < 0.8 || ds > 4) continue;
-          const q = o.body.translation(); if (Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) > 4.5) continue;
-          m.body.applyImpulse({ x: T[0] * 1.2 * mass * dt, y: 0, z: T[2] * 1.2 * mass * dt }, true); fx.draft = t + 0.2; break;
+          if (o === m || o.finished || o.speed < 2) continue;
+          const ds = o.s - m.s; if (ds < 0.8 || ds > D.tunelMax) continue;
+          const q = o.body.translation(); if (Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) > D.tunelMax + 0.5) continue;
+          m.body.applyImpulse({ x: T[0] * D.tunelA * mass * dt, y: 0, z: T[2] * D.tunelA * mass * dt }, true); fx.draft = t + 0.2; break;
         }
       }
       if (fx.turbo > t && T && sp < 12) m.body.applyImpulse({ x: T[0] * 9 * mass * dt, y: Math.min(0, T[1]) * 9 * mass * dt, z: T[2] * 9 * mass * dt }, true);

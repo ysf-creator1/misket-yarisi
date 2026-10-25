@@ -211,7 +211,7 @@
     const cb = $('cupBadge');
     if (state.cup) { const c = MP.CUPS[state.cup.id]; cb.textContent = `${c.icon} ${c.name} · Yarış ${state.cup.idx + 1}/3`; cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   }
-  const FX_ICONS = [['shield', '🛡️'], ['turbo', '🚀'], ['slow', '🐌'], ['small', '🤏'], ['ghost', '👻'], ['iron', '🔩'], ['wind', '💨'], ['stun', '💫']];
+  const FX_ICONS = [['shield', '🛡️'], ['turbo', '🚀'], ['slow', '🐌'], ['small', '🤏'], ['ghost', '👻'], ['iron', '🔩'], ['wind', '💨'], ['stun', '💫'], ['magnet', '🧲']];
   function updateHud(force) {
     const r = state.race; if (!r) return;
     if (!force && (++hudN % 6)) return;
@@ -277,7 +277,7 @@
     const p = state.player;
     state.mvs = MF.MARBLES.map((info, i) => Grafik.makeMarble(info, Magaza.lookFor(info, i === state.pick ? p.eq : {}), i === state.pick, MF.PARAMS.r));
     state.colors = state.mvs.map(mv => mv.look.color);
-    state.prevV = MF.MARBLES.map(() => [0, 0, 0]);
+    state.prevV = MF.MARBLES.map(() => [0, 0, 0]); state.touch = {};
     // bahis
     state.betActive = null;
     if (state.bet && state.bet.amount > 0 && !state.cup && p.points >= state.bet.amount) {
@@ -309,12 +309,12 @@
     Ses.power(e.power, mine || meHit);
     const up = u.body.translation();
     if (e.power === 'zipla') Grafik.puff(up);
-    else if (e.power === 'isinlan' && e.from) { Grafik.sparkle({ x: e.from[0], y: e.from[1], z: e.from[2] }); Grafik.sparkle({ x: e.to[0], y: e.to[1], z: e.to[2] }); }
+    else if ((e.power === 'isinlan' || e.power === 'takas') && e.from) { Grafik.sparkle({ x: e.from[0], y: e.from[1], z: e.from[2] }); Grafik.sparkle({ x: e.to[0], y: e.to[1], z: e.to[2] }); }
     else if (e.power === 'balcik' && e.slime) Grafik.spawnSlime(e.slime, e.slime.until);
     else if (e.power === 'duvar' && e.wall) Grafik.spawnWall(e.wall, e.wall.until);
     else if (e.power === 'bomba') for (const a of e.atList || (e.at ? [e.at] : [])) Grafik.explode({ x: a[0], y: a[1], z: a[2] });
     else if (e.power === 'ruzgar') for (const id of e.targets || []) { const m = r.marbles[id], q = m.body.translation(); Grafik.wind(q, m.lastSample ? m.lastSample.T : [0, 0, 1]); }
-    else if (e.power === 'kalkan' || e.power === 'turbo' || e.power === 'demir') Grafik.sparkle(up, e.power === 'kalkan' ? '#7fd8ff' : '#ffd166');
+    else if (e.power === 'kalkan' || e.power === 'turbo' || e.power === 'demir' || e.power === 'miknatis') Grafik.sparkle(up, e.power === 'kalkan' ? '#7fd8ff' : e.power === 'miknatis' ? '#ff4d6d' : '#ffd166');
     const s = st(state.player);
     if (mine) { s.powers = (s.powers || 0) + 1; dailyAdd('guc'); if (P.type === 'attack') { s.traps = (s.traps || 0) + 1; dailyAdd('tuzak'); } }
     for (const bid of (e.blockedIds || []).concat(e.blocked && tg && !(e.blockedIds || []).length ? [tg.id] : [])) { Grafik.sparkle(r.marbles[bid].body.translation(), '#7fd8ff'); Ses.blocked(); if (bid === state.pick) { s.blocks = (s.blocks || 0) + 1; dailyAdd('kalkan'); } }
@@ -324,11 +324,12 @@
     if (e.power === 'ruzgar') detail = (e.targets || []).length ? 'Geri itilen: ' + e.targets.map(nm).join(', ') : 'Kimse etkilenmedi';
     else if (e.power === 'bomba') { const n = (e.targets || []).map(nm); detail = n.length ? 'Sersemleyen: ' + n.join(', ') : 'Kalkanla engellendi'; blockedAll = !n.length; }
     else if (e.targets && P.type === 'attack') { const n = e.targets.map(nm); detail = n.length ? 'Hedef: ' + n.join(' ve ') : 'Kalkanla engellendi'; blockedAll = !n.length; }
-    else if (tg) { detail = e.blocked ? `${nm(tg.id)} kalkanla engelledi` : 'Hedef: ' + nm(tg.id); blockedAll = !!e.blocked; }
+    else if (e.power === 'takas' && !tg) detail = 'Önünde rakip yok';
+    else if (tg) { detail = e.blocked ? `${nm(tg.id)} kalkanla engelledi` : (e.power === 'takas' ? 'Yer değişti: ' : 'Hedef: ') + nm(tg.id); blockedAll = !!e.blocked; }
     // sana bir güç uygulandıysa (ya da kalkanın engellediyse): ekranın üstünde, kimin yaptığıyla birlikte, okunacak kadar kalır
     const myBlocked = (e.blockedIds || []).includes(state.pick) || (e.blocked && tg && tg.id === state.pick);
     if (!mine && (meHit || myBlocked)) {
-      const HIT = { bomba: 'bombasıyla seni sersemletti!', ruzgar: 'sana ters rüzgâr estirdi!', yavas: 'seni yavaşlattı!', kucult: 'seni küçülttü!', balcik: 'yoluna balçık döktü!', duvar: 'önüne duvar dikti!' };
+      const HIT = { bomba: 'bombasıyla seni sersemletti!', ruzgar: 'sana ters rüzgâr estirdi!', yavas: 'seni yavaşlattı!', kucult: 'seni küçülttü!', balcik: 'yoluna balçık döktü!', duvar: 'önüne duvar dikti!', takas: 'seninle yer değiştirdi!' };
       if (myBlocked) hitBanner('🛡️', nameOf(r, e.id), state.colors[e.id], `${P.icon} ${P.name} saldırısı kalkanına çarptı`, 'Kalkanın korudu!', true);
       else hitBanner(P.icon, nameOf(r, e.id), state.colors[e.id], HIT[e.power] || `sana ${P.name} uyguladı!`, P.name, false);
       return;
@@ -418,13 +419,22 @@
   }
   function sounds() {
     const r = state.race;
-    r.marbles.forEach((m, i) => {
-      const v = m.body.linvel(), pv = state.prevV[i], dv = Math.hypot(v.x - pv[0], v.y - pv[1], v.z - pv[2]);
-      state.prevV[i] = [v.x, v.y, v.z];
-      if (dv > 2.2 && r.started) { const d = camera.position.distanceTo(V3(m.body.translation())); Ses.clack(dv / 12 / (1 + d / 14)); }
-    });
-    const me = r.marbles[state.pick], v = me.body.linvel();
-    Ses.rolling(Math.hypot(v.x, v.y, v.z), Math.abs(v.y) < 4 && !me.finished && r.started);
+    // misket–misket çarpışması: birbirine değen ve önceki karede birbirine yaklaşan iki misket → cam tıkırtısı
+    const M = r.marbles, n = M.length, P = M.map(m => m.body.translation()), pv = state.prevV;
+    const rad = m => (m.fx && m.fx.small > r.t ? 0.31 : 0.5), touch = state.touch || (state.touch = {});
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const a = M[i], b = M[j], k = i * 8 + j;
+      const dx = P[j].x - P[i].x, dy = P[j].y - P[i].y, dz = P[j].z - P[i].z, d = Math.hypot(dx, dy, dz);
+      const on = d < rad(a) + rad(b) + 0.06 && !(a.fx && a.fx.ghost > r.t) && !(b.fx && b.fx.ghost > r.t);
+      if (on && !touch[k] && r.started) {
+        const close = -((pv[j][0] - pv[i][0]) * dx + (pv[j][1] - pv[i][1]) * dy + (pv[j][2] - pv[i][2]) * dz) / (d || 1); // yaklaşma hızı
+        if (close > 0.5) { const cd = camera.position.distanceTo(V3({ x: (P[i].x + P[j].x) / 2, y: (P[i].y + P[j].y) / 2, z: (P[i].z + P[j].z) / 2 })); Ses.clink(close / 7 / (1 + cd / 12)); }
+      }
+      touch[k] = on;
+    }
+    M.forEach((m, i) => { const v = m.body.linvel(); state.prevV[i] = [v.x, v.y, v.z]; });
+    const me = M[state.pick], mv = me.body.linvel();
+    Ses.rolling(Math.hypot(mv.x, mv.y, mv.z), Math.abs(mv.y) < 4 && !me.finished && r.started);
   }
 
   // ---- bitiş tekrarı ----
@@ -568,6 +578,7 @@
         r.spinners.forEach((sp, i) => { const q = sp.body.rotation(), m = state.view.spinners[i]; if (m) m.quaternion.set(q.x, q.y, q.z, q.w); });
         r.pistons.forEach((ps, i) => { const q = ps.body.translation(), m = state.view.movers[i]; if (m) m.position.set(q.x, q.y, q.z); });
         r.kins.forEach((k, i) => { const m = state.view.kins && state.view.kins[i]; if (m) Grafik.syncKin(m, k.body.translation(), k.body.rotation()); });
+        Grafik.syncFans(state.view, r.clock || 0);
         for (const g of state.view.gates) if (g.opening && g.mesh.visible) { g.mesh.position.y += dt * 6; if (g.mesh.position.y > g.y0 + 4) g.mesh.visible = false; }
         if (r.started) record();
         sounds();
@@ -896,14 +907,12 @@
     showMenu();
   };
 
-  // parkur seçimi: dünyalar akordiyon gibi; başlığa dokununca altında 10 parkuru açılır. Varsayılan: en son oynanan parkurun dünyası.
+  // parkur seçimi: dünyalar akordiyon gibi; başlığa dokununca altında 10 parkuru açılır.
+  // Varsayılan: oyuncunun açabildiği son parkurun dünyası (ör. Mutfak'ta açık parkuru varsa Mutfak açık gelir)
   function showTracks(world, scroll = true) {
     toMenuScene();
     const p = state.player, maxOpen = openUpTo(p);
-    if (world == null) {
-      const last = state.trackId && state.trackId <= maxOpen ? state.trackId : maxOpen;
-      world = state.world != null ? state.world : MP.worldOf(last).id;
-    }
+    if (world == null) world = state.world != null ? state.world : MP.worldOf(maxOpen).id;
     state.world = world;
     $('tlist').innerHTML = MP.WORLDS.map(w => {
       const first = w.id * 10 + 1, open = first <= maxOpen, on = open && w.id === world;
@@ -1065,7 +1074,44 @@
   Ag.on('basla', m => startNetRace(m));
   let surumSoruldu = false;
   Ag.on('surumEski', () => { if (surumSoruldu) return; surumSoruldu = true; if (confirm('Oyunun yeni sürümü var. Çok oyunculu için sayfa şimdi yenilensin mi?')) location.reload(); else mpMsg('⚠️ Oyunun eski sürümünü kullanıyorsun, sayfayı yenile.'); });
-  let mpTrackN = 0;
+  // parkur seçici (çok oyunculu): önce dünya, sonra o dünyanın 10 parkuru; 🎲 rastgele. Tüm parkurlar açık.
+  function trackPicker(el, onPick) {
+    let sel = 1, world = 0;
+    function render() {
+      const ts = MP.TRACKS.filter(t => t.world === world);
+      el.innerHTML = `<h4>1) Dünya</h4><div class="tpw">${MP.WORLDS.map(w => `<button class="${w.id === world ? 'on' : ''}" data-pw="${w.id}"><span class="i">${w.icon}</span>${esc(w.name)}</button>`).join('')}</div>`
+        + `<h4>2) Parkur · ${MP.WORLDS[world].icon} ${esc(MP.WORLDS[world].name)}</h4><div class="tpt">${ts.map(t => `<button class="${t.id === sel ? 'on' : ''}" data-pt="${t.id}"><span class="n">PARKUR ${t.id}${t.hand ? ' · ⭐ ÖZEL' : ''}</span><b>${esc(t.name)}</b><small>⏱ ~${t.target} sn</small></button>`).join('')}</div>`
+        + `<div class="row"><button class="sm" data-rnd="1">🎲 Rastgele parkur</button></div>`;
+    }
+    el.addEventListener('click', e => {
+      const w = e.target.closest('[data-pw]'), t = e.target.closest('[data-pt]'), r = e.target.closest('[data-rnd]');
+      if (w) { world = +w.dataset.pw; render(); }
+      else if (t) { sel = +t.dataset.pt; render(); onPick(sel); }
+      else if (r) { sel = 1 + Math.floor(Math.random() * MP.TRACKS.length); world = MP.TRACKS[sel - 1].world; render(); onPick(sel); }
+    });
+    return { set(id) { sel = id; world = MP.TRACKS[id - 1].world; render(); }, get: () => sel };
+  }
+  const trackLine = T => `<span class="i">${MP.WORLDS[T.world].icon}</span><span><b>Parkur ${T.id} · ${esc(T.name)}</b><small>${esc(MP.WORLDS[T.world].name)} · ⏱ ~${T.target} sn${T.hand ? ' · ⭐ özel' : ''}</small></span>`;
+  // odada kurucunun seçicisi: seçince sunucuya bildirilir ve kapanır
+  const roomPicker = trackPicker($('mpTrackPick'), id => { Ag.send({ t: 'parkur', id }); $('mpTrackPick').classList.add('hidden'); $('mpTrackBtn').textContent = '🔄 Parkuru değiştir'; });
+  $('mpTrackBtn').onclick = () => {
+    const box = $('mpTrackPick'), open = box.classList.contains('hidden');
+    if (open && Ag.room) roomPicker.set(Ag.room.parkur);
+    box.classList.toggle('hidden', !open); $('mpTrackBtn').textContent = open ? '✖ Kapat' : '🔄 Parkuru değiştir';
+  };
+  // hızlı oyun: açık oda yoksa parkuru oyuncu seçer (varsayılan: açtığı son parkur)
+  let quickSel = null;
+  const quickPicker = trackPicker($('mpQuickPicker'), id => { quickSel = id; $('mpQuickGo').textContent = `⚡ Hızlı odayı kur (Parkur ${id})`; });
+  function showQuickPick(on) {
+    $('mpQuickPick').classList.toggle('hidden', !on);
+    if (!on) return;
+    quickSel = openUpTo(state.player); quickPicker.set(quickSel); $('mpQuickGo').textContent = `⚡ Hızlı odayı kur (Parkur ${quickSel})`;
+    requestAnimationFrame(() => $('mpQuickPick').scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  }
+  Ag.on('hizliSec', () => showQuickPick(true));
+  Ag.on('bilgi', m => mpMsg('ℹ️ ' + m.mesaj));
+  $('mpQuickCancel').onclick = () => showQuickPick(false);
+  $('mpQuickGo').onclick = () => { if (quickSel) Ag.send({ t: 'hizli', sec: true, parkur: quickSel }); showQuickPick(false); };
   function renderMp() {
     const room = Ag.room, me = Ag.pid, ready = Ag.connected && !!me;
     $('mpStatus').textContent = ready ? '🟢 Sunucuya bağlısın' : Ag.want ? '⏳ Sunucuya bağlanılıyor…' : '🔴 Bağlı değil';
@@ -1079,14 +1125,10 @@
     const host = room.kurucu === me, mine = room.oyuncular.find(q => q.pid === me), T = MP.TRACKS[room.parkur - 1];
     $('mpRoomCode').textContent = room.kod; $('mpCopy').classList.toggle('hidden', room.hizli);
     $('mpTitle').textContent = room.hizli ? '⚡ Hızlı oyun' : '🏠 Özel oda';
-    const canPick = host && !room.hizli && room.durum === 'lobi';
-    $('mpTrack').classList.toggle('hidden', !canPick); $('mpTrackTxt').classList.toggle('hidden', canPick);
-    if (canPick) {
-      const n = openUpTo(state.player);
-      if (n !== mpTrackN) { mpTrackN = n; $('mpTrack').innerHTML = MP.TRACKS.slice(0, n).map(t => `<option value="${t.id}">${t.id} · ${esc(t.name)} (${MP.WORLDS[t.world].icon} ~${t.target} sn)</option>`).join(''); }
-      $('mpTrack').value = room.parkur;
-    }
-    $('mpTrackTxt').textContent = `${room.parkur} · ${T.name} (${MP.WORLDS[T.world].icon} ${MP.WORLDS[T.world].name}, ~${T.target} sn)`;
+    // kurucu parkuru seçer (özel oda; hızlı odada onu kuran seçtiyse); çok oyunculuda tüm parkurlar açık
+    const canPick = host && (!room.hizli || room.secildi) && room.durum === 'lobi';
+    $('mpTrackBtn').classList.toggle('hidden', !canPick); if (!canPick) { $('mpTrackPick').classList.add('hidden'); $('mpTrackBtn').textContent = '🔄 Parkuru değiştir'; }
+    const curHtml = trackLine(T); if ($('mpTrackCur').dataset.id !== String(T.id)) { $('mpTrackCur').innerHTML = curHtml; $('mpTrackCur').dataset.id = T.id; }
     $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' ? `Oyuncular bekleniyor… ${room.bekleme} sn (eksiklere bot)` : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
     $('mpSlots').innerHTML = MF.MARBLES.map((info, i) => {
       const q = room.oyuncular.find(x => x.misket === i), isMe = q && q.pid === me, lk = q ? Magaza.lookFor(info, q.eq || {}) : info; // kostüm rengi
@@ -1098,7 +1140,7 @@
     $('mpStart').classList.toggle('hidden', !host || room.hizli); $('mpStart').disabled = room.durum !== 'lobi';
     $('mpStart').textContent = `Yarışı Başlat ▶ (${n} kişi + ${6 - n} bot)`;
   }
-  $('mpQuick').onclick = () => Ag.send({ t: 'hizli' });
+  $('mpQuick').onclick = () => { showQuickPick(false); Ag.send({ t: 'hizli', sec: true }); };
   // misafir: adını kutuya yazıp kaydeder (şifresiz, sadece bu cihazda)
   async function saveGuestName() {
     const v = MI.tidy($('mpName').value); if (!v || v === state.player.name) { $('mpNameMsg').textContent = ''; return; }
@@ -1116,7 +1158,6 @@
   $('mpLeave').onclick = () => { leaveMp(); renderMp(); };
   $('mpReady').onclick = () => { const mine = Ag.room && Ag.room.oyuncular.find(q => q.pid === Ag.pid); Ag.send({ t: 'hazir', v: !(mine && mine.hazir) }); };
   $('mpStart').onclick = () => Ag.send({ t: 'baslat' });
-  $('mpTrack').onchange = e => Ag.send({ t: 'parkur', id: +e.target.value });
   $('mpSlots').addEventListener('click', e => { const b = e.target.closest('[data-slot]'); if (b && !b.disabled) Ag.send({ t: 'misket', no: +b.dataset.slot }); });
   $('mpCopy').onclick = () => {
     const link = `${location.origin}${location.pathname}?oda=${Ag.room.kod}`;
@@ -1139,7 +1180,7 @@
       return Grafik.makeMarble(r.marbles[i].info, look, me, MF.PARAMS.r);
     });
     state.colors = state.mvs.map(mv => mv.look.color);
-    state.prevV = MF.MARBLES.map(() => [0, 0, 0]);
+    state.prevV = MF.MARBLES.map(() => [0, 0, 0]); state.touch = {};
     state.view.gates.forEach(g => { g.mesh.visible = true; g.mesh.position.y = g.y0; g.opening = false; });
     state.endTimer = 0; state.wasLast = false;
     if (m.intro > 0.3) { state.phase = 'countdown'; state.countdown = m.intro; }

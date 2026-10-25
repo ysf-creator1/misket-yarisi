@@ -123,7 +123,10 @@ window.DIL_EN = {
   'sonra:': 'from now:', '. Değiştirmek için diğerine dokun.': '. Tap the other one to change.', 'Diğerleri bekleniyor…': 'Waiting for others…', 'Diğerleri bekleniyor… (en geç {0#} sn)': 'Waiting for others… (max {0} s)',
   'Sıradaki yarışı seç:': 'Choose the next race:', '✖ Seçimimi iptal et': '✖ Cancel my vote',
   // ===== çok oyunculu =====
-  'Hızlı Oyun': 'Quick Play', 'Bekleyenlerle eşleş': 'Match with waiting players', 'Oda Kur': 'Create room', 'Arkadaşlarını davet et': 'Invite your friends', 'Oda koduyla katıl': 'Join with a room code', 'Ör: K7M2P': 'e.g. K7M2P',
+  'Hızlı Oyun': 'Quick Play', 'Bekleyenlerle eşleş': 'Match with waiting players', 'Bekleyenlerle eşleş, oda yoksa parkuru sen seç': 'Match with waiting players, or pick the track if no room is open',
+  'Açık hızlı oda yok: parkuru sen seç': 'No quick room open: you pick the track', 'Seçtiğin parkurla hızlı oda kurulur; gelenler katılır, 20 sn sonra eksiklere bot girer.': 'A quick room opens on your track; others join, and after 20 s bots fill the empty seats.',
+  'Vazgeç': 'Cancel', 'Hızlı odayı kur': 'Open quick room', 'Hızlı odayı kur (Parkur {0#})': 'Open quick room (Track {0})', 'Parkuru değiştir': 'Change track', '1) Dünya': '1) World', '2) Parkur · {0}': '2) Track · {0}',
+  'Rastgele parkur': 'Random track', '⏱ ~{0#} sn': '⏱ ~{0} s', '{0} · ⏱ ~{1#} sn': '{0} · ⏱ ~{1} s', '{0} · ⏱ ~{1#} sn · ⭐ özel': '{0} · ⏱ ~{1} s · ⭐ special', 'Bu arada açılan bir hızlı odaya katıldın.': 'You joined a quick room that opened in the meantime.', 'Oda Kur': 'Create room', 'Arkadaşlarını davet et': 'Invite your friends', 'Oda koduyla katıl': 'Join with a room code', 'Ör: K7M2P': 'e.g. K7M2P',
   'En fazla 6 kişi; boş yerlerde bot oynar. Bağlantın koparsa misketini bot sürer, dönünce devam edersin.': 'Up to 6 players; bots fill empty seats. If you disconnect, a bot drives your marble until you return.',
   'Sunucuya bağlanılıyor…': 'Connecting to the server…', '⏳ Sunucuya bağlanılıyor…': '⏳ Connecting to the server…', '🟢 Sunucuya bağlısın': '🟢 Connected to the server', '🔴 Bağlı değil': '🔴 Not connected',
   'Bu oyunda adın:': 'Your name in this game:', '✏️ Oyundaki adın': '✏️ Your in-game name', '(silip istediğini yaz)': '(delete it and type your own)', '✅ Adın kaydedildi': '✅ Name saved',
@@ -163,6 +166,8 @@ window.DIL_EN = {
   'Hayalet': 'Ghost', '4 sn misket ve engellerin içinden geç': 'Pass through marbles and obstacles for 4 s', 'Işınlanma': 'Teleport', 'Biraz ileri ışınlan': 'Teleport a bit ahead',
   'Yapışkan Balçık': 'Sticky Slime', 'Rakibin yoluna yapışkan balçık dök': "Pour sticky slime in a rival's way", 'Engel Duvarı': 'Wall', 'Rakibin önüne duvar dik': 'Put a wall in front of a rival',
   'Yavaşlatma': 'Slow Down', 'Yakındaki 2 rakibi 4 sn yavaşlat': 'Slow 2 nearby rivals for 4 s', 'Küçült': 'Shrink', 'Yakındaki 2 rakibi 6 sn küçült': 'Shrink 2 nearby rivals for 6 s',
+  'Mıknatıs': 'Magnet', '5 sn öndeki rakibe doğru çekil': 'Get pulled toward the rival ahead for 5 s', 'Yer Değiştir': 'Swap', 'Hemen öndeki rakiple yer değiştir': 'Swap places with the rival just ahead',
+  'seninle yer değiştirdi!': 'swapped places with you!', 'Önünde rakip yok': 'No rival ahead', 'Yer değişti: {0}': 'Swapped with: {0}',
   'Ters Rüzgâr': 'Headwind', 'Öndekileri 2,5 sn geri it': 'Push those ahead back for 2.5 s', 'Bomba': 'Bomb', 'Rakip kalabalığında patla, sersemlet': 'Explode in a crowd of rivals and stun them',
   // ===== dünyalar =====
   'Yeşil Vadi': 'Green Valley', 'Mutfak': 'Kitchen', 'Salon': 'Living Room', 'Çocuk Odası': "Kids' Room", 'Banyo': 'Bathroom', 'Şehir Merkezi': 'City Center', 'Oyun Parkı': 'Playground', 'Lunapark': 'Funfair',

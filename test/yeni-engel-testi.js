@@ -6,10 +6,13 @@ const N = +process.argv[2] || 10;
 const PIECES = {
   kazik: b => b.kaziklar({ len: 15 }), sarkac: b => b.sarkac({ len: 16 }), bantGeri: b => b.bant({ len: 14, dir: -1 }), bantIleri: b => b.bant({ len: 14, dir: 1 }),
   tabla: b => b.tabla({ len: 12 }), kapi: b => b.kapi({ len: 12 }), dusus: b => b.dusus({ fall: 5 }),
+  merdiven: b => b.merdiven({ steps: 5 }), vantilator: b => b.vantilator({ len: 15, count: 2 }), tambur: b => b.tambur({ len: 9 }),
 };
+const only = process.argv[3] ? process.argv[3].split(',') : null;
+for (const k of Object.keys(PIECES)) if (only && !only.includes(k)) delete PIECES[k];
 RAPIER.init().then(() => {
   for (const [name, fn] of Object.entries(PIECES)) {
-    const b = new MP.Builder({ y0: 100 }); b.start(); b.straight({ len: 12, drop: 1.2 });
+    const b = new MP.Builder({ y0: 100, egim: MP.EGIM }); b.start(); b.straight({ len: 12, drop: 1.2 });
     const s0 = b.s; fn(b); const s1 = b.s; fn(b); const s2 = b.s; b.straight({ len: 12, drop: 1.2 }); b.finish();
     const tr = b.finalize({ id: 900, name, target: 40 });
     let stuck = 0, fall = 0, tsum = 0, fin = 0;

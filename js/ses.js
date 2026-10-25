@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const Ses = window.Ses = { on: true, vol: 0.7 }; // vol: ses seviyesi 0–1 (ayarlardan)
-  let ctx = null, master = null, noiseBuf = null, roll = null;
+  let ctx = null, master = null, noiseBuf = null, brownBuf = null, roll = null;
 
   function init() {
     if (ctx) return true;
@@ -10,6 +10,11 @@
     ctx = new AC(); master = ctx.createGain(); master.gain.value = Ses.vol; master.connect(ctx.destination);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    // kahverengi gürültü (tizleri az, yumuşak uğultu): yuvarlanma sesi için; döngü sesi tıklamasın diye uçları birleşik
+    brownBuf = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate);
+    const b = brownBuf.getChannelData(0); let last = 0;
+    for (let i = 0; i < b.length; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; b[i] = last * 3.5; }
+    const fade = Math.floor(ctx.sampleRate * 0.05); for (let i = 0; i < fade; i++) { const k = i / fade; b[i] = b[i] * k + b[b.length - fade + i] * (1 - k); }
     return true;
   }
   // ilk tıklamada ses açılır (tarayıcı kuralı)
@@ -34,27 +39,32 @@
     s.connect(f).connect(g).connect(master); s.start(t, Math.random()); s.stop(t + dur + 0.05);
   }
 
-  // misket çarpması (cam tıkırtısı); güç 0..1, uzaklıkla azalır
-  Ses.clack = function (power) {
-    if (!ok() || power < 0.03) return;
-    const f = 1800 + Math.random() * 1600;
-    tone(f, 0.06, 'sine', 0.12 * Math.min(1, power), 0, 0.7); tone(f * 1.51, 0.04, 'triangle', 0.05 * Math.min(1, power));
+  // iki misket çarpışınca hafif cam tıkırtısı: kısa, tiz, uyumsuz iki ton (cam bilye sesi); güç 0..1
+  let lastClinks = [];
+  Ses.clink = function (power) {
+    if (!ok() || power < 0.04) return;
+    const now = ctx.currentTime; lastClinks = lastClinks.filter(x => now - x < 0.25);
+    if (lastClinks.length >= 3) return; // kalabalıkta üst üste binip gürültü olmasın
+    lastClinks.push(now);
+    const p = Math.min(1, power), f = 2600 + Math.random() * 1400, v = 0.03 + 0.07 * p;
+    tone(f, 0.16, 'sine', v); tone(f * 2.76, 0.07, 'sine', v * 0.35); tone(f * 5.4, 0.03, 'sine', v * 0.12);
   };
-  Ses.thud = function (power) { if (!ok() || power < 0.05) return; noise(0.12, 0.18 * Math.min(1, power), 300, 120, 0.8, 0, 'lowpass'); };
-  // sürekli yuvarlanma sesi (oyuncunun misketi)
+  Ses.clack = () => { }; // eski çağrı: duvar/engel tıkırtısı kaldırıldı
+  // oyuncunun misketinin yuvarlanma sesi: yumuşak, alçak bir uğultu (eskiden tiz hışırtıydı, fan gibi rahatsız ediyordu)
+  // hızla biraz yükselir ama hep kısık kalır; havadayken ve dururken susar
   Ses.rolling = function (speed, onGround) {
-    if (!ctx) return;
+    if (!ctx || !brownBuf) return;
     if (!roll) {
-      const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
-      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 0.7; f.frequency.value = 400;
+      const s = ctx.createBufferSource(); s.buffer = brownBuf; s.loop = true;
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 0.4; f.frequency.value = 160;
       const g = ctx.createGain(); g.gain.value = 0; s.connect(f).connect(g).connect(master); s.start();
       roll = { s, f, g };
     }
-    const v = Ses.on && onGround ? Math.min(0.16, speed * 0.016) : 0;
-    roll.g.gain.setTargetAtTime(v, ctx.currentTime, 0.08);
-    roll.f.frequency.setTargetAtTime(250 + speed * 55, ctx.currentTime, 0.1);
+    const k = Math.min(1, speed / 12), v = Ses.on && onGround && speed > 0.8 ? 0.015 * Math.pow(k, 1.4) : 0; // diğer seslerin altında, arka planda kalır
+    roll.g.gain.setTargetAtTime(v, ctx.currentTime, 0.25);
+    roll.f.frequency.setTargetAtTime(140 + Math.min(14, speed) * 17, ctx.currentTime, 0.3);
   };
-  Ses.stopRolling = function () { if (roll && ctx) roll.g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); };
+  Ses.stopRolling = function () { if (roll && ctx) roll.g.gain.setTargetAtTime(0, ctx.currentTime, 0.08); };
 
   Ses.beep = n => tone(n > 0 ? 660 : 1320, n > 0 ? 0.16 : 0.45, 'square', 0.12);
   Ses.gate = () => { noise(0.25, 0.25, 2500, 400, 0.6); tone(220, 0.25, 'sawtooth', 0.06, 0, 0.5); };
@@ -79,6 +89,8 @@
       case 'yavas': tone(400, 0.6, 'triangle', 0.12 * v, 0, 0.35); break;
       case 'kucult': tone(900, 0.4, 'square', 0.07 * v, 0, 0.3); break;
       case 'ruzgar': noise(1.6, 0.2 * v, 400, 1600, 0.8); break;
+      case 'miknatis': tone(220, 0.7, 'sine', 0.12 * v, 0, 2.2); tone(330, 0.7, 'sine', 0.07 * v, 0.05, 2.2); break;
+      case 'takas': [1568, 1047, 1568, 1047].forEach((f, i) => tone(f, 0.1, 'triangle', 0.09 * v, i * 0.06)); break;
       case 'bomba': noise(0.9, 0.4 * v, 900, 60, 0.5, 0, 'lowpass'); tone(60, 0.6, 'sine', 0.3 * v, 0, 0.5); break;
     }
   };

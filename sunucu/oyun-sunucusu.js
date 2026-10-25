@@ -57,7 +57,7 @@ function broadcast(room, obj) { const s = JSON.stringify(obj); for (const p of r
 
 function roomInfo(room) {
   return {
-    t: 'oda', kod: room.code, kurucu: room.host, parkur: room.track, hizli: room.quick, durum: room.state,
+    t: 'oda', kod: room.code, kurucu: room.host, parkur: room.track, hizli: room.quick, secildi: !!(room.quick && room.chosen), durum: room.state,
     bekleme: room.quick && room.state === 'lobi' ? Math.max(0, Math.ceil((room.quickAt - Date.now()) / 1000)) : null,
     oylama: room.vote && room.state === 'lobi' ? {
       sonParkur: room.vote.last, oylar: Object.fromEntries(room.vote.secim), secim: room.vote.choice,
@@ -92,7 +92,7 @@ function joinRoom(p, room) {
   p.room = room; p.ready = room.quick; p.marble = freeMarble(room, p.wantMarble);
   room.players.set(p.pid, p); room.touched = Date.now();
   if (!room.host || !room.players.has(room.host)) room.host = p.pid;
-  if (room.quick) { // hızlı oyun: herkesin açık olduğu son 5 parkurdan rastgele biri
+  if (room.quick && !room.chosen) { // hızlı oyun (eski istemci kurduysa): herkesin açık olduğu son 5 parkurdan rastgele biri
     const lim = Math.min(...humansOf(room).map(q => clampTrack(q.unlocked)));
     if (!room.trackLim || lim < room.trackLim) { room.trackLim = lim; room.track = Math.max(1, lim - crypto.randomInt(Math.min(5, lim))); }
   }
@@ -195,7 +195,7 @@ function snapshot(room) {
     let f = 0;
     if (m.finished) f |= 1;
     if (fx.shield > t) f |= 2; if (fx.turbo > t) f |= 4; if (fx.slow > t) f |= 8; if (fx.small > t) f |= 16;
-    if (fx.ghost > t) f |= 32; if (fx.iron > t) f |= 64; if (fx.wind > t) f |= 128; if (fx.stun > t) f |= 256; if (fx.inSlime) f |= 512;
+    if (fx.ghost > t) f |= 32; if (fx.iron > t) f |= 64; if (fx.wind > t) f |= 128; if (fx.stun > t) f |= 256; if (fx.inSlime) f |= 512; if (fx.magnet > t) f |= 2048;
     if (room.ps.humans.has(i)) f |= 1024;
     buf.writeUInt16LE(f, o + 44); buf.writeUInt8(m.place || 0, o + 46);
     buf.writeUInt8(m.inZone ? r.track.zones.indexOf(m.inZone) + 1 : 0, o + 47);
@@ -245,8 +245,13 @@ function onMessage(p, msg) {
     case 'odaKur': { const r = makeRoom(false, p); if (!r) return send(p, { t: 'hata', mesaj: 'Sunucu şu an dolu, biraz sonra dene.' }); return joinRoom(p, r); }
     case 'katil': return joinRoom(p, rooms.get(String(msg.kod || '').toUpperCase().trim()));
     case 'hizli': {
-      if (!quickRoom || quickRoom.state !== 'lobi' || quickRoom.players.size >= 6) quickRoom = makeRoom(true, null);
+      // açık hızlı oda varsa ona katıl; yoksa ilk gelen parkuru seçer (sec: istemci seçebiliyor), seçtiği parkurla oda kurulur
+      const open = quickRoom && quickRoom.state === 'lobi' && quickRoom.players.size < 6 ? quickRoom : null;
+      if (open) { if (msg.parkur != null) send(p, { t: 'bilgi', mesaj: 'Bu arada açılan bir hızlı odaya katıldın.' }); return joinRoom(p, open); }
+      if (msg.sec && msg.parkur == null) return send(p, { t: 'hizliSec' });
+      quickRoom = makeRoom(true, null);
       if (!quickRoom) return send(p, { t: 'hata', mesaj: 'Sunucu şu an dolu, biraz sonra dene.' });
+      if (msg.parkur != null) { quickRoom.track = clampTrack(msg.parkur); quickRoom.chosen = true; }
       return joinRoom(p, quickRoom);
     }
     case 'ayril': return leaveRoom(p);
@@ -257,7 +262,8 @@ function onMessage(p, msg) {
       return;
     }
     case 'hazir': if (room && room.state === 'lobi') { p.ready = !!msg.v; pushRoom(room); } return;
-    case 'parkur': if (room && room.state === 'lobi' && room.host === p.pid && !room.quick) { room.track = Math.min(clampTrack(msg.id), clampTrack(p.unlocked)); pushRoom(room); } return;
+    // kurucu parkuru seçer (çok oyunculuda tüm parkurlar açık); hızlı odada: kuran seçtiyse beklerken değiştirebilir
+    case 'parkur': if (room && room.state === 'lobi' && room.host === p.pid && (!room.quick || room.chosen)) { room.track = clampTrack(msg.id); pushRoom(room); } return;
     case 'baslat': if (room && room.state === 'lobi' && room.host === p.pid) startRace(room); return;
     case 'oy': { // 'ayni' | 'sonraki' | null (iptal) — yarış başlayana kadar değiştirilebilir
       if (!room || room.state !== 'lobi' || !room.vote) return;

@@ -396,7 +396,7 @@
           const top = new THREE.Mesh(new THREE.CylinderGeometry(pr.r * 0.55, pr.r * 0.55, 0.05, 20), M.chrome); top.position.y = pr.hh; mesh.add(top);
         } else mesh = new THREE.Mesh(new THREE.CylinderGeometry(pr.r, pr.r, pr.hh * 2, 20), M.chrome);
       } else if (pr.type === 'box') {
-        mesh = new THREE.Mesh(new THREE.BoxGeometry(pr.half[0] * 2, pr.half[1] * 2, pr.half[2] * 2), pr.gate ? M.gate : pr.pad ? M.pad : pr.glass ? M.glass : pr.board ? trackMat(pr.color || '#ffb703') : M.woodNat);
+        mesh = new THREE.Mesh(new THREE.BoxGeometry(pr.half[0] * 2, pr.half[1] * 2, pr.half[2] * 2), pr.gate ? M.gate : pr.pad ? M.pad : pr.glass ? M.glass : (pr.board || pr.riser) ? trackMat(pr.color || '#ffb703') : M.woodNat);
       } else continue;
       mesh.position.set(pr.p[0], pr.p[1], pr.p[2]);
       mesh.quaternion.set(pr.q.x, pr.q.y, pr.q.z, pr.q.w);
@@ -404,7 +404,7 @@
       grp.add(mesh);
       if (pr.gate) gates.push({ mesh, y0: pr.p[1] });
     }
-    const terr = buildTerrain(track, grp, theme);
+    const terr = buildTerrain(track, grp, theme), fans = [];
     // destek ayakları (beton) — araziye kadar iner
     for (const d of track.decor) {
       if (d.type === 'pillar') {
@@ -444,6 +444,20 @@
       } else if (d.type === 'selale') {
         const curtain = new THREE.Mesh(new THREE.PlaneGeometry(d.hw * 2, d.fall), new THREE.MeshPhysicalMaterial({ color: col('#8fd8ff'), transparent: true, opacity: 0.28, roughness: 0.05, clearcoat: 1, side: THREE.DoubleSide, depthWrite: false }));
         const dd = V.dirOf(d.yaw); curtain.position.set(d.p[0] + dd[0] * 0.15, d.p[1] - d.fall / 2, d.p[2] + dd[2] * 0.15); curtain.rotation.y = d.yaw; grp.add(curtain);
+      } else if (d.type === 'fan') { // vantilatör: duvarın üstünde, karşı duvara bakan fan
+        const g = new THREE.Group(), body = M.paintMetal('#3a86ff');
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(d.r, 0.09, 10, 36), body); ring.castShadow = true; g.add(ring);
+        const back = new THREE.Mesh(new THREE.CylinderGeometry(d.r * 0.42, d.r * 0.5, 0.5, 20), M.dark); back.rotation.x = Math.PI / 2; back.position.z = -0.32; g.add(back);
+        for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.03, d.r * 2, 0.03), M.steel); sp.rotation.z = k * Math.PI / 6; sp.position.z = 0.14; g.add(sp); } // ızgara
+        const blades = new THREE.Group();
+        for (let k = 0; k < 4; k++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.26, d.r * 0.92, 0.04), M.paintMetal('#f4f1ea')); bl.position.y = d.r * 0.47; const arm = new THREE.Group(); arm.rotation.z = k * Math.PI / 2; bl.rotation.y = 0.5; arm.add(bl); blades.add(arm); }
+        const hubM = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 8), M.chrome); blades.add(hubM); g.add(blades);
+        g.position.set(d.p[0], d.p[1], d.p[2]); g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(d.N[0], d.N[1], d.N[2]));
+        grp.add(g);
+        const leg = new THREE.Vector3(d.p[0] - d.wallTop[0], d.p[1] - d.wallTop[1], d.p[2] - d.wallTop[2]), ll = leg.length();
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, ll, 8), M.steel);
+        post.position.set((d.p[0] + d.wallTop[0]) / 2, (d.p[1] + d.wallTop[1]) / 2, (d.p[2] + d.wallTop[2]) / 2); post.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), leg.normalize()); grp.add(post);
+        fans.push({ blades, f: track.fans[d.fan], p: d.p, N: d.N, spd: 0, last: 0 });
       } else if (d.type === 'funnel') {
         const ringM = new THREE.Mesh(new THREE.TorusGeometry(d.R + 0.02, 0.08, 10, 96), M.chrome);
         ringM.rotation.x = Math.PI / 2; ringM.position.set(d.c[0], d.yRim + (d.wallH || 1.3), d.c[2]); grp.add(ringM);
@@ -463,13 +477,40 @@
     if (belts.length) updaters.push(t => { for (const b of belts) b.tx.offset.y = (t * 0.9) % 1; });
     // yarış yokken (menüde) hareketli engeller kendi saatleriyle oynasın
     if (kins.length) updaters.push(t => { if (!Grafik.kinAuto) return; kins.forEach(km => { const P = window.MF.kinPose(km.userData.pr, t); Grafik.syncKin(km, { x: P.p[0], y: P.p[1], z: P.p[2] }, P.q); }); });
-    return { grp, gates, spinners, movers, kins, terr, patches: [], updaters, room: cctx.room, parts };
+    const view = { grp, gates, spinners, movers, kins, fans, terr, patches: [], updaters, room: cctx.room, parts };
+    if (fans.length) updaters.push(t => { if (Grafik.kinAuto) Grafik.syncFans(view, t); });
+    return view;
   };
   // hareketli süsler (dönme dolap, balonlar, kuzey ışıkları…)
   Grafik.updateView = function (v, t) { if (v && v.updaters) for (const u of v.updaters) u(t); };
+  // vantilatörler: eserken pervane hızlı döner ve rüzgâr çizgileri çıkar (saat: fizik saati; menüde ekran saati)
+  Grafik.syncFans = function (v, clock) {
+    if (!v || !v.fans) return;
+    for (const F of v.fans) {
+      const dt = Math.max(0, Math.min(0.1, clock - F.last)); F.last = clock;
+      const on = window.MF.fanOn(F.f, clock);
+      F.spd += ((on ? 26 : 1.5) - F.spd) * Math.min(1, dt * 4); F.blades.rotation.z += F.spd * dt;
+      if (on && dt > 0 && camera.position.distanceToSquared(tmpV.set(F.p[0], F.p[1], F.p[2])) < 3600) for (let k = 0; k < 2; k++) {
+        const sp = 8 + Math.random() * 4;
+        Particles.emit(tmpV.set(F.p[0] + rr(0.5), F.p[1] + rr(0.5), F.p[2] + rr(0.5)), { x: F.N[0] * sp + rr(0.6), y: F.N[1] * sp + rr(0.4), z: F.N[2] * sp + rr(0.6) }, '#eaf6ff', 0.16, 0.45, 0);
+      }
+    }
+  };
   // hareketli engellerin görüntüsü (konum/dönüş her karede fizikten gelir)
   function kinMesh(pr) {
     const g = new THREE.Group();
+    if (pr.kind === 'tambur') { // dönen tambur: renkli ve cam çubuklar, uçlarda halka, içte kanatlar
+      const cm = M.paintMetal(pr.color || '#ff006e');
+      for (const pt of pr.parts) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(pt.half[0] * 2, pt.half[1] * 2, pt.half[2] * 2), pt.fin ? M.paintMetal('#ffd60a') : pt.glass ? M.glass : cm);
+        m.position.set(pt.p[0], pt.p[1], pt.p[2]); m.quaternion.set(pt.q.x, pt.q.y, pt.q.z, pt.q.w);
+        if (!pt.glass) { m.castShadow = true; m.receiveShadow = true; }
+        g.add(m);
+      }
+      for (const z of [-1, 1]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(pr.r + pr.th + 0.04, 0.09, 10, 40), M.chrome); ring.position.z = z * pr.L / 2; g.add(ring); }
+      g.userData.pr = pr;
+      return g;
+    }
     if (pr.kind === 'kazik') {
       const t = hazardTex(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1);
       const c = new THREE.Mesh(new THREE.CylinderGeometry(pr.r, pr.r, pr.hh * 2, 20), new THREE.MeshStandardMaterial({ map: t, roughness: 0.5, metalness: 0.2 })); c.castShadow = true; g.add(c);
@@ -626,6 +667,7 @@
     if (mv.look.iz && window.Magaza && spd > 1.2) { mv.trailT += dt; const iv = 0.022; while (mv.trailT > iv) { mv.trailT -= iv; Magaza.emitTrail(Particles, mv.look.iz, tmpV.set(p.x, p.y, p.z), v, now); } }
     if (fx.turbo > now) for (let k = 0; k < 2; k++) Particles.emit(tmpV.set(p.x, p.y, p.z), { x: -v.x * 0.3 + rr(1), y: rr(1) + 0.5, z: -v.z * 0.3 + rr(1) }, k ? '#ffd166' : '#ff6b1a', 0.45, 0.35, 0.3);
     if (fx.slime > now || fx.inSlime) if (Math.random() < 0.5) Particles.emit(tmpV.set(p.x, p.y - 0.3, p.z), { x: rr(0.6), y: 0.8, z: rr(0.6) }, '#7bd629', 0.25, 0.5, 0.0);
+    if (fx.magnet > now) if (Math.random() < 0.6) { const a = Math.random() * 6.28; Particles.emit(tmpV.set(p.x + Math.cos(a) * 0.9, p.y + rr(0.4), p.z + Math.sin(a) * 0.9), { x: -Math.cos(a) * 1.6 + v.x * 0.8, y: 0, z: -Math.sin(a) * 1.6 + v.z * 0.8 }, Math.random() < 0.5 ? '#ff4d6d' : '#4d8dff', 0.18, 0.45, 0); }
     if (fx.slow > now) if (Math.random() < 0.4) Particles.emit(tmpV.set(p.x, p.y + 0.6, p.z), { x: rr(0.3), y: 0.6, z: rr(0.3) }, '#9fd6ff', 0.2, 0.7, -0.2);
   };
   const rr = k => (Math.random() - 0.5) * 2 * k;
