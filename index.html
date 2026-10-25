@@ -238,6 +238,11 @@
   .ogrdots{display:flex;gap:8px;justify-content:center;margin:12px 0} .ogrdots i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.22)} .ogrdots i.on{background:var(--accent);width:24px;border-radius:6px}
   .note.ach{border-color:rgba(255,194,61,.6);color:#ffe199}
 
+  /* dil seçimi */
+  #dilSec{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:35;display:flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:rgba(8,14,32,.88);box-shadow:0 4px 14px rgba(0,0,0,.35)}
+  #dilSec button{border:none;border-radius:0;padding:7px 11px;font-size:13px;font-weight:900;background:none;min-height:0;box-shadow:none;color:var(--muted)}
+  #dilSec button.on{background:var(--accent);color:#2b1700}
+  body.navon #topnav{padding-right:108px}
   /* üst menü çubuğu */
   #topnav{position:fixed;left:0;right:0;top:0;z-index:30;display:flex;gap:6px;align-items:center;justify-content:center;
     padding:calc(8px + env(safe-area-inset-top)) 12px 8px;background:rgba(8,14,32,.82);border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
@@ -331,6 +336,7 @@
     #hitBanner{top:calc(236px + env(safe-area-inset-top));width:94vw} .hitb{font-size:17px;padding:10px 12px} .hitb .hic{font-size:34px}
     .acchead{grid-template-columns:32px 1fr auto 16px;padding:8px 10px} .acchead .nm b{font-size:14px}
     #topnav{gap:3px;padding:calc(6px + env(safe-area-inset-top)) 4px 6px;justify-content:space-between}
+    body.navon #topnav{padding-right:52px} #dilSec{top:calc(9px + env(safe-area-inset-top));right:5px;flex-direction:column} #dilSec button{padding:5px 8px;font-size:11.5px}
     #topnav button{flex:1;flex-direction:column;gap:1px;padding:5px 2px;font-size:10px;min-width:0;min-height:0}
     #topnav button span{font-size:19px} #topnav .navpts{display:none}
     #topnav b{white-space:nowrap} #topnav b[data-k]{font-size:0} #topnav b[data-k]::after{content:attr(data-k);font-size:10px}
@@ -377,6 +383,9 @@
 
 <div id="loading" class="screen"><div class="panel"><h1>Misket Yarışı</h1><div class="spinner"></div><p class="sub" id="loadMsg">Yükleniyor…</p><p class="sub" style="font-size:12px">İlk açılış biraz sürebilir (gökyüzü ve dokular yükleniyor)</p></div></div>
 
+<!-- dil seçimi: sağ üst köşe (yarışta gizli) -->
+<div id="dilSec" class="hidden"><button data-dil="tr">TR</button><button data-dil="en">EN</button></div>
+
 <!-- Üst menü çubuğu (menü ekranlarında her zaman görünür) -->
 <nav id="topnav" class="hidden">
   <button data-nav="menu"><span>🏠</span><b>Menü</b></button>
@@ -385,13 +394,12 @@
   <button data-nav="shop"><span>🛒</span><b>Mağaza</b></button>
   <button data-nav="ach"><span>🏅</span><b data-k="Başarım">Başarımlar</b></button>
   <button data-nav="mp"><span>👥</span><b data-k="Çoklu">Çok Oyunculu</b></button>
-  <button data-nav="lider"><span>📊</span><b>Liderlik</b></button>
+  <button data-nav="lider"><span>📊</span><b data-k="Skor">Liderlik</b></button>
   <span class="navpts pill">⭐ <span id="navPoints">0</span></span>
 </nav>
 
 <!-- Profil / giriş -->
 <div id="scrProfile" class="screen hidden"><div class="panel" style="width:min(600px,96vw)">
-  <div style="text-align:right;margin:-8px -6px 0 0"><button class="sm" id="btnDil2">🌐 English</button></div>
   <h1>Misket Yarışı</h1>
   <p class="sub">Kim oynuyor?</p>
   <div class="plist" id="plist"></div>
@@ -445,7 +453,6 @@
     <label class="volrow" title="Ses seviyesi">🔉 <input type="range" class="volSlider" id="volMenu" min="0" max="100" step="5"> <span class="volv"></span></label>
     <button class="sm" id="btnGfx">🖥️ Grafik: Yüksek</button>
     <button class="sm" id="btnNasil">❓ Nasıl oynanır</button>
-    <button class="sm" id="btnDil">🌐 English</button>
     <button class="sm" id="btnSwitch">👤 Oyuncu değiştir</button>
     <span id="mHesapAyar" style="display:contents"><button class="sm" id="btnPin">🔑 Şifre değiştir</button>
     <button class="sm" id="btnCihaz">📱 Yeni cihaz ekle</button></span>

@@ -582,6 +582,7 @@
   const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach', scrMp: 'mp', scrLider: 'lider', scrSifre: 'menu', scrCihaz: 'menu', scrGuc: 'menu' };
   function show(id) {
     SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id)); $('shopHint').classList.toggle('hidden', id !== 'scrShop');
+    $('dilSec').classList.toggle('hidden', !id || id === 'loading'); // yarışta ve yükleniyorken gizli
     const navOn = id in NAV_OF && !!state.player;
     $('topnav').classList.toggle('hidden', !navOn); document.body.classList.toggle('navon', navOn);
     if (navOn) { document.querySelectorAll('#topnav [data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === NAV_OF[id])); $('navPoints').textContent = state.player.points; }
@@ -871,8 +872,8 @@
     if (state.authLost) authLost();
   }
   $('btnSwitch').onclick = () => showProfiles();
-  // dil: Türkçe ↔ English (sayfa yenilenir; yarış sırasında değil)
-  for (const id of ['btnDil', 'btnDil2']) { $(id).textContent = Dil.lang === 'en' ? '🌐 Türkçe' : '🌐 English'; $(id).onclick = () => Dil.set(Dil.lang === 'en' ? 'tr' : 'en'); }
+  // dil: sağ üstte TR | EN (sayfa yenilenir; yarışta görünmez)
+  document.querySelectorAll('#dilSec [data-dil]').forEach(b => { b.classList.toggle('on', b.dataset.dil === Dil.lang); b.onclick = () => { if (b.dataset.dil !== Dil.lang) Dil.set(b.dataset.dil); }; });
   $('btnLider').onclick = () => showLider();
   $('btnGuc').onclick = showGucler;
   $('gucBack').onclick = showMenu;

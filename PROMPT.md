@@ -207,3 +207,7 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 
 ## 14. Güncelleme: ilk açılış rehberi
 - İlk kez açan cihazda bir kez 5 sayfalık "Nasıl oynanır" (misket, güç kartları, puan/parkur, mağaza, çok oyunculu ve hesap); Atla / Geri / İleri, klavye okları. Menüde ❓ Nasıl oynanır ile tekrar açılır. İngilizce çevirisi var. Anahtar: localStorage misket-ogretici-v1.
+
+## 15. Güncelleme: dil seçimi
+- İlk açılışta tarayıcının dil listesinde Türkçe/İngilizceden önce gelen seçilir; ikisi de yoksa ya da bilinmiyorsa Türkçe. Seçim cihazda hatırlanır.
+- Sağ üst köşede TR | EN düğmesi (menü ekranlarında ve giriş ekranında; yarışta gizli). Eski 🌐 düğmeleri kaldırıldı. Telefonda üst menüde Liderlik kısa adı: Skor / Scores.

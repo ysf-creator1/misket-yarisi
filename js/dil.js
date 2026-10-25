@@ -8,7 +8,12 @@
   const KEY = 'misket-dil';
   let lang = null;
   try { lang = localStorage.getItem(KEY); } catch (e) { }
-  if (lang !== 'tr' && lang !== 'en') lang = /^tr\b/i.test(navigator.language || 'tr') ? 'tr' : 'en';
+  // ilk açılış: tarayıcının dil listesinde Türkçe/İngilizce'den önce geleni; ikisi de yoksa ya da bilinmiyorsa Türkçe
+  if (lang !== 'tr' && lang !== 'en') {
+    const list = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || '']).map(x => String(x || '').toLowerCase());
+    const first = list.map(x => x.split('-')[0]).find(x => x === 'tr' || x === 'en');
+    lang = first || 'tr';
+  }
   const Dil = window.Dil = {
     lang, t: s => s,
     set(l) { try { localStorage.setItem(KEY, l); } catch (e) { } location.reload(); },

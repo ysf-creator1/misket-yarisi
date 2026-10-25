@@ -6,7 +6,7 @@ window.DIL_EN = {
   'Parkur kuruluyor…': 'Building the track…', 'İlk açılış biraz sürebilir (gökyüzü ve dokular yükleniyor)': 'The first launch may take a moment (loading sky and textures)',
   'Yüklenemedi: {0}': 'Could not load: {0}',
   'Menü': 'Menu', 'Parkurlar': 'Tracks', 'Kupalar': 'Cups', 'Mağaza': 'Shop', 'Başarımlar': 'Achievements', 'Çok Oyunculu': 'Multiplayer', 'Liderlik': 'Leaderboard',
-  'Parkur': 'Track', 'Başarım': 'Achv.', 'Çoklu': 'Multi',
+  'Parkur': 'Track', 'Başarım': 'Achv.', 'Çoklu': 'Multi', 'Skor': 'Scores',
   'Ana Menü': 'Main menu', '← Geri': '← Back', 'Geri': 'Back', 'Kaydet': 'Save', 'Katıl': 'Join', 'Seç': 'Select', 'Kapat': 'Close',
   'Merhaba': 'Hello', 'Seviye': 'Level', 'Seviye {0}': 'Level {0}', 'Sv {0}': 'Lv {0}',
   '{0#} puan': '{0} pts', '+{0#} puan': '+{0} pts', 'puan': 'pts', '{0#} sn': '{0} s', '~{0#} sn': '~{0} s',
