@@ -334,7 +334,7 @@
       return;
     }
     // telefonda ekran küçük: yalnızca seni ilgilendiren güç bildirimleri
-    if (mine || meHit || (!window.MOBIL && Math.random() < 0.6)) powerToast({ icon: blockedAll ? '🛡️' : P.icon, who, color: state.colors[e.id], power: P.name, type: P.type, detail, cls: mine ? 'mine' : meHit ? 'hit' : P.type === 'self' ? 'self' : 'atk' });
+    if (mine || (meHit && !window.MOBIL) || (!window.MOBIL && Math.random() < 0.6)) powerToast({ icon: blockedAll ? '🛡️' : P.icon, who, color: state.colors[e.id], power: P.name, type: P.type, detail, cls: mine ? 'mine' : meHit ? 'hit' : P.type === 'self' ? 'self' : 'atk' });
   }
   function hitBanner(icon, who, color, text, sub, good) {
     const el = document.createElement('div'); el.className = 'hitb' + (good ? ' ok' : '');
@@ -349,10 +349,9 @@
     setTimeout(() => el.classList.add('out'), ms - 400); setTimeout(() => { el.remove(); layoutTopMsgs(); }, ms);
     layoutTopMsgs();
   }
-  // bilgisayarda diğer güç bildirimleri, sana uygulananların altına iner (üst üste binmesin)
+  // diğer güç bildirimleri, sana uygulananların altına iner (üst üste binmesin)
   function layoutTopMsgs() {
     const t = $('toasts'), hb = $('hitBanner'); t.style.top = '';
-    if (matchMedia('(max-height:500px) and (orientation:landscape)').matches) return; // yatay telefonda bildirimler sağda
     const h = hb.offsetHeight; if (h) t.style.top = (hb.offsetTop + h + 8) + 'px';
   }
   function powerToast(o) {

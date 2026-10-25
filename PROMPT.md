@@ -219,3 +219,6 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 5. Eğim ×1,35 (`MP.EGIM`; düzlükler, virajlar, sarmallar ve engel parçaları); parkurlar uzatıldı (`MP.timeScale` 0,88), süreler aynı kaldı (oran 0,998). 200 parkur çakışmasız, ortalama 597 m. Elle yapılmış özel parkurlar değişmedi.
 - Sürüm: `js/surum.js` (OYUN_SURUM) + index.html'de `?v=` etiketleri; çok oyunculuda eski sürümle bağlanana "sayfayı yenile" uyarısı (sunucu ve tarayıcı aynı parkuru kurmalı). Parkur/fizik değişince `bash sunucu/surum-artir.sh`.
 - Testler: güç senaryo 12/12, çok oyunculu 32/32, hesap 43/43; tarayıcıda çok oyunculu, menü/yarış ve uçuş animasyonları.
+
+## 17. Güncelleme: telefonda küçük güç bildirimleri
+- Dikey telefonda "sana uygulanan" şeridi ve diğer güç bildirimleri sağda, sıralamanın yanında küçük (≈170 px genişlik, 12 px yazı); sana uygulanan güç için yalnız kırmızı şerit (tekrar bildirim yok). Yatay telefonda güç kartlarının solunda.
