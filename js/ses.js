@@ -39,15 +39,16 @@
     s.connect(f).connect(g).connect(master); s.start(t, Math.random()); s.stop(t + dur + 0.05);
   }
 
-  // iki misket çarpışınca hafif cam tıkırtısı: kısa, tiz, uyumsuz iki ton (cam bilye sesi); güç 0..1
+  // iki misket çarpışınca tok bir "tak": eski çarpma sesi (kısa, aşağı kayan ton) daha pes, altında kısa bir gövde sesi; güç 0..1
   let lastClinks = [];
   Ses.clink = function (power) {
-    if (!ok() || power < 0.04) return;
+    if (!ok() || power < 0.03) return;
     const now = ctx.currentTime; lastClinks = lastClinks.filter(x => now - x < 0.25);
     if (lastClinks.length >= 3) return; // kalabalıkta üst üste binip gürültü olmasın
     lastClinks.push(now);
-    const p = Math.min(1, power), f = 2600 + Math.random() * 1400, v = 0.03 + 0.07 * p;
-    tone(f, 0.16, 'sine', v); tone(f * 2.76, 0.07, 'sine', v * 0.35); tone(f * 5.4, 0.03, 'sine', v * 0.12);
+    const p = Math.min(1, power), f = 1100 + Math.random() * 600;
+    tone(f, 0.06, 'sine', 0.12 * p, 0, 0.7); tone(f * 1.51, 0.04, 'triangle', 0.04 * p);
+    tone(f * 0.26, 0.07, 'sine', 0.08 * p, 0, 0.75); // tokluk: pes, kısa gövde
   };
   Ses.clack = () => { }; // eski çağrı: duvar/engel tıkırtısı kaldırıldı
   // oyuncunun misketinin yuvarlanma sesi: yumuşak, alçak bir uğultu (eskiden tiz hışırtıydı, fan gibi rahatsız ediyordu)
@@ -60,7 +61,7 @@
       const g = ctx.createGain(); g.gain.value = 0; s.connect(f).connect(g).connect(master); s.start();
       roll = { s, f, g };
     }
-    const k = Math.min(1, speed / 12), v = Ses.on && onGround && speed > 0.8 ? 0.015 * Math.pow(k, 1.4) : 0; // diğer seslerin altında, arka planda kalır
+    const k = Math.min(1, speed / 12), v = Ses.on && onGround && speed > 0.8 ? 0.022 * Math.pow(k, 1.4) : 0; // diğer seslerin altında, arka planda kalır
     roll.g.gain.setTargetAtTime(v, ctx.currentTime, 0.25);
     roll.f.frequency.setTargetAtTime(140 + Math.min(14, speed) * 17, ctx.currentTime, 0.3);
   };

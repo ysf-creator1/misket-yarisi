@@ -248,3 +248,7 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Sürüm 20 (`bash sunucu/surum-artir.sh`): sunucu da güncellenmeli (parkur ve fizik değişti).
 - Testler: parkur (örnek 22 parkur, güçlerle), güç senaryo 17/17, çok oyunculu 32/32, hesap 43/43; tarayıcıda yeni engellerin görüntüsü.
 
+## 20. Güncelleme: daha tok çarpışma sesi, biraz daha duyulur yuvarlanma
+- Misket–misket çarpışma sesi: tiz cam tıkırtısı yerine eski çarpma sesi (kısa, aşağı kayan ton), daha pes (1100–1700 Hz) ve altında kısa, pes bir gövde tonu (≈300–440 Hz): tok bir "tak". Tetikleme aynı (yalnız iki misket çarpışınca, 0,25 sn'de en çok 3).
+- Yuvarlanma sesi en yüksek seviyesi 0,015 → 0,022 (≈+3 dB).
+
