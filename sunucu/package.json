@@ -4,7 +4,14 @@
   "private": true,
   "description": "Misket Yarışı çok oyunculu oyun sunucusu (fizik sunucuda çalışır)",
   "main": "oyun-sunucusu.js",
-  "scripts": { "start": "node oyun-sunucusu.js" },
-  "engines": { "node": ">=20" },
-  "dependencies": { "ws": "^8.18.0" }
+  "scripts": {
+    "start": "node oyun-sunucusu.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "maxmind": "^5.0.7"
+  }
 }

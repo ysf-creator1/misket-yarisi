@@ -22,6 +22,10 @@ Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam
 - Unutunca: **📱 Yeni cihaz ekle** (girişli cihazda 6 haneli kod + QR, 5 dk) ya da yönetici: `bash sunucu/sifre-sifirla.sh "Ad"`.
 - Sunucu kayıtları her gün yedekler (30 gün); `bash sunucu/yedek-indir.sh` bir kopyayı bilgisayara indirir.
 
+## 📊 Kullanım raporu
+Sunucu oyun olaylarını (açılış, tek/çok oyunculu yarış, oda, bağlantı, hesap açma/giriş) `/opt/misket/veri/olaylar/` altına günlük dosyalara yazar (400 gün).
+Tam IP saklanmaz (yalnız ağ kısmı → yaklaşık şehir/ülke, DB-IP Lite). Rapor: `bash sunucu/rapor.sh 7` (ya da `30`, `bugun`, `dun`, `tumu`, `2026-10-20..2026-10-25`).
+
 ## 👥 Çok oyunculu
 Menüdeki **Çok Oyunculu** düğmesinden:
 - **Hızlı Oyun:** bekleyen oyuncularla eşleşirsin (en fazla 20 sn bekler), eksik koltuklarda bot yarışır.

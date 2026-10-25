@@ -9,6 +9,7 @@ const http = require('http');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const hesaplar = require('./hesaplar'); // bulut oyuncu hesapları (/api/*)
+const { olay, ipKisa, kisalt, flush: olayFlush } = require('./kayitci'); // kullanım raporu için olaylar
 
 const root = path.join(__dirname, '..');
 for (const f of ['rapier.js', 'js/parcalar.js', 'js/parkurlar.js', 'js/dunyalar.js', 'js/fizik.js', 'js/guclar.js']) require(path.join(root, f));
@@ -73,6 +74,7 @@ function makeRoom(quick, host) {
   const room = { code: newCode(), quick, host: host ? host.pid : null, track: host ? clampTrack(host.unlocked) : 1, state: 'lobi', players: new Map(), race: null, ps: null, created: Date.now(), touched: Date.now(), quickAt: Date.now() + QUICK_WAIT * 1000, seq: 0, tick: 0 };
   rooms.set(room.code, room);
   log('oda açıldı', room.code, quick ? '(hızlı)' : '');
+  olay('oda', { kod: room.code, hizli: !!quick, c: host ? kisalt(host.key) : '' });
   return room;
 }
 function freeMarble(room, want) {
@@ -134,6 +136,7 @@ function startRace(room) {
   const humans = humansOf(room).filter(p => p.marble >= 0);
   if (!humans.length) return;
   if (quickRoom === room) quickRoom = null;
+  room.wasQuick = room.quick; if (room.quick && !room.startReason) room.startReason = 'hizli';
   const track = getTrack(room.track);
   const race = new MF.Race(RAPIER, track, {});
   const ps = new MG.PowerSystem(race, { humans: humans.map(p => p.marble) });
@@ -144,6 +147,8 @@ function startRace(room) {
   for (const p of humans) send(p, startMsg(room, p));
   pushRoom(room);
   log('yarış başladı', room.code, 'parkur', room.track, 'insan', humans.length);
+  olay('cok_basla', { kod: room.code, parkur: room.track, insan: humans.length, misafir: humans.filter(p => !p.kayitli).length, sebep: room.startReason || 'kurucu', hizli: !!room.wasQuick });
+  room.startReason = null; room.raceT0 = Date.now();
 }
 function startMsg(room, p) {
   return { t: 'basla', kod: room.code, parkur: room.track, intro: Math.max(0, room.gateAt + 0.2 - room.elapsed), pickTime: room.ps.pickTime, benim: p.marble, yarisanlar: room.racers, t0: room.race.t, saat: room.race.clock };
@@ -211,6 +216,7 @@ function finishRaceRoom(room) {
   const order = r.finishOrder.map(m => ({ id: m.id, place: m.place, time: m.finishTime, insan: !!room.racers[m.id] }));
   broadcast(room, { t: 'sonuc', parkur: room.track, sira: order });
   log('yarış bitti', room.code, 'kazanan misket', order[0] && order[0].id);
+  olay('cok_bitti', { kod: room.code, parkur: room.track, sureSn: Math.round(r.t), insan: order.filter(o => o.insan).length, bitiren: order.filter(o => o.insan && o.time != null).length });
   try { r.dispose(); } catch (e) { }
   room.race = null; room.ps = null; room.state = 'lobi'; room.endPending = false; room.quick = false; room.touched = Date.now();
   // yarış sırasında bağlantısı kopanlar odadan çıkar
@@ -230,6 +236,7 @@ function onMessage(p, msg) {
       const nm = hesaplar.mpName(cleanName(msg.ad), typeof msg.token === 'string' ? msg.token : '');
       p.name = nm ? nm.name : 'Misafir' + (100 + crypto.randomInt(900)); p.kayitli = !!(nm && nm.kayitli);
       p.eq = cleanEq(msg.eq); p.unlocked = clampTrack(msg.acik);
+      if (!p.helloLogged) { p.helloLogged = true; olay('merhaba', { c: kisalt(p.key), ad: p.name, kayitli: p.kayitli }); }
       send(p, { t: 'hosgeldin', pid: p.pid, anahtar: p.key, parkurSayisi: MP.TRACKS.length, ad: p.name });
       if (p.room) { pushRoom(p.room); if (p.room.race && p.marble >= 0) { send(p, startMsg(p.room, p)); resendHand(p); } }
       return;
@@ -303,7 +310,8 @@ function onConnect(ws, req, ip) {
     p = { pid: rid(6), key: rid(16), ws: null, name: 'Oyuncu', eq: {}, unlocked: 1, room: null, marble: -1, wantMarble: null, ready: false };
     players.set(p.pid, p); byKey.set(p.key, p.pid);
   }
-  p.ws = ws; p.ip = ip; p.rate = 0; p.rateT = Date.now();
+  p.ws = ws; p.ip = ip; p.rate = 0; p.rateT = Date.now(); p.connT = Date.now();
+  olay('baglan', { c: kisalt(p.key), ip: ipKisa(ip), geri: !!key && byKey.has(key), mobil: /Mobile|Android|iPhone|iPad/i.test(req.headers['user-agent'] || '') });
   // yarış sürüyorsa misketini botun elinden geri al
   if (p.room && p.room.race && p.marble >= 0 && p.room.racers[p.marble] && p.room.racers[p.marble].pid === p.pid) p.room.ps.humans.add(p.marble);
   ws.on('message', (data, isBin) => {
@@ -314,6 +322,7 @@ function onConnect(ws, req, ip) {
   });
   ws.on('close', () => {
     ipCount.set(ip, Math.max(0, (ipCount.get(ip) || 1) - 1));
+    olay('ayril', { c: kisalt(p.key), sureSn: Math.round((Date.now() - (p.connT || Date.now())) / 1000) });
     if (p.ws !== ws) return;
     p.ws = null;
     const room = p.room;
@@ -349,7 +358,7 @@ setInterval(() => {
     if (room.vote && room.state === 'lobi' && room.vote.first) { // oylama geri sayımı
       recountVote(room);
       const v = room.vote;
-      if (v && v.startAt && Date.now() >= v.startAt) { room.track = v.choice === 'sonraki' ? Math.min(MP.TRACKS.length, v.last + 1) : v.last; startRace(room); }
+      if (v && v.startAt && Date.now() >= v.startAt) { room.track = v.choice === 'sonraki' ? Math.min(MP.TRACKS.length, v.last + 1) : v.last; room.startReason = 'oylama:' + v.choice; startRace(room); }
       else pushRoom(room);
     }
     const anyOnline = humansOf(room).some(p => p.ws && p.ws.readyState === 1);
@@ -361,4 +370,4 @@ setInterval(() => {
 RAPIER.init().then(() => {
   server.listen(PORT, HOST, () => log(`Misket sunucusu hazır: http://${HOST}:${PORT} (ws: /ws)`));
 });
-process.on('SIGTERM', () => { log('kapanıyor'); try { hesaplar.flush(); } catch (e) { } for (const r of rooms.values()) broadcast(r, { t: 'hata', mesaj: 'Sunucu yeniden başlıyor, birkaç saniye sonra tekrar bağlan.' }); setTimeout(() => process.exit(0), 300); });
+process.on('SIGTERM', () => { log('kapanıyor'); try { hesaplar.flush(); olayFlush(); } catch (e) { } for (const r of rooms.values()) broadcast(r, { t: 'hata', mesaj: 'Sunucu yeniden başlıyor, birkaç saniye sonra tekrar bağlan.' }); setTimeout(() => process.exit(0), 300); });

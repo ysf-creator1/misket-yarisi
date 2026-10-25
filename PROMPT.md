@@ -188,3 +188,10 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Sonuç ekranında (ve lobide) oylama: 🔁 Aynı parkur · ⏭ Sonraki parkur; kimin neyi seçtiği görünür. Seçim yarış başlayana kadar değiştirilebilir ya da iptal edilir (aynı seçeneğe tekrar dokunmak da iptal).
 - Sunucu (`recountVote`): odadaki bağlı herkes seçince 5 sn geri sayım; biri iptal ederse durur; ilk seçimden 30 sn sonra çoğunlukla başlar; eşitlikte kurucunun seçimi; ayrılanın oyu düşer. Kurucu "Yarışı Başlat" ile her zaman elle başlatabilir.
 - Testler: çok oyunculu 32/32 (seçim, geri sayım, iptal, fikir değiştirme, doğru parkurla başlama); tarayıcıda iki oyuncuyla uçtan uca.
+
+## 12. Güncelleme: kullanım kaydı ve raporu
+- İstek: oda/kullanıcı sayıları, nereden ve hangi saatlerde bağlanıldığı, misafirden hesap açanlar vb. toplansın, sorulunca raporlansın.
+- `sunucu/kayitci.js`: olaylar `VERI/olaylar/YYYY-MM-DD.jsonl` (400 gün). IP yalnız ağ kısmıyla (a.b.c.0), anahtarlar kısaltılmış özetle.
+- Olaylar: acilis, tek_yaris (oyundan `/api/olay`), baglan, merhaba, ayril, oda, cok_basla (sebep: kurucu/hızlı/oylama), cok_bitti, hesap (misafirden?), giris, giris_hata, kodla, sifirla.
+- `sunucu/rapor.js` + `sunucu/rapor.sh`: Markdown rapor (açılış/cihaz/misafir/hesaplı, telefon-bilgisayar, kaynak, tek ve çok oyunculu, hesap dönüşümü, saat grafiği, günlük tablo, şehir/ülke, oyuncular). Konum: DB-IP Lite (ayda bir iner). `rapor.js gecmis` sunucu günlüğünden önceki günleri ekler.
+- Oyun giriş ekranında kısa gizlilik notu.

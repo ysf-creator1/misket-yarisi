@@ -151,9 +151,10 @@
     // yeni hesap; sifre = { tur: 'pin', pin } ya da { tur: 'resim', resim: 0..11 }; eski cihaz kaydı varsa onunla
     // fromLegacy: eski cihaz kaydı ya da misafirin profili (ilerlemesi yeni hesaba taşınır)
     async register(ad, sifre, fromLegacy) {
-      const r = await call('kayit', { body: Object.assign({ ad: MI.tidy(ad) }, sifre) });
+      const wasGuest = isGuest(fromLegacy);
+      const r = await call('kayit', { body: Object.assign({ ad: MI.tidy(ad), misafirden: wasGuest }, sifre) }); // misafirden: rapor için (misafir → hesap)
       if (r.code !== 200) return { hata: r.j.hata || 'Kayıt olmadı' };
-      const out = loggedIn(r), p = out.profil, wasGuest = isGuest(fromLegacy);
+      const out = loggedIn(r), p = out.profil;
       if (fromLegacy) { // eski ilerlemeyi buluta yükle
         Object.assign(p, migratePlayer(Object.assign({}, fromLegacy, { name: p.name })));
         const a = store.accounts[MI.key(p.name)];
@@ -191,6 +192,11 @@
     leaderboard: async () => { const r = await call('liderlik'); return r.code === 200 ? r.j : null; },
     records: async id => { const r = await call('rekor?parkur=' + id); return r.code === 200 ? r.j.liste : null; },
     legacyPlayers, dismissLegacy: markMoved, trLower: s => MI.key(s),
+    // kullanım bildirimi (rapor için; ad dışında kişisel bilgi yok, misafirde ad da yok)
+    track(tur, veri) {
+      const kaynak = location.protocol === 'file:' ? 'dosya' : /^(127\.0\.0\.1|localhost)$/.test(location.hostname) ? 'mac' : (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone ? 'anaekran' : 'web';
+      call('olay', { body: Object.assign({ tur, cihaz: device ? device.slice(0, 12) : '', kaynak }, veri), keepalive: true });
+    },
   };
 
   window.addEventListener('pagehide', () => push(true));

@@ -445,6 +445,7 @@
     // çok oyunculuda kilidi açık olmayan parkurda (arkadaşın seçtiği) ilk 3 sonraki parkuru açmaz
     if (place <= 3) { p.podiums++; const lim = openUpTo(p); if (id + 1 > lim && id <= lim) { p.unlocked = id + 1; unlockedNew = true; } else if (id + 1 > p.unlocked && id < OPEN_FREE) p.unlocked = id + 1; }
     if (state.mp) { st(p).mpRaces = (st(p).mpRaces || 0) + 1; if (place === 1) st(p).mpWins = (st(p).mpWins || 0) + 1; }
+    if (!state.mp) Kayit.track('yaris', { misafir: Kayit.isGuest(p), parkur: id, sira: place, sure: me.finishTime || 0, mod: state.cup ? 'kupa' : 'tek' }); // rapor: tek oyunculu yarış (çok oyunculuyu sunucu zaten görür)
     dailyAdd('yaris'); if (place <= 3) dailyAdd('ilk3'); if (place === 1) dailyAdd('birinci'); if (state.mp) dailyAdd('mp'); if (unlockedNew) dailyAdd('yeni');
     const b = p.best[id];
     if (!b || place < b.place || (place === b.place && me.finishTime && me.finishTime < (b.time || 1e9))) p.best[id] = { place, time: me.finishTime || null };
@@ -791,8 +792,10 @@
   $('cdNew').onclick = showCihaz;
   $('cdBack').onclick = () => { clearInterval(cdTimer); showMenu(); };
 
+  let opened = false;
   function selectPlayer(name) {
     state.player = Kayit.use(name); if (!state.player) return showProfiles();
+    if (!opened) { opened = true; const g = Kayit.isGuest(state.player); Kayit.track('acilis', { misafir: g, ad: g ? undefined : state.player.name, mobil: !!window.MOBIL }); } // rapor: oyun açıldı
     if (Ag.connected) Ag.connect(agProfile()); // oyuncu değişti: sunucuya yeni adı bildir
     if (pendingRoom) { const k = pendingRoom; pendingRoom = null; showMp(); joinWhenReady(k); return; }
     showMenu();

@@ -10,6 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 require(path.join(__dirname, '..', 'js', 'isim.js'));
 const { MI } = globalThis;
+const { olay, ipKisa } = require('./kayitci'); // kullanım raporu
 
 const VERI = process.env.VERI || path.join(__dirname, '..', '..', 'veri');
 const DOSYA = path.join(VERI, 'hesaplar.json'), YEDEK = path.join(VERI, 'yedek');
@@ -151,6 +152,7 @@ async function handle(req, res, ip, local) {
       setSecret(acc, tur, secret);
       board = null;
       log('yeni oyuncu', ad, tur);
+      olay('hesap', { ad, sifre: tur, misafirden: !!b.misafirden, ip: ipKisa(ip) });
       return loginOk(acc, reply);
     }
     if (route === 'giris' && req.method === 'POST') {
@@ -160,7 +162,8 @@ async function handle(req, res, ip, local) {
         const ids = ['rc:' + k + ':' + dev, 'ri:' + ip, 'ra:' + k];
         const w = Math.max(...ids.map(locked));
         if (w) return reply(429, { hata: `3 kez yanlış resim seçildi. Bu cihazda ${mmss(w)} dakika beklemen gerekiyor.`, kalanSn: w });
-        if (checkSecret(acc, b)) { fails.delete(ids[0]); return loginOk(acc, reply); }
+        if (checkSecret(acc, b)) { fails.delete(ids[0]); olay('giris', { ad: acc.profile.name, sifre: 'resim', ip: ipKisa(ip) }); return loginOk(acc, reply); }
+        olay('giris_hata', { sifre: 'resim' });
         const left = fail(ids[0], RESIM_HAK, RESIM_BEKLE, RESIM_BEKLE);
         fail(ids[1], 20, 3600e3, RESIM_BEKLE);  // aynı ağdan çok deneme (gizli sekme / başka tarayıcıyla aşmaya karşı)
         fail(ids[2], 10, 864e5, RESIM_BEKLE);   // hesaba günde 10 yanlış
@@ -169,8 +172,8 @@ async function handle(req, res, ip, local) {
         return reply(401, { hata: `Yanlış resim. ${left} hakkın kaldı.`, kalanHak: left });
       }
       if (locked('ip:' + ip) || locked('ad:' + k)) return reply(429, { hata: 'Çok fazla yanlış deneme. 10 dakika sonra tekrar dene.', kalanSn: Math.max(locked('ip:' + ip), locked('ad:' + k)) });
-      if (!checkSecret(acc, b)) { fail('ip:' + ip, 40, 3600e3, 600e3); fail('ad:' + k, 5, 3600e3, 600e3); return reply(401, { hata: 'PIN yanlış' }); }
-      fails.delete('ad:' + k);
+      if (!checkSecret(acc, b)) { fail('ip:' + ip, 40, 3600e3, 600e3); fail('ad:' + k, 5, 3600e3, 600e3); olay('giris_hata', { sifre: 'pin' }); return reply(401, { hata: 'PIN yanlış' }); }
+      fails.delete('ad:' + k); olay('giris', { ad: acc.profile.name, sifre: 'pin', ip: ipKisa(ip) });
       return loginOk(acc, reply);
     }
     if (route === 'kodla' && req.method === 'POST') { // "yeni cihaz ekle" koduyla giriş
@@ -178,8 +181,17 @@ async function handle(req, res, ip, local) {
       if (locked(id)) return reply(429, { hata: 'Çok fazla yanlış kod. 10 dakika sonra tekrar dene.' });
       const d = deviceCodes.get(kod);
       if (!d || d.until < Date.now() || !db.players[d.k]) { fail(id, 10, 600e3, 600e3); return reply(401, { hata: 'Kod yanlış ya da süresi doldu' }); }
-      deviceCodes.delete(kod);
+      deviceCodes.delete(kod); olay('kodla', { ad: db.players[d.k].profile.name, ip: ipKisa(ip) });
       return loginOk(db.players[d.k], reply);
+    }
+    if (route === 'olay' && req.method === 'POST') { // oyundan gelen kullanım bildirimi (kişisel veri yok)
+      if (locked('olay:' + ip)) return reply(429, {});
+      fail('olay:' + ip, 300, 3600e3, 600e3); // IP başına saatte en fazla 300 bildirim
+      const b = await readBody(req), tur = b.tur;
+      const cihaz = String(b.cihaz || '').replace(/[^a-f0-9]/gi, '').slice(0, 12);
+      if (tur === 'acilis') olay('acilis', { cihaz, misafir: !!b.misafir, ad: b.misafir ? undefined : MI.tidy(b.ad).slice(0, 16), mobil: !!b.mobil, kaynak: ['web', 'mac', 'anaekran', 'dosya'].includes(b.kaynak) ? b.kaynak : 'web', ip: ipKisa(ip) });
+      else if (tur === 'yaris') olay('tek_yaris', { cihaz, misafir: !!b.misafir, parkur: num(b.parkur, 200), sira: num(b.sira, 6), sureSn: num(b.sure, 3600), mod: b.mod === 'kupa' ? 'kupa' : 'tek' });
+      return reply(200, { ok: true });
     }
     if (route === 'liderlik' && req.method === 'GET') return reply(200, leaderboard());
     if (route === 'rekor' && req.method === 'GET') return reply(200, { parkur: num(url.searchParams.get('parkur'), 200), liste: records(num(url.searchParams.get('parkur'), 200)) });
@@ -190,7 +202,7 @@ async function handle(req, res, ip, local) {
       const pin = String(crypto.randomInt(10000)).padStart(4, '0');
       setSecret(acc, 'pin', 'p:' + pin); revokeOthers(acc, null);
       for (const key of [...fails.keys()]) if (key.includes(acc.key)) fails.delete(key);
-      save(); log('yönetici sıfırladı', acc.profile.name);
+      save(); log('yönetici sıfırladı', acc.profile.name); olay('sifirla', { ad: acc.profile.name });
       return reply(200, { ad: acc.profile.name, pin });
     }
     // buradan sonrası oturum ister
