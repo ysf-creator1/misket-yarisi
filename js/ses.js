@@ -82,5 +82,6 @@
       case 'bomba': noise(0.9, 0.4 * v, 900, 60, 0.5, 0, 'lowpass'); tone(60, 0.6, 'sine', 0.3 * v, 0, 0.5); break;
     }
   };
+  Ses.atis = mine => { const v = mine ? 1 : 0.45; noise(0.45, 0.16 * v, 900, 2400, 1.4); tone(500, 0.4, 'sine', 0.05 * v, 0, 1.8); }; // fırlatma (vuuş)
   Ses.blocked = () => { tone(1500, 0.12, 'square', 0.08); tone(1000, 0.15, 'square', 0.06, 0.08); };
 })();

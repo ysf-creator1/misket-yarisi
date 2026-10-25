@@ -80,17 +80,19 @@
 
   // ---- üretici ----
   // t: tahmini süre (sn, güçler açık) — test/uretici-testi.js ile ayarlandı
-  const S = (b, len, drop) => b.straight({ len, drop: drop != null ? drop : len * 0.095 });
-  const U = (b, dir, r = 8) => b.curve({ angle: 180 * dir, radius: r, drop: Math.PI * r * 0.09 });
-  const SPI = (b, turns, dir, r = 6.5) => b.curve({ angle: 360 * turns * dir, radius: r, drop: 2 * Math.PI * r * turns * 0.115, bank: 12 });
+  // EĞİM: düz yol, viraj ve sarmalların dikliği (1 = eski). Daha dik → daha hızlı ve aksiyonlu; süre aynı kalsın diye parkur uzar (MP.timeScale)
+  MP.EGIM = 1.35;
+  const S = (b, len, drop) => b.straight({ len, drop: drop != null ? drop : len * 0.095 * MP.EGIM });
+  const U = (b, dir, r = 8) => b.curve({ angle: 180 * dir, radius: r, drop: Math.PI * r * 0.09 * MP.EGIM });
+  const SPI = (b, turns, dir, r = 6.5) => b.curve({ angle: 360 * turns * dir, radius: r, drop: 2 * Math.PI * r * turns * 0.115 * (1 + (MP.EGIM - 1) * 0.6), bank: 12 });
   const sign = r => r() < 0.5 ? -1 : 1;
   const PIECES = {
     duz: { t: 3.2, w: d => 1.4 - d, f: (b, r) => S(b, 10 + Math.round(r() * 6)) },
     slalom: { t: 5.4, w: () => 1, f: (b, r, d) => b.slalom({ len: 12 + Math.round(r() * 4), boards: 3 + (d > 0.5 && r() < 0.5 ? 1 : 0) }) },
     tampon: { t: 5.2, w: () => 1, f: (b, r) => b.bumpers({ len: 11 + Math.round(r() * 3) }) },
     civi: { t: 5.0, w: () => 0.9, f: (b, r) => b.pegs({ len: 13 + Math.round(r() * 4), hw: 3.2 + r() * 0.4 }) },
-    catal2: { t: 6.2, w: () => 0.9, f: (b, r) => b.split({ lanes: 2, lw: 1.2, len: 16 + Math.round(r() * 4), drop: 2.1, spread: 2.4, laneOpts: [{ spread: 3 }, { spread: 1, profile: MP.humps(0.2, 0.75, 3, 0.11) }] }) },
-    catal3: { t: 6.8, w: d => 0.2 + d, f: (b, r) => b.split({ lanes: 3, lw: 1.15, len: 18 + Math.round(r() * 4), drop: 2.4, spread: 2.4, laneOpts: [{ spread: 3.2 }, { profile: MP.humps(0.25, 0.7, 2, 0.11) }, { spread: 1.6 }] }) },
+    catal2: { t: 6.2, w: () => 0.9, f: (b, r) => b.split({ lanes: 2, lw: 1.2, len: 16 + Math.round(r() * 4), drop: 2.1 * MP.EGIM, spread: 2.4, laneOpts: [{ spread: 3 }, { spread: 1, profile: MP.humps(0.2, 0.75, 3, 0.11) }] }) },
+    catal3: { t: 6.8, w: d => 0.2 + d, f: (b, r) => b.split({ lanes: 3, lw: 1.15, len: 18 + Math.round(r() * 4), drop: 2.4 * MP.EGIM, spread: 2.4, laneOpts: [{ spread: 3.2 }, { profile: MP.humps(0.25, 0.7, 2, 0.11) }, { spread: 1.6 }] }) },
     atlama: { t: 4.3, w: () => 0.9, f: (b, r, d) => b.jump({ run: 7, gap: 3 + d * 1.5 + r() * 0.5 }) },
     huni: { t: 11.5, w: d => 0.35 + 0.5 * d, f: (b, r) => b.funnel({ R: 5.5 + r() * 1.5, side: sign(r), depth: 3.2 + r() * 0.6 }) },
     pervane: { t: 5.0, w: d => 0.3 + 0.8 * d, f: (b, r, d) => b.spinner({ len: 11, arms: d > 0.4 && r() < 0.5 ? 3 : 2, speed: 1.3 + d * 0.6, dir: sign(r) }) },
@@ -112,7 +114,7 @@
   const FAMILIES = {
     zikzak: { name: 'Zikzak', turn: (b, dir, r) => U(b, dir, 8 + Math.round(r())), t: T => T, w: {} },
     kule: { name: 'Sarmal Kule', turn: (b, dir) => SPI(b, 1.5, dir, 7.5), t: () => 10.5, w: { spiral: 0.4 } },
-    kivrim: { name: 'Geniş Kıvrımlar', turn: (b, dir, r) => b.curve({ angle: (150 + Math.round(r() * 30)) * dir, radius: 11 + r() * 3, drop: 2.2 }), t: () => 6, w: { duz: 1.3, slalom: 1.3 } },
+    kivrim: { name: 'Geniş Kıvrımlar', turn: (b, dir, r) => b.curve({ angle: (150 + Math.round(r() * 30)) * dir, radius: 11 + r() * 3, drop: 2.2 * MP.EGIM }), t: () => 6, w: { duz: 1.3, slalom: 1.3 } },
     selale: { name: 'Şelale', turn: (b, dir, r) => U(b, dir, 8 + Math.round(r())), t: T => T, w: { dusus: 3.2, trambolin: 1.5 } },
     labirent: { name: 'Labirent', turn: (b, dir, r) => U(b, dir, 9), t: T => T, w: { catal2: 2.4, catal3: 2.6, kapi: 1.8 } },
   };
@@ -127,14 +129,14 @@
     for (let i = 0; i < keys.length; i++) { q -= ws[i]; if (q <= 0) return keys[i]; }
     return keys[keys.length - 1];
   }
-  MP.timeScale = 1.0; // gerçek/tahmini süre oranı: 22 parkurluk simülasyonla ölçüldü (test/parkur-testi.js ornek)
+  MP.timeScale = 0.88; // gerçek/tahmini süre oranı (EĞİM 1,35 ile parkurlar daha hızlı → daha uzun üretilir); test/parkur-testi.js ornek ile ölçüldü
 
   function genTrack(def, variant) {
     const r = MP.rng(def.id * 7919 + variant * 104729 + 17), d = (def.id - 1) / (NT - 1), w = MP.WORLDS[def.world];
     const pal = w.pal.slice(); for (let i = pal.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pal[i], pal[j]] = [pal[j], pal[i]]; }
     // yerleşim ailesi (ilk parkurlar hep zikzak), parkur genişliği ve duvar yüksekliği biraz değişir
     const famKeys = Object.keys(FAMILIES), famKey = def.id <= 3 ? 'zikzak' : famKeys[Math.floor(r() * famKeys.length)], fam = FAMILIES[famKey];
-    const b = new MP.Builder({ y0: 160, palette: pal, hw: 1.95 + r() * 0.4, wh: 1.25 + r() * 0.25 });
+    const b = new MP.Builder({ y0: 160, palette: pal, hw: 1.95 + r() * 0.4, wh: 1.25 + r() * 0.25, egim: MP.EGIM });
     const goal = def.target / MP.timeScale;
     let est = T_START + T_FINISH, dir = sign(r), recent = [], pieces = [], pieceAt = [], finals = 0;
     b.start(); S(b, 8 + Math.round(r() * 4), 1.3); est += 2.5;

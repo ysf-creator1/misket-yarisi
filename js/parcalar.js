@@ -98,6 +98,7 @@
       this.pos = [0, o.y0 != null ? o.y0 : 150, 0];
       this.yaw = o.yaw0 || 0;
       this.s = 0; this.hw = o.hw || 2.1; this.wh = o.wh || 1.35; this.baseWh = this.wh; this.baseHw = this.hw;
+      this.egim = o.egim || 1; // engel bölümlerinin eğim çarpanı (üretilen parkurlar; özel parkurlarda 1)
       this.meshes = []; this.prims = []; this.samples = []; this.zones = []; this.decor = [];
       this.slots = []; this.finishS = null; this.startS = 0;
       this.palette = o.palette || ['#3d8bff', '#ff6b6b', '#ffd166', '#06d6a0'];
@@ -268,7 +269,7 @@
 
     // Çivi tahtası (plinko)
     pegs(o = {}) {
-      const L = o.len || 14, drop = o.drop != null ? o.drop : L * 0.32, hwP = o.hw || 3.4, hw0 = this.hw, wh = this.wh;
+      const L = o.len || 14, drop = o.drop != null ? o.drop : L * 0.32 * this.egim, hwP = o.hw || 3.4, hw0 = this.hw, wh = this.wh;
       const sp = o.spacing || 1.8, r = o.r || 0.2, tin = 0.14, tout = 0.86;
       const n = Math.ceil(L / 0.5), d = dirOf(this.yaw), p0 = this.pos.slice();
       const hwAt = t => t < tin ? lerp(hw0, hwP, smooth(t / tin)) : t > tout ? lerp(hwP, hw0, smooth((t - tout) / (1 - tout))) : hwP;
@@ -418,7 +419,7 @@
 
     // Çarpma direkleri: kalın, yuvarlak, sektiren direkler (aralar misketin rahat geçeceği kadar)
     bumpers(o = {}) {
-      const L = o.len || 12, drop = o.drop != null ? o.drop : L * 0.17, hwB = o.hw || 3.0, r = o.r || 0.42;
+      const L = o.len || 12, drop = o.drop != null ? o.drop : L * 0.17 * this.egim, hwB = o.hw || 3.0, r = o.r || 0.42;
       const { F, A, s0, tin, tout } = this._wideSection(o, L, drop, hwB);
       const posts = [], rowStep = o.rowStep || 2.1;
       let row = 0;
@@ -432,7 +433,7 @@
 
     // Zikzak tahtalar: duvardan eğik çıkan tahtalar misketi bir yandan öbür yana sektirir
     slalom(o = {}) {
-      const L = o.len || 14, drop = o.drop != null ? o.drop : L * 0.15, gap = o.gap || 1.5, th = 45 * DEG;
+      const L = o.len || 14, drop = o.drop != null ? o.drop : L * 0.15 * this.egim, gap = o.gap || 1.5, th = 45 * DEG;
       // tahtalar arası en az ~4,1 m: daha sıkı olursa bir tahtanın ucuyla diğerinin dibi arasında misketi sıkıştıran cep oluşur
       const n = Math.max(2, Math.min(o.boards || 3, Math.floor(L / 4.1 - 0.4)));
       const { hw0, wh0 } = this._widths(o);
@@ -455,7 +456,7 @@
 
     // Dönen pervane: geniş bir bölmenin ortasında dönen çarpı, misketlere vurup savurur
     spinner(o = {}) {
-      const L = o.len || 11, drop = o.drop != null ? o.drop : L * 0.14, hwS = o.hw || 3.3;
+      const L = o.len || 11, drop = o.drop != null ? o.drop : L * 0.14 * this.egim, hwS = o.hw || 3.3;
       const { F, A, s0 } = this._wideSection(o, L, drop, hwS, false);
       const f = F[Math.round(0.5 * (F.length - 1))];
       const arm = hwS - 1.35; // uçta misketin geçeceği boşluk kalır
@@ -493,7 +494,7 @@
 
     // Pistonlar: duvardan çıkıp misketleri iten hareketli bloklar
     pistons(o = {}) {
-      const L = o.len || 14, drop = o.drop != null ? o.drop : L * 0.12, n = o.count || 2, hw = this.hw;
+      const L = o.len || 14, drop = o.drop != null ? o.drop : L * 0.12 * this.egim, n = o.count || 2, hw = this.hw;
       const d = dirOf(this.yaw), p0 = this.pos.slice(), nf = Math.ceil(L / 0.5), wh = this.wh;
       const F = this._frames(nf, t => ({ p: [p0[0] + d[0] * L * t, p0[1] - drop * t, p0[2] + d[2] * L * t], hw, wh }));
       this._sweep(F, o);
@@ -513,7 +514,7 @@
 
     // Kazıklar: zeminden zamanlı çıkıp giren kazık sıraları (aralar misketin geçeceği kadar)
     kaziklar(o = {}) {
-      const L = o.len || 14, drop = o.drop != null ? o.drop : L * 0.14, hwK = o.hw || 2.8;
+      const L = o.len || 14, drop = o.drop != null ? o.drop : L * 0.14 * this.egim, hwK = o.hw || 2.8;
       const { F, A, s0, tin, tout } = this._wideSection(o, L, drop, hwK);
       let row = 0;
       for (let z = L * (tin + 0.07); z <= L * (tout - 0.07); z += 2.4, row++) {
@@ -528,7 +529,7 @@
 
     // Sarkaç: yolun üstünde yana sallanan ağır tokmak
     sarkac(o = {}) {
-      const L = o.len || 13, drop = o.drop != null ? o.drop : L * 0.1, n = o.count || (L >= 16 ? 2 : 1);
+      const L = o.len || 13, drop = o.drop != null ? o.drop : L * 0.1 * this.egim, n = o.count || (L >= 16 ? 2 : 1);
       const { hw0, wh0 } = this._widths(o);
       const d = dirOf(this.yaw), p0 = this.pos.slice(), nf = Math.ceil(L / 0.5);
       const F = this._frames(nf, t => ({ p: [p0[0] + d[0] * L * t, p0[1] - drop * t, p0[2] + d[2] * L * t], hw: hw0, wh: wh0 }));
@@ -546,7 +547,7 @@
 
     // Hareketli bant: zemini ileri (hızlandırır) ya da geri (yavaşlatır, ama misketi asla geri taşımaz) akan bölge
     bant(o = {}) {
-      const L = o.len || 12, drop = o.drop != null ? o.drop : L * 0.1, dir = o.dir || 1;
+      const L = o.len || 12, drop = o.drop != null ? o.drop : L * 0.1 * this.egim, dir = o.dir || 1;
       const { hw0, wh0 } = this._widths(o);
       const d = dirOf(this.yaw), p0 = this.pos.slice(), nf = Math.ceil(L / 0.5);
       const F = this._frames(nf, t => ({ p: [p0[0] + d[0] * L * t, p0[1] - drop * t, p0[2] + d[2] * L * t], hw: hw0, wh: wh0 }));
@@ -565,7 +566,7 @@
 
     // Döner tabla: zemine gömülü, dönen disk; üstüne gelen misketi yana savurur
     tabla(o = {}) {
-      const L = o.len || 12, drop = o.drop != null ? o.drop : L * 0.12, hwT = o.hw || 3.2;
+      const L = o.len || 12, drop = o.drop != null ? o.drop : L * 0.12 * this.egim, hwT = o.hw || 3.2;
       const { F, A, s0 } = this._wideSection(o, L, drop, hwT);
       const f = F[Math.round(0.5 * (F.length - 1))];
       this.prims.push({ type: 'kin', kind: 'tabla', p: add(f.p, mul(f.U, 0.06)), U: f.U, q: quatFromY(f.U), r: hwT - 0.75, hh: 0.06, speed: (o.dir || 1) * 1.3, color: '#ffbe0b' });

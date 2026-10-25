@@ -54,6 +54,39 @@ RAPIER.init().then(() => {
     }
     ok('Zıplama Engel Duvarı\'nın üstünden aşıyor', over >= N * 0.8, `${over}/${N}`);
   }
+  // 1b) duvarın dibinde dururken zıplayınca aşar
+  {
+    let over = 0, N = 9;
+    for (let k = 0; k < N; k++) {
+      const { race, ps } = setup(tr), a = race.marbles[0];
+      place(race, a, tr, 10, (k % 3 - 1) * 0.6, 0);
+      const fakeTarget = { s: 10, lastSample: sampleAt(tr, 10) }; const pt = ps._ahead(fakeTarget, 0.85);
+      const half = [pt.hw + 0.05, 0.75, 0.18], q = MP.quatFromBasis(pt.R, pt.U, MP.v.cross(pt.R, pt.U)), p0 = [pt.p[0] + pt.U[0] * 0.25, pt.p[1] + pt.U[1] * 0.25, pt.p[2] + pt.U[2] * 0.25];
+      race.world.createCollider(RAPIER.ColliderDesc.cuboid(half[0], half[1], half[2]).setTranslation(p0[0], p0[1], p0[2]).setRotation(q));
+      run(race, 0.4); ps.activate(a, 'zipla'); run(race, 2.5);
+      if (a.s > pt.s + 2) over++;
+      race.dispose();
+    }
+    ok('Duvarın dibindeyken zıplayınca duvarı aşıyor', over >= N - 1, `${over}/${N}`);
+  }
+  // 1c) direğin dibinde dururken zıplayınca aşar
+  {
+    let over = 0, N = 6;
+    const cyls = tr.prims.filter(q => q.type === 'cyl');
+    for (let k = 0; k < N; k++) {
+      const { race, ps } = setup(tr), a = race.marbles[0], c = cyls[k % Math.min(3, cyls.length)];
+      // direğin hemen önüne (parkur yönünde) koy
+      const sm = tr.samples.filter(q => q.lane === 0).reduce((b2, q) => Math.hypot(q.p[0] - c.p[0], q.p[2] - c.p[2]) < Math.hypot(b2.p[0] - c.p[0], b2.p[2] - c.p[2]) ? q : b2);
+      const back = c.r + 0.62;
+      a.body.setGravityScale(1, true);
+      a.body.setTranslation({ x: c.p[0] - sm.T[0] * back, y: sm.p[1] + 0.55 + sm.T[1] * -back, z: c.p[2] - sm.T[2] * back }, true);
+      a.body.setLinvel({ x: 0, y: 0, z: 0 }, true); a.s = sm.s - back; a.bestS = a.s; a.lastSample = sm;
+      run(race, 0.3); const s0 = a.s; ps.activate(a, 'zipla'); run(race, 2.0);
+      if (a.s > s0 + 3) over++;
+      race.dispose();
+    }
+    ok('Direğin dibindeyken zıplayınca direği aşıyor', over >= N - 1, `${over}/${N}`);
+  }
   // 2) zıplama iki sıra çarpma direğini aşar, yandan düşmez
   {
     let gain = 0, falls = 0, N = 16; let base = 0;
@@ -77,8 +110,9 @@ RAPIER.init().then(() => {
     place(race, a, tr, 16, 0, 0); place(race, b, tr, 22, -0.7, 0); place(race, c, tr, 22.6, 0.7, 0); place(race, d, tr, 23.2, 0, 0);
     run(race, 0.4); for (const m of race.marbles) race._progress(m, false);
     const s0 = [b.s, c.s, d.s];
-    ps.activate(a, 'bomba'); const ev = race.events.filter(e => e.type === 'power').pop();
-    run(race, 0.9);
+    ps.activate(a, 'bomba'); run(race, MG.FLY.bomba + 0.15); const ev = race.events.filter(e => e.type === 'power').pop(); const atis = race.events.find(e => e.type === 'atis');
+    ok('Bomba önce atan misketten hedefe uçuyor', !!atis && atis.sure > 0.3 && atis.targets.length === 1, atis ? `${atis.sure} sn` : 'atış yok');
+    run(race, 0.2);
     ok('Bomba birden fazla misketi etkiliyor', ev.targets.length >= 2, `${ev.targets.length} misket`);
     ok('Bomba hedefleri 1 sn sersemletiyor', [b, c, d].filter(m => ev.targets.includes(m.id)).every(m => m.fx.stun > 0), '');
     race.dispose();

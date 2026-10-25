@@ -211,3 +211,11 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 ## 15. Güncelleme: dil seçimi
 - İlk açılışta tarayıcının dil listesinde Türkçe/İngilizceden önce gelen seçilir; ikisi de yoksa ya da bilinmiyorsa Türkçe. Seçim cihazda hatırlanır.
 - Sağ üst köşede TR | EN düğmesi (menü ekranlarında ve giriş ekranında; yarışta gizli). Eski 🌐 düğmeleri kaldırıldı. Telefonda üst menüde Liderlik kısa adı: Skor / Scores.
+
+## 16. Güncelleme: daha hızlı parkurlar, adil tuzaklar, uçan tuzaklar
+1. Tuzaklar çoğunlukla öndekilere: hedef seçiminde arkadakiler yalnız çok yakın ve hızla yaklaşıyorsa (4 m, %30 olasılık); ters rüzgâr önündeki 40 m'ye eser. Arkadakiler kopmasın diye hafif yetişme desteği: lidere 18 m'den fazla geride kalan (yavaşlatılmamış/sersem değilse) misket hafifçe itilir. Ölçüm (36 yarış): sonuncunun farkı ort. 15,2 → 10,3 sn, en çok 37,8 → 18,0 sn; yarıda önde olanın kazanması %72 → %36.
+2. Zıplama duvar/direk dibinde: önce ışınla öndeki engel aranır, varsa önce dik yukarı (11,5 m/sn), 0,26 sn sonra ileri. Duvar dibinde 9/9, direk dibinde 6/6 aşıyor (eskiden 0/6).
+3–4. Bomba, Yapışkan Balçık ve Ters Rüzgâr atan misketten hedefe yay çizerek uçar (`atis` olayı, `MG.FLY` süreleri 0,7 / 0,62 / 0,5 sn; `Grafik.throwFx`), etkisi varınca başlar. Uçuş sesi.
+5. Eğim ×1,35 (`MP.EGIM`; düzlükler, virajlar, sarmallar ve engel parçaları); parkurlar uzatıldı (`MP.timeScale` 0,88), süreler aynı kaldı (oran 0,998). 200 parkur çakışmasız, ortalama 597 m. Elle yapılmış özel parkurlar değişmedi.
+- Sürüm: `js/surum.js` (OYUN_SURUM) + index.html'de `?v=` etiketleri; çok oyunculuda eski sürümle bağlanana "sayfayı yenile" uyarısı (sunucu ve tarayıcı aynı parkuru kurmalı). Parkur/fizik değişince `bash sunucu/surum-artir.sh`.
+- Testler: güç senaryo 12/12, çok oyunculu 32/32, hesap 43/43; tarayıcıda çok oyunculu, menü/yarış ve uçuş animasyonları.

@@ -39,6 +39,7 @@
         case 'elGitti': if (Ag.race) Ag.race.events.push({ type: 'handGone', id: Ag.race.me }); break;
         case 'sonuc': if (Ag.race) Ag.race.onResult(m); emit('sonuc', m); break;
         case 'hata': emit('hata', m); break;
+        case 'surumEski': emit('surumEski', m); break; // sunucu daha yeni: sayfa yenilenmeli
       }
     };
     ws.onclose = () => {
@@ -50,7 +51,7 @@
     ws.onerror = () => { };
   };
   // token: kayıtlı adın sahibi olduğunu gösterir (yoksa sunucu misafir adı verir); eq: kostüm (diğer oyuncular görür)
-  function hello() { const p = Ag.profile || {}; Ag.send({ t: 'merhaba', ad: p.ad, eq: p.eq, acik: p.acik, token: p.token || '' }); }
+  function hello() { const p = Ag.profile || {}; Ag.send({ t: 'merhaba', ad: p.ad, eq: p.eq, acik: p.acik, token: p.token || '', surum: window.OYUN_SURUM || 0 }); }
   Ag.disconnect = function () { Ag.want = false; Ag.room = null; if (Ag.ws) try { Ag.ws.close(); } catch (e) { } Ag.ws = null; Ag.connected = false; };
 
   // ================= uzak yarış =================

@@ -377,6 +377,11 @@
       else if (e.type === 'hand' && e.id === state.pick) showCards(e.cards, e.expires);
       else if (e.type === 'handGone' && e.id === state.pick) hideCards();
       else if (e.type === 'power') onPower(e);
+      else if (e.type === 'atis') { // uçan tuzak: atan misketten hedefe
+        const from = state.mvs[e.id] && state.mvs[e.id].mesh.position.clone(); if (!from) continue;
+        for (const tid of e.targets || []) { const mv = state.mvs[tid]; if (mv) Grafik.throwFx(e.power, from, () => mv.mesh.position, e.sure); }
+        Ses.atis(e.id === state.pick || (e.targets || []).includes(state.pick));
+      }
       else if (e.type === 'wallBreak') { Grafik.breakWall(e.wall); Ses.power('duvar', e.id === state.pick); toast(`⚙️ ${e.id === state.pick ? 'Demir misketin' : nameOf(r, e.id) + ' demir misketle'} duvarı kırdı!`, e.id === state.pick ? 'gold' : ''); }
       else if (e.type === 'finalRound') toast('🔥 Final kart turu! Geridekilere güçlü kartlar', 'gold');
       else if (e.type === 'finish') {
@@ -1057,6 +1062,8 @@
   });
   Ag.on('hata', m => { mpMsg('⚠️ ' + m.mesaj); if (state.mp && state.race) toast('⚠️ ' + m.mesaj, 'bad'); });
   Ag.on('basla', m => startNetRace(m));
+  let surumSoruldu = false;
+  Ag.on('surumEski', () => { if (surumSoruldu) return; surumSoruldu = true; if (confirm('Oyunun yeni sürümü var. Çok oyunculu için sayfa şimdi yenilensin mi?')) location.reload(); else mpMsg('⚠️ Oyunun eski sürümünü kullanıyorsun, sayfayı yenile.'); });
   let mpTrackN = 0;
   function renderMp() {
     const room = Ag.room, me = Ag.pid, ready = Ag.connected && !!me;

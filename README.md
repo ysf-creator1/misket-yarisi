@@ -45,6 +45,7 @@ node test/yuk-testi.js 20 90                  # yük testi (sunucunun içinde ç
 ```
 Yerelde denemek için: `PORT=8790 node sunucu/oyun-sunucusu.js` ve oyunu `index.html?sunucu=ws://127.0.0.1:8790/ws` ile aç.
 İlk kurulum: `sudo bash sunucu/kur.sh` (Ubuntu 24.04; Node 22, Caddy ile otomatik HTTPS).
+Parkur, fizik ya da mesajlar değişince önce `bash sunucu/surum-artir.sh` (oyun sürümü + dosya etiketleri artar; eski sayfayla çok oyunculuya bağlanana "sayfayı yenile" uyarısı çıkar), sonra commit + push + `guncelle.sh`.
 
 ## Bilgisayarda kalıcı kayıtla oynamak
 - **Mac:** klasördeki **Misket Yarışı** uygulamasına çift tıkla (ilk seferde sağ tık → Aç). Kayıtlar `kayit/kayit.json` dosyasına yazılır.
@@ -54,6 +55,7 @@ Yerelde denemek için: `PORT=8790 node sunucu/oyun-sunucusu.js` ve oyunu `index.
 ```
 node test/parkur-testi.js ornek 3 -g   # örnek parkurları güçler açıkken simüle eder
 node test/guc-testi.js 1 40            # güçlerin dengesini ölçer
+node test/guc-senaryo.js               # zıplama, bomba uçuşu, kalkan vb. senaryolar
 ```
 
 ## Lisanslar

@@ -718,6 +718,29 @@
     const t0 = performance.now();
     Grafik.addTemp(f, Infinity, (o) => { const k = (performance.now() - t0) / 350; o.scale.setScalar(1 + k * 5); o.material.opacity = Math.max(0, 0.9 * (1 - k)); if (k >= 1) temp.find(e => e.obj === o).dead = true; });
   };
+  // uçan tuzak: atan misketten hedefe yay çizerek gider (bomba, balçık, ters rüzgâr); hedef hareket ettikçe izler
+  Grafik.throwFx = function (kind, from, toFn, dur) {
+    let mesh;
+    if (kind === 'bomba') {
+      mesh = new THREE.Group();
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 12), new THREE.MeshStandardMaterial({ color: 0x1c1c22, roughness: 0.35, metalness: 0.4 }));
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.12, 10), new THREE.MeshStandardMaterial({ color: 0x8a8a90, metalness: 0.8, roughness: 0.3 })); cap.position.y = 0.3;
+      mesh.add(ball, cap); mesh.scale.setScalar(1.25); // uçarken uzaktan seçilsin
+    } else if (kind === 'balcik') mesh = new THREE.Mesh(new THREE.SphereGeometry(0.44, 18, 12), new THREE.MeshPhysicalMaterial({ color: col('#62c21c'), roughness: 0.15, clearcoat: 1, transparent: true, opacity: 0.9 }));
+    else mesh = new THREE.Object3D(); // rüzgâr: yalnız parçacık
+    mesh.position.copy(from);
+    let t0 = null;
+    Grafik.addTemp(mesh, Infinity, (o, t, dt) => {
+      if (t0 === null) t0 = t;
+      const u = Math.min(1, (t - t0) / dur), to = toFn(), d = from.distanceTo(to);
+      const arc = kind === 'ruzgar' ? 0.8 : 2.2 + d * 0.14; // yüksek yay: etiketlerin üstünden görünsün
+      o.position.set(from.x + (to.x - from.x) * u, from.y + (to.y - from.y) * u + Math.sin(Math.PI * u) * arc, from.z + (to.z - from.z) * u);
+      if (kind === 'bomba') { o.rotation.x += dt * 9; if (Math.random() < 0.9) Particles.emit(tmpV.set(o.position.x, o.position.y + 0.5, o.position.z), { x: rr(1), y: 1 + Math.random(), z: rr(1) }, Math.random() < 0.5 ? '#ffd166' : '#ff6b1a', 0.22, 0.3, 0.2); }
+      else if (kind === 'balcik') { o.scale.set(1 + Math.sin(t * 30) * 0.12, 1 - Math.sin(t * 30) * 0.1, 1); if (Math.random() < 0.6) Particles.emit(tmpV.set(o.position.x, o.position.y - 0.2, o.position.z), { x: rr(0.4), y: -0.5, z: rr(0.4) }, '#7bd629', 0.22, 0.4, 1.2); }
+      else for (let k = 0; k < 3; k++) { const a = t * 18 + k * 2.1; Particles.emit(tmpV.set(o.position.x + Math.cos(a) * 0.5, o.position.y + Math.sin(a) * 0.5, o.position.z), { x: (to.x - from.x) / dur * 0.3 + rr(0.6), y: rr(0.4), z: (to.z - from.z) / dur * 0.3 + rr(0.6) }, k ? '#e8f6ff' : '#9fd6ff', 0.3, 0.35, 0); }
+      if (u >= 1) temp.find(e => e.obj === o).dead = true;
+    });
+  };
   Grafik.breakWall = function (w) {
     if (w._vis) w._vis.dead = true;
     Particles.burst({ x: w.p[0], y: w.p[1], z: w.p[2] }, 70, ['#b5452c', '#a63d27', '#c24e33', '#d9c3a0'], 6, 0.4, 1.2, 0.9);

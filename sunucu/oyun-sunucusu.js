@@ -12,7 +12,7 @@ const hesaplar = require('./hesaplar'); // bulut oyuncu hesapları (/api/*)
 const { olay, ipKisa, kisalt, flush: olayFlush } = require('./kayitci'); // kullanım raporu için olaylar
 
 const root = path.join(__dirname, '..');
-for (const f of ['rapier.js', 'js/parcalar.js', 'js/parkurlar.js', 'js/dunyalar.js', 'js/fizik.js', 'js/guclar.js']) require(path.join(root, f));
+for (const f of ['js/surum.js', 'rapier.js', 'js/parcalar.js', 'js/parkurlar.js', 'js/dunyalar.js', 'js/fizik.js', 'js/guclar.js']) require(path.join(root, f));
 const { MP, MF, MG, RAPIER } = globalThis;
 
 const PORT = +process.env.PORT || 8790;
@@ -237,7 +237,8 @@ function onMessage(p, msg) {
       p.name = nm ? nm.name : 'Misafir' + (100 + crypto.randomInt(900)); p.kayitli = !!(nm && nm.kayitli);
       p.eq = cleanEq(msg.eq); p.unlocked = clampTrack(msg.acik);
       if (!p.helloLogged) { p.helloLogged = true; olay('merhaba', { c: kisalt(p.key), ad: p.name, kayitli: p.kayitli }); }
-      send(p, { t: 'hosgeldin', pid: p.pid, anahtar: p.key, parkurSayisi: MP.TRACKS.length, ad: p.name });
+      send(p, { t: 'hosgeldin', pid: p.pid, anahtar: p.key, parkurSayisi: MP.TRACKS.length, ad: p.name, surum: globalThis.OYUN_SURUM });
+      if ((+msg.surum || 0) !== globalThis.OYUN_SURUM) send(p, { t: 'surumEski', surum: globalThis.OYUN_SURUM }); // eski sayfa: parkurlar farklı olabilir
       if (p.room) { pushRoom(p.room); if (p.room.race && p.marble >= 0) { send(p, startMsg(p.room, p)); resendHand(p); } }
       return;
     }
