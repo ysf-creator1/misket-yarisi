@@ -71,7 +71,7 @@ window.DIL_EN = {
   'Yeni cihazda': 'On the new device tap', '→ bu kodu yaz ya da QR\'ı okut.': '→ type this code or scan the QR.', '⏳ Kod alınıyor…': '⏳ Getting a code…',
   'Kod {0} geçerli, bir kez kullanılır.': 'Code valid for {0}, single use.', '⌛ Kodun süresi doldu. "Yeni kod" ile yenisini al.': '⌛ The code expired. Get a new one with "New code".', 'Yeni kod': 'New code',
   // ===== parkurlar / kupalar =====
-  'Parkur Seç': 'Choose a track', "İlk 10 parkur açık. İlk 3'e girersen sonraki açılır.": 'The first 10 tracks are open. Finish top 3 to unlock the next one.',
+  'Parkur Seç': 'Choose a track', "İlk 10 parkur açık. İlk 3'e girersen sonraki açılır; dünyanın son parkurunu bitirmek sonraki dünyayı açar.": 'The first 10 tracks are open. Finish top 3 to unlock the next; finishing a world\'s last track unlocks the next world.',
   'Parkur {0#}–{1#}': 'Tracks {0}–{1}', 'Parkur {0#}–{1#} · 🔒 önceki dünyada ilerle': 'Tracks {0}–{1} · 🔒 progress in the previous world', 'Son 3 parkur dünya kupasıdır.': 'The last 3 tracks form the world cup.',
   'PARKUR {0#}': 'TRACK {0}', 'PARKUR {0#} · ⭐ ÖZEL': 'TRACK {0} · ⭐ SPECIAL', 'PARKUR {0#} · son oynanan': 'TRACK {0} · last played', 'PARKUR {0#} · ⭐ ÖZEL · son oynanan': 'TRACK {0} · ⭐ SPECIAL · last played',
   '⏱ ~{0#} sn · 🥇 {1#} puan': '⏱ ~{0} s · 🥇 {1} pts', "🔒 Önceki parkurda ilk 3'e gir": '🔒 Finish top 3 on the previous track', 'En iyi: {0} · {1#} sn': 'Best: {0} · {1} s', 'En iyi: {0}': 'Best: {0}',
@@ -114,7 +114,7 @@ window.DIL_EN = {
   'Yarış Bitti': 'Race over', '🏆 Kazandın!': '🏆 You won!', '{0} {1#}. oldun!': '{0} You finished #{1}!', '{0#}. oldun': 'You finished #{0}', 'Bu yarışta puan yok': 'No points this race',
   'Toplam puanın: {0}': 'Your total points: {0}', 'Toplam puanın: {0} · Oda: {1}': 'Your total points: {0} · Room: {1}', 'Kupa bitti! Toplam puanın: {0}': 'Cup over! Your total points: {0}', 'Sıradaki parkur: {0}': 'Next track: {0}',
   '{0} Kupa puan durumu ({1#}/3 yarış)': '{0} Cup standings ({1}/3 races)', 'bu yarış: {0#}.': 'this race: #{0}', '{0#} kp': '{0} cp',
-  'Tekrar Yarış ↻': 'Race again ↻', 'Sonraki Parkur ▶': 'Next track ▶', '🔒 Sonraki Parkur (ilk 3 gerekli)': '🔒 Next track (top 3 needed)', 'Sonraki Yarış ▶': 'Next race ▶', 'Lobiye Dön 👥': 'Back to lobby 👥',
+  'Tekrar Yarış ↻': 'Race again ↻', 'Sonraki Parkur ▶': 'Next track ▶', '🔒 Sonraki Parkur (ilk 3 gerekli)': '🔒 Next track (top 3 needed)', 'Sonraki Dünya ▶': 'Next world ▶', '🔒 Sonraki Dünya (parkuru bitir)': '🔒 Next world (finish the track)', '🔒 Önceki dünyanın son parkurunu bitir': "🔒 Finish the previous world's last track", 'Sonraki Yarış ▶': 'Next race ▶', 'Lobiye Dön 👥': 'Back to lobby 👥',
   '🎲 Bahsi kazandın! +{0#} puan': '🎲 You won the bet! +{0} pts', '🎲 Bahsi kaybettin (−{0#} puan)': '🎲 You lost the bet (−{0} pts)', '{0} {1} şampiyonu oldun! +{2#} puan': '{0} You are the {1} champion! +{2} pts',
   '{0} Kupayı {1#}. bitirdin': '{0} You finished the cup #{1}', '⭐ Seviye atladın: {0#}. seviye!': '⭐ Level up: level {0}!', '🌍 Yeni dünya açıldı: {0}!': '🌍 New world unlocked: {0}!', '🔓 Yeni parkur açıldı: {0}': '🔓 New track unlocked: {0}',
   '🏅 Başarım: {0} (+{1#})': '🏅 Achievement: {0} (+{1})', '🏅 Başarım açıldı: {0} (+{1#} puan)': '🏅 Achievement unlocked: {0} (+{1} pts)', 'bilinmiyor': 'unknown', 'bitiremedi': 'DNF',

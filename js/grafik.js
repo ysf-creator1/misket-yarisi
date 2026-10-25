@@ -570,7 +570,7 @@
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), Grafik.marbleMaterial(look));
     mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex((info.sembol ? info.sembol + ' ' : '') + (me ? Dil.t('SEN') + ' · ' + Dil.t(info.name) : Dil.t(info.name)), info.color, me), depthTest: false, transparent: true }));
-    label.scale.set(me ? 2.5 : 1.9, me ? 0.55 : 0.42, 1); label.renderOrder = 5; scene.add(label);
+    label.scale.set(me ? 1.9 : 1.35, me ? 0.42 : 0.3, 1); label.material.opacity = me ? 0.85 : 0.6; label.renderOrder = 5; scene.add(label); // küçük ve yarı saydam: yolu kapatmasın
     const acc = new THREE.Group(); scene.add(acc);
     if (window.Magaza) { if (look.sapka) Magaza.buildHat(acc, look.sapka, r, look.color); if (look.gozluk) Magaza.buildGlasses(acc, look.gozluk, r); }
     const shield = new THREE.Mesh(new THREE.SphereGeometry(r * 1.45, 32, 20), new THREE.MeshPhysicalMaterial({ color: col('#7fd8ff'), transparent: true, opacity: 0.28, roughness: 0, clearcoat: 1, emissive: col('#3fb8ff'), emissiveIntensity: 0.5, depthWrite: false }));
@@ -598,7 +598,7 @@
     mv.mesh.material = mv.baseMat; mv.mesh.material.opacity = 1; mv.shield.visible = false; if (mv.stars) mv.stars.visible = false;
     if (Math.hypot(v[0], v[2]) > 0.6) { const ty = Math.atan2(v[0], v[2]); let d = ty - mv.yaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; mv.yaw += d * Math.min(1, dt * 6); }
     mv.acc.position.set(p[0], p[1], p[2]); mv.acc.rotation.set(0, mv.yaw, 0); mv.acc.scale.setScalar(1);
-    mv.label.position.set(p[0], p[1] + (mv.me ? 1.35 : 1.05) + (mv.look.sapka ? 0.35 : 0), p[2]); mv.label.visible = mv.me;
+    mv.label.position.set(p[0], p[1] + (mv.me ? 1.15 : 0.9) + (mv.look.sapka ? 0.35 : 0), p[2]); mv.label.visible = mv.me;
     if (mv.look.iz && window.Magaza && Math.hypot(v[0], v[1], v[2]) > 1.2) { mv.trailT += dt; while (mv.trailT > 0.022) { mv.trailT -= 0.022; Magaza.emitTrail(Particles, mv.look.iz, tmpV.set(p[0], p[1], p[2]), { x: v[0], y: v[1], z: v[2] }, performance.now() / 1000); } }
   };
   Grafik.syncMarble = function (mv, m, dt, phase, now) {
@@ -619,7 +619,7 @@
     mv.acc.position.set(p.x, p.y, p.z); mv.acc.rotation.set(0, mv.yaw, 0); mv.acc.scale.setScalar(mv.scale);
     if (mv.spinners === undefined) { mv.spinners = []; mv.acc.traverse(o => { if (o.userData && o.userData.spin) mv.spinners.push(o); }); }
     for (const o of mv.spinners) o.rotation.y += o.userData.spin * dt; // pervaneli şapka
-    mv.label.position.set(p.x, p.y + (mv.me ? 1.35 : 1.05) * mv.scale + (mv.look.sapka ? 0.35 : 0), p.z);
+    mv.label.position.set(p.x, p.y + (mv.me ? 1.15 : 0.9) * mv.scale + (mv.look.sapka ? 0.35 : 0), p.z);
     if (!mv.me) { const d = camera.position.distanceTo(mv.mesh.position); mv.label.visible = phase !== 'countdown' && d > 6 && d < 70; }
     // iz (kostüm) ve güç parçacıkları
     const spd = Math.hypot(v.x, v.y, v.z);

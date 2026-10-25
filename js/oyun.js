@@ -475,6 +475,8 @@
     let unlockedNew = false;
     // çok oyunculuda kilidi açık olmayan parkurda (arkadaşın seçtiği) ilk 3 sonraki parkuru açmaz
     if (place <= 3) { p.podiums++; const lim = openUpTo(p); if (id + 1 > lim && id <= lim) { p.unlocked = id + 1; unlockedNew = true; } else if (id + 1 > p.unlocked && id < OPEN_FREE) p.unlocked = id + 1; }
+    // dünyanın son parkurunda yarışı sonuna kadar oynayan (kaçıncı olursa olsun) sonraki dünyanın ilk parkurunu açar; yarıştan çıkan açamaz
+    else if (id % 10 === 0 && id < MP.TRACKS.length) { const lim = openUpTo(p); if (id + 1 > lim && id <= lim) { p.unlocked = id + 1; unlockedNew = true; } }
     if (state.mp) { st(p).mpRaces = (st(p).mpRaces || 0) + 1; if (place === 1) st(p).mpWins = (st(p).mpWins || 0) + 1; }
     if (!state.mp) Kayit.track('yaris', { misafir: Kayit.isGuest(p), parkur: id, sira: place, sure: me.finishTime || 0, mod: state.cup ? 'kupa' : 'tek' }); // rapor: tek oyunculu yarış (çok oyunculuyu sunucu zaten görür)
     dailyAdd('yaris'); if (place <= 3) dailyAdd('ilk3'); if (place === 1) dailyAdd('birinci'); if (state.mp) dailyAdd('mp'); if (unlockedNew) dailyAdd('yeni');
@@ -537,7 +539,7 @@
     // sonraki parkura geç (açıksa); kupada gösterilmez
     const nb = $('btnResNext'), hasNext = !state.cup && id < MP.TRACKS.length, nextOpen = hasNext && openUpTo(p) >= id + 1;
     nb.classList.toggle('hidden', !hasNext); nb.disabled = !nextOpen;
-    nb.textContent = nextOpen ? 'Sonraki Parkur ▶' : '🔒 Sonraki Parkur (ilk 3 gerekli)';
+    nb.textContent = nextOpen ? (id % 10 === 0 ? 'Sonraki Dünya ▶' : 'Sonraki Parkur ▶') : id % 10 === 0 ? '🔒 Sonraki Dünya (parkuru bitir)' : '🔒 Sonraki Parkur (ilk 3 gerekli)';
     $('btnResAgain').classList.toggle('main', !nextOpen);
     if (state.mp) { nb.classList.add('hidden'); $('btnResAgain').textContent = 'Lobiye Dön 👥'; $('btnResAgain').classList.remove('main'); $('resNote').textContent = `Toplam puanın: ${p.points} · Oda: ${state.mp.kod}`; }
     state.cupDone = cupDone;
@@ -911,7 +913,7 @@
       const ts = MP.TRACKS.filter(t => t.world === w.id);
       return `<div class="acc open" id="accOpen">${head}<p class="muted" style="margin:6px 4px;font-size:12px;font-weight:700">Son 3 parkur dünya kupasıdır.</p><div class="tgrid">${ts.map(t => {
         const topen = t.id <= maxOpen, b = p.best[t.id];
-        const sub = !topen ? "🔒 Önceki parkurda ilk 3'e gir" : `⏱ ~${t.target} sn · 🥇 ${pointsFor(t.id)} puan`;
+        const sub = !topen ? (t.id % 10 === 1 ? '🔒 Önceki dünyanın son parkurunu bitir' : "🔒 Önceki parkurda ilk 3'e gir") : `⏱ ~${t.target} sn · 🥇 ${pointsFor(t.id)} puan`;
         return `<button class="tcard${topen ? '' : ' locked'}${t.id === state.trackId ? ' last' : ''}" ${topen ? `data-track="${t.id}"` : 'disabled'}><span class="num">PARKUR ${t.id}${t.hand ? ' · ⭐ ÖZEL' : ''}${t.id === state.trackId ? ' · son oynanan' : ''}</span><b>${esc(t.name)}</b><small>${sub}</small>${b ? `<small class="best">En iyi: ${MEDAL[b.place - 1] || b.place + '.'}${b.time ? ' · ' + b.time.toFixed(1) + ' sn' : ''}</small>` : ''}</button>`;
       }).join('')}</div></div>`;
     }).join('');

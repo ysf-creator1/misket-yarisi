@@ -222,3 +222,8 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 
 ## 17. Güncelleme: telefonda küçük güç bildirimleri
 - Dikey telefonda "sana uygulanan" şeridi ve diğer güç bildirimleri sağda, sıralamanın yanında küçük (≈170 px genişlik, 12 px yazı); sana uygulanan güç için yalnız kırmızı şerit (tekrar bildirim yok). Yatay telefonda güç kartlarının solunda.
+
+## 18. Güncelleme: dünya geçişi, küçük isim etiketleri
+- Dünyanın son parkurunda (10, 20, …) yarışı sonuna kadar oynayan, kaçıncı olursa olsun sonraki dünyanın ilk parkurunu açar (yarıştan çıkan açamaz); sonuç düğmesi "Sonraki Dünya ▶". Dünya içinde sonraki parkur için ilk 3 kuralı aynı.
+- Misket üstündeki isim etiketleri küçük ve yarı saydam (diğerleri %60, kendi misketin %85).
+- Otomatik test tarayıcısı (navigator.webdriver) canlı sunucuya kullanım kaydı göndermez.

@@ -194,6 +194,7 @@
     legacyPlayers, dismissLegacy: markMoved, trLower: s => MI.key(s),
     // kullanım bildirimi (rapor için; ad dışında kişisel bilgi yok, misafirde ad da yok)
     track(tur, veri) {
+      if (navigator.webdriver && !/[?&]sunucu=/.test(location.search)) return; // otomatik test tarayıcısı canlı istatistiği kirletmesin
       const kaynak = location.protocol === 'file:' ? 'dosya' : /^(127\.0\.0\.1|localhost)$/.test(location.hostname) ? 'mac' : (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone ? 'anaekran' : 'web';
       call('olay', { body: Object.assign({ tur, cihaz: device ? device.slice(0, 12) : '', kaynak }, veri), keepalive: true });
     },
