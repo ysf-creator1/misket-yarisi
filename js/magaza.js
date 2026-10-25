@@ -48,6 +48,7 @@
     const renk = eq.renk && Magaza.ITEMS[eq.renk];
     if (renk) { look.color = renk.hex; look.color2 = null; if (renk.key === 'altin' || renk.fx === 'metal') look.metal = true; if (renk.fx === 'neon') look.neon = true; }
     for (const k of ['desen', 'forma', 'gozluk', 'sapka', 'iz']) { const it = eq[k] && Magaza.ITEMS[eq[k]]; if (it) look[k] = it.key; }
+    if (!look.desen && info.desen) look.desen = info.desen; // misketin kendi deseni (mağazadan desen alınmadıysa)
     return look;
   };
 

@@ -2,7 +2,7 @@
 
 6 misketin gerçek fizikle (Rapier) yarıştığı, güç kartlı 3D misket yarışı oyunu. Tarayıcıda çalışır, internetsiz de oynanır.
 
-**▶ Oyna:** https://ysf-creator1.github.io/misket-yarisi/ — telefonda, tablette ve bilgisayarda açılır; ekrana kendiliğinden uyar.
+**▶ Oyna:** https://ysf-creator1.github.io/misket-yarisi/ · 🌐 Türkçe / English — telefonda, tablette ve bilgisayarda açılır; ekrana kendiliğinden uyar.
 Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam ekran açılır.
 
 ## Neler var?

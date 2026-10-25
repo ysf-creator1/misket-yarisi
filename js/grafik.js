@@ -322,7 +322,7 @@
       g.fillStyle = gr; g.fillRect(0, 0, W, H);
       g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, 0, W, 10);
       g.fillStyle = fg; g.font = '900 118px Nunito, "Arial Black", Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.shadowColor = 'rgba(0,0,0,0.35)'; g.shadowBlur = 8; g.shadowOffsetY = 4; g.fillText(text, W / 2, H / 2 + 6);
+      g.shadowColor = 'rgba(0,0,0,0.35)'; g.shadowBlur = 8; g.shadowOffsetY = 4; g.fillText(Dil.t(text), W / 2, H / 2 + 6);
     });
   }
   function shade(hex, k) { const c = new THREE.Color(hex); const t = k < 0 ? new THREE.Color(0, 0, 0) : new THREE.Color(1, 1, 1); c.lerp(t, Math.abs(k)); return '#' + c.getHexString(); }
@@ -557,7 +557,8 @@
   };
   function labelTex(text, color, me) {
     return canvasTex(512, 112, (g, w, h) => {
-      g.font = '800 52px Nunito, Segoe UI, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      let fs = 52; g.font = `800 ${fs}px Nunito, Segoe UI, Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      while (g.measureText(text).width > w - 64 && fs > 28) { fs -= 2; g.font = `800 ${fs}px Nunito, Segoe UI, Arial`; } // uzun ad sığsın
       const tw = Math.min(w - 8, g.measureText(text).width + 52);
       g.fillStyle = me ? 'rgba(255,194,61,0.96)' : 'rgba(10,16,36,0.78)';
       const x = (w - tw) / 2, r = 30; g.beginPath(); g.moveTo(x + r, 10); g.arcTo(x + tw, 10, x + tw, h - 10, r); g.arcTo(x + tw, h - 10, x, h - 10, r); g.arcTo(x, h - 10, x, 10, r); g.arcTo(x, 10, x + tw, 10, r); g.fill();
@@ -568,7 +569,7 @@
   Grafik.makeMarble = function (info, look, me, r) {
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), Grafik.marbleMaterial(look));
     mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex(me ? 'SEN · ' + info.name : info.name, info.color, me), depthTest: false, transparent: true }));
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex((info.sembol ? info.sembol + ' ' : '') + (me ? Dil.t('SEN') + ' · ' + Dil.t(info.name) : Dil.t(info.name)), info.color, me), depthTest: false, transparent: true }));
     label.scale.set(me ? 2.5 : 1.9, me ? 0.55 : 0.42, 1); label.renderOrder = 5; scene.add(label);
     const acc = new THREE.Group(); scene.add(acc);
     if (window.Magaza) { if (look.sapka) Magaza.buildHat(acc, look.sapka, r, look.color); if (look.gozluk) Magaza.buildGlasses(acc, look.gozluk, r); }

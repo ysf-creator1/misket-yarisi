@@ -133,7 +133,7 @@
     state.view = Grafik.buildView(state.track);
   }
   function disposeRace() {
-    state.paused = false; state.pauseOpen = false; state.introHold = false; $('pauseBox').classList.add('hidden'); $('gucIntro').classList.add('hidden');
+    state.paused = false; state.pauseOpen = false; state.introHold = false; $('pauseBox').classList.add('hidden'); $('gucIntro').classList.add('hidden'); $('hitBanner').innerHTML = '';
     for (const mv of state.mvs) Grafik.disposeMarble(mv);
     state.mvs = [];
     Grafik.clearTemps(); Grafik.Particles.clear();
@@ -207,11 +207,11 @@
   let hudN = 0;
   function buildHud() {
     const dots = $('progDots'); dots.innerHTML = '';
-    MF.MARBLES.forEach((m, i) => { const d = document.createElement('div'); d.className = 'pd' + (i === state.pick ? ' me' : ''); d.style.background = state.colors[i]; d.id = 'pd' + i; dots.appendChild(d); });
+    MF.MARBLES.forEach((m, i) => { const d = document.createElement('div'); d.className = 'pd' + (i === state.pick ? ' me' : ''); d.style.background = state.colors[i]; d.textContent = m.sembol; d.id = 'pd' + i; dots.appendChild(d); });
     const cb = $('cupBadge');
     if (state.cup) { const c = MP.CUPS[state.cup.id]; cb.textContent = `${c.icon} ${c.name} · Yarış ${state.cup.idx + 1}/3`; cb.classList.remove('hidden'); } else cb.classList.add('hidden');
   }
-  const FX_ICONS = [['shield', '🛡️'], ['turbo', '🚀'], ['slow', '🐌'], ['small', '🔻'], ['ghost', '👻'], ['iron', '⚙️'], ['wind', '🌪️'], ['stun', '💫']];
+  const FX_ICONS = [['shield', '🛡️'], ['turbo', '🚀'], ['slow', '🐌'], ['small', '🤏'], ['ghost', '👻'], ['iron', '🔩'], ['wind', '💨'], ['stun', '💫']];
   function updateHud(force) {
     const r = state.race; if (!r) return;
     if (!force && (++hudN % 6)) return;
@@ -220,7 +220,7 @@
       const me = m.id === state.pick;
       const fx = FX_ICONS.filter(([k2]) => m.fx && m.fx[k2] > r.t).map(x => x[1]).join('') + (m.fx && m.fx.inSlime ? '🟢' : '');
       const tm = m.finished ? `<span class="tm">${m.finishTime.toFixed(1)}</span>` : '';
-      return `<div class="srow${me ? ' me' : ''}"><span class="rk">${k + 1}</span><span class="dot" style="background:${state.colors[m.id]}"></span><span class="nm">${esc(m.info.name)}</span><span class="fx">${fx}</span>${me ? '<span class="tag">SEN</span>' : ''}${tm}</div>`;
+      return `<div class="srow${me ? ' me' : ''}"><span class="rk">${k + 1}</span><span class="dot sym" style="background:${state.colors[m.id]}">${MF.MARBLES[m.id].sembol}</span><span class="nm">${esc(m.info.name)}</span><span class="fx">${fx}</span>${me ? '<span class="tag">SEN</span>' : ''}${tm}</div>`;
     }).join('');
     const W = $('prog').clientWidth - 36;
     for (const m of r.marbles) { const el = $('pd' + m.id); if (el) el.style.left = (18 + Math.max(0, Math.min(1, m.s / fs)) * W) + 'px'; }
@@ -275,7 +275,7 @@
     const r = state.race = new MF.Race(window.RAPIER, state.track, {});
     new MG.PowerSystem(r, { playerId: state.pick });
     const p = state.player;
-    state.mvs = MF.MARBLES.map((info, i) => Grafik.makeMarble(info, i === state.pick ? Magaza.lookFor(info, p.eq) : { color: info.color, color2: info.color2 }, i === state.pick, MF.PARAMS.r));
+    state.mvs = MF.MARBLES.map((info, i) => Grafik.makeMarble(info, Magaza.lookFor(info, i === state.pick ? p.eq : {}), i === state.pick, MF.PARAMS.r));
     state.colors = state.mvs.map(mv => mv.look.color);
     state.prevV = MF.MARBLES.map(() => [0, 0, 0]);
     // bahis
@@ -325,8 +325,35 @@
     else if (e.power === 'bomba') { const n = (e.targets || []).map(nm); detail = n.length ? 'Sersemleyen: ' + n.join(', ') : 'Kalkanla engellendi'; blockedAll = !n.length; }
     else if (e.targets && P.type === 'attack') { const n = e.targets.map(nm); detail = n.length ? 'Hedef: ' + n.join(' ve ') : 'Kalkanla engellendi'; blockedAll = !n.length; }
     else if (tg) { detail = e.blocked ? `${nm(tg.id)} kalkanla engelledi` : 'Hedef: ' + nm(tg.id); blockedAll = !!e.blocked; }
+    // sana bir güç uygulandıysa (ya da kalkanın engellediyse): ekranın üstünde, kimin yaptığıyla birlikte, okunacak kadar kalır
+    const myBlocked = (e.blockedIds || []).includes(state.pick) || (e.blocked && tg && tg.id === state.pick);
+    if (!mine && (meHit || myBlocked)) {
+      const HIT = { bomba: 'bombasıyla seni sersemletti!', ruzgar: 'sana ters rüzgâr estirdi!', yavas: 'seni yavaşlattı!', kucult: 'seni küçülttü!', balcik: 'yoluna balçık döktü!', duvar: 'önüne duvar dikti!' };
+      if (myBlocked) hitBanner('🛡️', nameOf(r, e.id), state.colors[e.id], `${P.icon} ${P.name} saldırısı kalkanına çarptı`, 'Kalkanın korudu!', true);
+      else hitBanner(P.icon, nameOf(r, e.id), state.colors[e.id], HIT[e.power] || `sana ${P.name} uyguladı!`, P.name, false);
+      return;
+    }
     // telefonda ekran küçük: yalnızca seni ilgilendiren güç bildirimleri
     if (mine || meHit || (!window.MOBIL && Math.random() < 0.6)) powerToast({ icon: blockedAll ? '🛡️' : P.icon, who, color: state.colors[e.id], power: P.name, type: P.type, detail, cls: mine ? 'mine' : meHit ? 'hit' : P.type === 'self' ? 'self' : 'atk' });
+  }
+  function hitBanner(icon, who, color, text, sub, good) {
+    const el = document.createElement('div'); el.className = 'hitb' + (good ? ' ok' : '');
+    const ic = document.createElement('span'); ic.className = 'hic'; ic.textContent = icon;
+    const body = document.createElement('div');
+    const top = document.createElement('div'); const w = document.createElement('b'); w.textContent = who; w.style.color = color; top.append(w, document.createTextNode(' ' + text));
+    const sm = document.createElement('small'); sm.textContent = sub;
+    body.append(top, sm); el.append(ic, body);
+    $('hitBanner').appendChild(el);
+    while ($('hitBanner').children.length > 2) $('hitBanner').firstChild.remove();
+    const ms = Math.max(4000, Math.min(7000, 2600 + 55 * (who.length + text.length))); // okuma süresi
+    setTimeout(() => el.classList.add('out'), ms - 400); setTimeout(() => { el.remove(); layoutTopMsgs(); }, ms);
+    layoutTopMsgs();
+  }
+  // bilgisayarda diğer güç bildirimleri, sana uygulananların altına iner (üst üste binmesin)
+  function layoutTopMsgs() {
+    const t = $('toasts'), hb = $('hitBanner'); t.style.top = '';
+    if (matchMedia('(max-height:500px) and (orientation:landscape)').matches) return; // yatay telefonda bildirimler sağda
+    const h = hb.offsetHeight; if (h) t.style.top = (hb.offsetTop + h + 8) + 'px';
   }
   function powerToast(o) {
     const el = document.createElement('div'); el.className = 'pwt ' + o.cls;
@@ -488,7 +515,7 @@
     $('resGain').textContent = gain ? `+${gain} puan` : 'Bu yarışta puan yok';
     $('resGain').className = 'gain' + (gain ? ' good' : '');
     $('resNotes').innerHTML = notes.map(n => `<div class="note${n.startsWith('🏅') ? ' ach' : ''}">${esc(n)}</div>`).join('');
-    const dot = i => `<span class="dot" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${state.colors[i]};margin-right:8px;vertical-align:-2px"></span>`;
+    const dot = i => `<span class="dot sym" style="display:inline-flex;width:18px;height:18px;border-radius:50%;background:${state.colors[i]};margin-right:8px;vertical-align:-3px">${MF.MARBLES[i].sembol}</span>`;
     const sen = i => i === state.pick ? ' <span class="pill" style="padding:1px 8px;font-size:11px">SEN</span>' : '';
     if (state.cup) {
       const c = state.cup, order = cupDone ? c.final : [0, 1, 2, 3, 4, 5].sort((a, b2) => c.pts[b2] - c.pts[a]);
@@ -577,8 +604,8 @@
 
   function saveStatusText() {
     const s = Kayit.status();
-    return s === 'ok' ? "☁️ Kayıtların bulutta: başka cihazdan adın ve şifrenle girebilirsin" : s === 'wait' ? '⏳ Buluta kaydediliyor…'
-      : s === 'auth' ? "🔑 Oturum sona erdi: şifrenle tekrar gir" : s === 'guest' ? '📱 Misafirsin: puanların sadece bu cihazda. Kalıcı olsun istersen hesap oluştur.' : '⚠️ İnternet yok: ilerlemen bu cihazda bekliyor, bağlanınca gönderilecek';
+    return s === 'ok' ? '☁️ Kayıtların bulutta' : s === 'wait' ? '⏳ Kaydediliyor…'
+      : s === 'auth' ? '🔑 Oturum bitti: tekrar gir' : s === 'guest' ? '📱 Misafirsin: puanların bu cihazda' : '⚠️ İnternet yok: bağlanınca kaydedilecek';
   }
   Kayit.onStatus = () => { for (const id of ['saveStatus1', 'saveStatus2']) { const el = $(id); el.textContent = saveStatusText(); el.className = 'savestatus s-' + Kayit.status(); } };
   // başka cihazda PIN değişti ya da oturum düştü: yarışta değilsek giriş ekranına
@@ -649,7 +676,7 @@
     $('authGrid').classList.toggle('hidden', !showGrid);
     if (showGrid) drawGrid($('authGrid'), setting ? authPick : null, !!lock);
     $('authTypeHint').classList.toggle('hidden', !showGrid);
-    $('authTypeHint').textContent = setting ? ('Bir resim seç: başka cihazdan girerken bu resme dokunacaksın. 3 yanlışta o cihaz 30 dakika bekler.') : 'Resmine dokun:';
+    $('authTypeHint').textContent = setting ? ('Bir resim seç. Girişte bu resme dokunacaksın.') : 'Resmine dokun:';
     $('btnAuth').classList.toggle('hidden', m === 'giris' && authTur !== 'pin');
     $('btnAuth').textContent = m === 'giris' ? 'Giriş yap' : m === 'legacy' ? '☁️ Buluta taşı ve oyna' : m === 'kod' ? 'Kodla gir' : 'Oyuncu oluştur';
     $('authForgot').classList.toggle('hidden', m !== 'giris');
@@ -680,7 +707,7 @@
   $('authName').addEventListener('input', () => { if (!/⏳/.test($('authErr').textContent)) $('authErr').textContent = ''; checkNameSoon(); });
   $('authTabs').addEventListener('click', e => { const b = e.target.closest('[data-auth]'); if (b) setAuth(b.dataset.auth, authMode === 'legacy' ? '' : null); });
   $('authType').addEventListener('click', e => { const b = e.target.closest('[data-tur]'); if (!b) return; authTur = b.dataset.tur; authPick = null; renderAuth(); });
-  $('authForgot').onclick = () => { $('authErr').innerHTML = "Şifreni unuttuysan: girişli başka bir cihazın varsa orada menüden <b>📱 Yeni cihaz ekle</b> de, çıkan kodu burada <b>📱 Kodla gir</b>'e yaz. Yoksa oyunun sahibinden şifreni sıfırlamasını iste."; $('authErr').className = 'autherr info'; };
+  $('authForgot').onclick = () => { $('authErr').innerHTML = "Girişli cihazında <b>📱 Yeni cihaz ekle</b> de, kodu burada <b>📱 Kodla gir</b>'e yaz. Yoksa oyunun sahibinden sıfırlamasını iste."; $('authErr').className = 'autherr info'; };
   $('authGrid').addEventListener('click', e => {
     const b = e.target.closest('[data-r]'); if (!b || b.disabled) return;
     const i = +b.dataset.r;
@@ -813,11 +840,13 @@
     renderDaily();
     const guest = Kayit.isGuest(p);
     $('mMisafir').classList.toggle('hidden', !guest); $('mHesapAyar').classList.toggle('hidden', guest);
-    if (guest) $('mMisafirTxt').textContent = `Misafir olarak oynuyorsun (${p.name}). Puanların sadece bu cihazda; kalıcı olsun ve başka cihazdan da girebilmek istersen hesap oluştur.`;
+    if (guest) $('mMisafirTxt').textContent = `Misafirsin (${p.name}). Puanların sadece bu cihazda. Kaybolmasın istersen hesap oluştur.`;
     Kayit.onStatus(); show('scrMenu');
     if (state.authLost) authLost();
   }
   $('btnSwitch').onclick = () => showProfiles();
+  // dil: Türkçe ↔ English (sayfa yenilenir; yarış sırasında değil)
+  for (const id of ['btnDil', 'btnDil2']) { $(id).textContent = Dil.lang === 'en' ? '🌐 Türkçe' : '🌐 English'; $(id).onclick = () => Dil.set(Dil.lang === 'en' ? 'tr' : 'en'); }
   $('btnLider').onclick = () => showLider();
   $('btnGuc').onclick = showGucler;
   $('gucBack').onclick = showMenu;
@@ -943,7 +972,7 @@
     if (!['countdown', 'race', 'ending'].includes(state.phase) || state.pauseOpen) return;
     state.pauseOpen = true; if (!state.mp) { state.paused = true; Ses.stopRolling(); }
     $('pauseTitle').textContent = state.mp ? '⏸ Menü' : '⏸ Oyun durdu';
-    $('pauseSub').textContent = state.mp ? 'Çok oyunculu yarış sürüyor; misketin yarışmaya devam ediyor. Çıkarsan misketini bot sürer.' : 'Yarış duraklatıldı. Devam edebilir ya da yarıştan çıkabilirsin (puan alınmaz).';
+    $('pauseSub').textContent = state.mp ? 'Yarış sürüyor. Çıkarsan misketini bot sürer.' : 'Yarış durdu. Çıkarsan puan alınmaz.';
     $('pauseBox').classList.remove('hidden');
   }
   function closePause() { state.pauseOpen = false; state.paused = false; $('pauseBox').classList.add('hidden'); }
@@ -984,8 +1013,8 @@
     const mine = v.oylar[Ag.pid], last = v.sonParkur, nextId = Math.min(MP.TRACKS.length, last + 1);
     const names = c => room.oyuncular.filter(o => v.oylar[o.pid] === c).map(o => esc(o.ad)).join(', ');
     const opt = (c, icon, title, t, dis) => `<button class="voteopt${mine === c ? ' on' : ''}${v.kalan != null && v.secim === c ? ' win' : ''}" data-oy="${c}" ${dis ? 'disabled' : ''}><span class="vic">${icon}</span><b>${title}</b><small>Parkur ${t.id} · ${esc(t.name)}</small><span class="vwho">${names(c) ? '✋ ' + names(c) : 'henüz seçen yok'}</span>${v.kalan != null && v.secim === c ? '<span class="vwin">▶ bu başlayacak</span>' : ''}</button>`;
-    const status = v.kalan != null ? `⏳ <b>${v.kalan} sn</b> sonra başlıyor: <b>${v.secim === 'sonraki' ? 'Sonraki parkur' : 'Aynı parkur'}</b>. Fikrini değiştirmek için diğerine dokun ya da seçimini iptal et.`
-      : mine ? `Diğer oyuncuların seçimi bekleniyor…${v.bekleme != null ? ` (en geç ${v.bekleme} sn sonra çoğunluğun seçimiyle başlar)` : ''}` : 'Sıradaki yarış için seç: herkes seçince 5 sn sonra başlar.';
+    const status = v.kalan != null ? `⏳ <b>${v.kalan} sn</b> sonra: <b>${v.secim === 'sonraki' ? 'Sonraki parkur' : 'Aynı parkur'}</b>. Değiştirmek için diğerine dokun.`
+      : mine ? `Diğerleri bekleniyor…${v.bekleme != null ? ` (en geç ${v.bekleme} sn)` : ''}` : 'Sıradaki yarışı seç:';
     return `<div class="vote"><p class="vstat">${status}</p><div class="vopts">${opt('ayni', '🔁', 'Aynı parkur', MP.TRACKS[last - 1])}${opt('sonraki', '⏭', 'Sonraki parkur', MP.TRACKS[nextId - 1], last >= MP.TRACKS.length)}</div>${mine ? '<button class="sm" data-oy="iptal">✖ Seçimimi iptal et</button>' : ''}</div>`;
   }
   function renderVote() {
@@ -1023,7 +1052,7 @@
       $('mpTrack').value = room.parkur;
     }
     $('mpTrackTxt').textContent = `${room.parkur} · ${T.name} (${MP.WORLDS[T.world].icon} ${MP.WORLDS[T.world].name}, ~${T.target} sn)`;
-    $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' ? `Oyuncular bekleniyor… ${room.bekleme} sn içinde başlar (6 kişi olunca hemen). Eksik koltuklarda bot yarışır.` : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
+    $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' ? `Oyuncular bekleniyor… ${room.bekleme} sn (eksiklere bot)` : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
     $('mpSlots').innerHTML = MF.MARBLES.map((info, i) => {
       const q = room.oyuncular.find(x => x.misket === i), isMe = q && q.pid === me, lk = q ? Magaza.lookFor(info, q.eq || {}) : info; // kostüm rengi
       const who = q ? `<b>${esc(q.ad)}${isMe ? ' (sen)' : ''}${q.misafir ? ' 👤' : ''}${q.pid === room.kurucu && !room.hizli ? ' 👑' : ''}</b><small>${!q.bagli ? '📴 bağlantı koptu' : q.hazir ? '✅ hazır' : '⏳ hazırlanıyor'}</small>` : `<b>🤖 Bot</b><small>${room.durum === 'lobi' ? 'seçmek için dokun' : ''}</small>`;
@@ -1071,7 +1100,7 @@
     state.pick = m.benim;
     state.mvs = MF.MARBLES.map((info, i) => {
       const h = m.yarisanlar[i], me = i === state.pick;
-      const look = me ? Magaza.lookFor(info, p.eq) : h ? Magaza.lookFor(info, h.eq || {}) : { color: info.color, color2: info.color2 };
+      const look = Magaza.lookFor(info, me ? p.eq : h ? h.eq || {} : {});
       return Grafik.makeMarble(r.marbles[i].info, look, me, MF.PARAMS.r);
     });
     state.colors = state.mvs.map(mv => mv.look.color);
@@ -1088,7 +1117,7 @@
   }
 
   // ================= MAĞAZA =================
-  const SHOP_DEFAULT = { renk: 'Misketin kendi rengi', forma: 'Formasız', desen: 'Klasik kıvrım', gozluk: 'Gözlüksüz', sapka: 'Şapkasız', iz: 'İzsiz' };
+  const SHOP_DEFAULT = { renk: 'Misketin kendi rengi', forma: 'Formasız', desen: 'Misketin kendi deseni', gozluk: 'Gözlüksüz', sapka: 'Şapkasız', iz: 'İzsiz' };
   function shopLook() {
     const p = state.player, eq = Object.assign({}, p.eq), t = state.shop.tryItem;
     if (t) { if (t.item) eq[t.cat] = t.item; else delete eq[t.cat]; }
@@ -1190,6 +1219,14 @@
 
   // ================= BAŞLAT =================
   Ses.on = Kayit.save.sound !== false;
+  // ses seviyesi (menü + duraklatma menüsü; cihazda hatırlanır)
+  Ses.setVol(Kayit.save.vol != null ? Kayit.save.vol : 0.7);
+  function syncVol() { document.querySelectorAll('.volSlider').forEach(el => { el.value = Math.round(Ses.vol * 100); }); document.querySelectorAll('.volv').forEach(el => { el.textContent = Math.round(Ses.vol * 100) + '%'; }); }
+  document.querySelectorAll('.volSlider').forEach(el => {
+    el.addEventListener('input', () => { Ses.setVol(el.value / 100); syncVol(); if (Ses.vol > 0 && Kayit.save.sound === false) { Kayit.save.sound = true; Ses.on = true; } });
+    el.addEventListener('change', () => { Kayit.save.vol = Ses.vol; Kayit.persist(); Ses.click(); });
+  });
+  syncVol();
   Grafik.setQuality(Kayit.save.gfx || null); // kayıtlı seçim yoksa: telefonda düşük, bilgisayarda yüksek
   $('loadMsg').textContent = 'Gökyüzü ve dokular yükleniyor…';
   Grafik.init().then(() => { $('loadMsg').textContent = 'Fizik motoru hazırlanıyor…'; return window.RAPIER.init(); }).then(() => {

@@ -19,13 +19,14 @@
     fallDist: 7,
   };
 
+  // her misketin rengi, deseni ve sembolü farklı (renk körü oyuncular da ayırt edebilsin)
   MF.MARBLES = [
-    { name: 'Kızıl Şimşek', color: '#ff3b3b', color2: '#ffd0d0' },
-    { name: 'Mavi Kasırga', color: '#2f7bff', color2: '#c9dcff' },
-    { name: 'Yeşil Yıldırım', color: '#22c55e', color2: '#d3f7df' },
-    { name: 'Altın Ok', color: '#ffc21a', color2: '#fff1c2' },
-    { name: 'Mor Fırtına', color: '#a855f7', color2: '#ead7ff' },
-    { name: 'Turuncu Roket', color: '#ff7a1a', color2: '#ffe0c7' },
+    { name: 'Kızıl Şimşek', color: '#ff3b3b', color2: '#ffd0d0', desen: 'zigzag', sembol: '▲' },
+    { name: 'Mavi Kasırga', color: '#2f7bff', color2: '#c9dcff', desen: 'cizgili', sembol: '■' },
+    { name: 'Yeşil Yıldırım', color: '#22c55e', color2: '#d3f7df', desen: 'puantiye', sembol: '●' },
+    { name: 'Altın Ok', color: '#ffc21a', color2: '#fff1c2', desen: 'yildiz', sembol: '★' },
+    { name: 'Mor Fırtına', color: '#a855f7', color2: '#ead7ff', desen: 'dama', sembol: '◆' },
+    { name: 'Turuncu Roket', color: '#ff7a1a', color2: '#ffe0c7', desen: null, sembol: '✚' },
   ];
 
   const hyp = Math.hypot;

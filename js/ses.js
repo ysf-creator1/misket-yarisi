@@ -1,13 +1,13 @@
 /* Misket Yarışı — sesler (Web Audio ile üretilir, ses dosyası yok) */
 (function () {
   'use strict';
-  const Ses = window.Ses = { on: true };
+  const Ses = window.Ses = { on: true, vol: 0.7 }; // vol: ses seviyesi 0–1 (ayarlardan)
   let ctx = null, master = null, noiseBuf = null, roll = null;
 
   function init() {
     if (ctx) return true;
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
-    ctx = new AC(); master = ctx.createGain(); master.gain.value = 0.7; master.connect(ctx.destination);
+    ctx = new AC(); master = ctx.createGain(); master.gain.value = Ses.vol; master.connect(ctx.destination);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     return true;
@@ -16,7 +16,8 @@
   addEventListener('pointerdown', () => { if (init() && ctx.state === 'suspended') ctx.resume(); }, { capture: true });
   addEventListener('keydown', () => { if (init() && ctx.state === 'suspended') ctx.resume(); }, { capture: true });
 
-  const ok = () => Ses.on && ctx && ctx.state === 'running';
+  const ok = () => Ses.on && Ses.vol > 0.001 && ctx && ctx.state === 'running';
+  Ses.setVol = v => { Ses.vol = Math.max(0, Math.min(1, v)); if (master) master.gain.setTargetAtTime(Ses.vol, ctx.currentTime, 0.03); };
   function tone(freq, dur, type = 'sine', vol = 0.2, when = 0, slide = 0) {
     if (!ok()) return;
     const t = ctx.currentTime + when, o = ctx.createOscillator(), g = ctx.createGain();

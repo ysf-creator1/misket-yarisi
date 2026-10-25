@@ -1,24 +1,24 @@
 /* Misket Yarışı — güçler, kart dağıtımı ve bot yapay zekâsı
  * Fizik tarafında çalışır (tarayıcı + Node testi). Görüntü tarafı race.events üzerinden haber alır.
- * Her 15–20 sn'de bir tüm misketlere 3 kart dağıtılır. Oyuncu 6 sn içinde seçer, botlar kişiliklerine göre seçer.
+ * Her 15–20 sn'de bir tüm misketlere 3 kart dağıtılır. Oyuncu 15 sn içinde seçer, botlar kişiliklerine göre seçer.
  */
 (function (G) {
   'use strict';
   const MG = G.MG = G.MG || {};
 
   MG.POWERS = [
-    { id: 'turbo', name: 'Turbo', icon: '🚀', type: 'self', tier: 1, value: 1.0, desc: '3 sn boyunca ileri fırlarsın' },
-    { id: 'zipla', name: 'Süper Zıplama', icon: '🦘', type: 'self', tier: 1, value: 0.6, desc: 'Duvarların ve direklerin üstünden aşarsın, yoldan çıkmazsın' },
-    { id: 'kalkan', name: 'Kalkan', icon: '🛡️', type: 'self', tier: 1, value: 0.8, desc: '8 sn rüzgâr, yavaşlatma ve bomba işlemez (duvar hariç)' },
-    { id: 'demir', name: 'Demir Misket', icon: '⚙️', type: 'self', tier: 2, value: 0.75, desc: '6 sn ağırlaşıp hızlanırsın, duvara çarpınca kırarsın' },
-    { id: 'hayalet', name: 'Hayalet', icon: '👻', type: 'self', tier: 2, value: 0.65, desc: '4 sn misketlerden ve engellerden geçersin, biraz yavaşlarsın' },
-    { id: 'isinlan', name: 'Işınlanma', icon: '✨', type: 'self', tier: 3, value: 1.3, desc: 'Parkurda biraz ileri ışınlanırsın' },
-    { id: 'balcik', name: 'Yapışkan Balçık', icon: '🟢', type: 'attack', tier: 1, value: 0.9, desc: 'En uygun rakibin (önde ya da arkada) yoluna balçık dökülür' },
-    { id: 'duvar', name: 'Engel Duvarı', icon: '🧱', type: 'attack', tier: 2, value: 1.0, desc: 'En uygun rakibin (önde ya da arkada) önüne duvar düşer' },
-    { id: 'yavas', name: 'Yavaşlatma', icon: '🐌', type: 'attack', tier: 1, value: 0.9, desc: 'Yakındaki 2 rakip 4 sn yavaşlar, sen içlerinden geçersin' },
-    { id: 'kucult', name: 'Küçült', icon: '🔻', type: 'attack', tier: 2, value: 0.7, desc: 'Yakındaki 2 rakip 6 sn küçülüp yavaşlar' },
-    { id: 'ruzgar', name: 'Ters Rüzgâr', icon: '🌪️', type: 'attack', tier: 3, value: 1.1, desc: 'Öndekiler ve yakından kovalayanlar 2,5 sn geri itilir' },
-    { id: 'bomba', name: 'Bomba', icon: '💣', type: 'attack', tier: 2, value: 1.0, desc: 'Rakiplerin toplandığı yerde patlar: savrulup sersemlerler' },
+    { id: 'turbo', name: 'Turbo', icon: '🚀', type: 'self', tier: 1, value: 1.0, desc: '3 sn ileri fırla' },
+    { id: 'zipla', name: 'Süper Zıplama', icon: '🦘', type: 'self', tier: 1, value: 0.6, desc: 'Duvar ve direklerin üstünden atla' },
+    { id: 'kalkan', name: 'Kalkan', icon: '🛡️', type: 'self', tier: 1, value: 0.8, desc: '8 sn tuzaklardan korun (duvar hariç)' },
+    { id: 'demir', name: 'Demir Misket', icon: '🔩', type: 'self', tier: 2, value: 0.75, desc: '6 sn ağır ve hızlı ol, duvarı kır' },
+    { id: 'hayalet', name: 'Hayalet', icon: '👻', type: 'self', tier: 2, value: 0.65, desc: '4 sn misket ve engellerin içinden geç' },
+    { id: 'isinlan', name: 'Işınlanma', icon: '🌀', type: 'self', tier: 3, value: 1.3, desc: 'Biraz ileri ışınlan' },
+    { id: 'balcik', name: 'Yapışkan Balçık', icon: '🟢', type: 'attack', tier: 1, value: 0.9, desc: 'Rakibin yoluna yapışkan balçık dök' },
+    { id: 'duvar', name: 'Engel Duvarı', icon: '🧱', type: 'attack', tier: 2, value: 1.0, desc: 'Rakibin önüne duvar dik' },
+    { id: 'yavas', name: 'Yavaşlatma', icon: '🐌', type: 'attack', tier: 1, value: 0.9, desc: 'Yakındaki 2 rakibi 4 sn yavaşlat' },
+    { id: 'kucult', name: 'Küçült', icon: '🤏', type: 'attack', tier: 2, value: 0.7, desc: 'Yakındaki 2 rakibi 6 sn küçült' },
+    { id: 'ruzgar', name: 'Ters Rüzgâr', icon: '💨', type: 'attack', tier: 3, value: 1.1, desc: 'Öndekileri 2,5 sn geri it' },
+    { id: 'bomba', name: 'Bomba', icon: '💣', type: 'attack', tier: 2, value: 1.0, desc: 'Rakip kalabalığında patla, sersemlet' },
   ];
   MG.byId = Object.fromEntries(MG.POWERS.map(p => [p.id, p]));
   MG.PERSONALITIES = [
@@ -42,7 +42,7 @@
       // kartını kendisi seçen insan oyuncular; diğerlerini bot seçer (çok oyunculuda oyundan düşenin yerine bot geçer)
       this.humans = new Set(opts.humans || (this.playerId >= 0 ? [this.playerId] : []));
       this.wallSeq = 0;
-      this.pickTime = opts.pickTime || 10;
+      this.pickTime = opts.pickTime || 15; // kart seçme süresi (sn)
       this.gap = opts.gap || [15, 20];
       this.next = opts.firstAt != null ? opts.firstAt : 8 + this.rand() * 3;
       this.hands = {}; this.walls = []; this.slimes = []; this.round = 0;

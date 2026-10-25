@@ -195,3 +195,12 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Olaylar: acilis, tek_yaris (oyundan `/api/olay`), baglan, merhaba, ayril, oda, cok_basla (sebep: kurucu/hızlı/oylama), cok_bitti, hesap (misafirden?), giris, giris_hata, kodla, sifirla.
 - `sunucu/rapor.js` + `sunucu/rapor.sh`: Markdown rapor (açılış/cihaz/misafir/hesaplı, telefon-bilgisayar, kaynak, tek ve çok oyunculu, hesap dönüşümü, saat grafiği, günlük tablo, şehir/ülke, oyuncular). Konum: DB-IP Lite (ayda bir iner). `rapor.js gecmis` sunucu günlüğünden önceki günleri ekler.
 - Oyun giriş ekranında kısa gizlilik notu.
+
+## 13. Güncelleme: okunabilirlik, erişilebilirlik, İngilizce
+1. Kısa metinler (güç açıklamaları, ekran açıklamaları, uyarılar); kart seçme süresi 10 → 15 sn (`PowerSystem.pickTime`).
+2. Misketler yalnız renkle değil desen ve sembolle de ayrılıyor (`MF.MARBLES[].desen/sembol`: ▲ zikzak, ■ çizgili, ● puantiye, ★ yıldız, ◆ dama, ✚ kıvrım); sembol sıralamada, ilerleme çubuğunda ve 3B etikette.
+3. Telefonda yarış göstergeleri büyük (sıralama 14,5 px, ilerleme noktaları, sağ üst düğmeler, kartlar açıklamalı).
+4. Ses seviyesi kaydırıcısı (menü + duraklatma), cihazda hatırlanır (`Ses.setVol`).
+5. İngilizce: `js/dil.js` (çeviri katmanı: ekrandaki metinleri ve açılır pencereleri sözlükle çevirir; kalıplar {0}/{0#}; baştaki emoji korunur) + `js/dil-en.js` (~700 metin: arayüz, 200 parkur, 20 dünya, 144 eşya, güçler, başarımlar). 🌐 düğmesi menüde ve giriş ekranında; dil değişince sayfa yenilenir. Kalite: İngilizce modda tüm ekranlar gezilip Türkçe kalan metin taraması (yalnız "🌐 Türkçe" düğmesi kaldı).
+6. Güç simgeleri: Işınlanma 🌀, Küçült 🤏, Ters Rüzgâr 💨, Demir Misket 🔩.
+7. Sana bir güç uygulanınca üstte büyük kırmızı şerit: kim (kendi renginde), ne yaptı; yazı uzunluğuna göre 4–7 sn kalır; kalkanın engellediyse yeşil. Diğer bildirimler altına diziliyor.
