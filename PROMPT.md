@@ -204,3 +204,6 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 5. İngilizce: `js/dil.js` (çeviri katmanı: ekrandaki metinleri ve açılır pencereleri sözlükle çevirir; kalıplar {0}/{0#}; baştaki emoji korunur) + `js/dil-en.js` (~700 metin: arayüz, 200 parkur, 20 dünya, 144 eşya, güçler, başarımlar). 🌐 düğmesi menüde ve giriş ekranında; dil değişince sayfa yenilenir. Kalite: İngilizce modda tüm ekranlar gezilip Türkçe kalan metin taraması (yalnız "🌐 Türkçe" düğmesi kaldı).
 6. Güç simgeleri: Işınlanma 🌀, Küçült 🤏, Ters Rüzgâr 💨, Demir Misket 🔩.
 7. Sana bir güç uygulanınca üstte büyük kırmızı şerit: kim (kendi renginde), ne yaptı; yazı uzunluğuna göre 4–7 sn kalır; kalkanın engellediyse yeşil. Diğer bildirimler altına diziliyor.
+
+## 14. Güncelleme: ilk açılış rehberi
+- İlk kez açan cihazda bir kez 5 sayfalık "Nasıl oynanır" (misket, güç kartları, puan/parkur, mağaza, çok oyunculu ve hesap); Atla / Geri / İleri, klavye okları. Menüde ❓ Nasıl oynanır ile tekrar açılır. İngilizce çevirisi var. Anahtar: localStorage misket-ogretici-v1.

@@ -95,6 +95,12 @@ window.DIL_EN = {
   'Yarıştan çıkılsın mı? (Puan alınmaz)': 'Quit the race? (No points)', 'Yarıştan çıkılsın mı? (Puan alınmaz, bahis iade edilir)': 'Quit the race? (No points, bet refunded)',
   // güç bildirimleri
   '{0} · {1} · {2}': '{0} · {1} · {2}', '◉ YAVAŞ ÇEKİM': '◉ SLOW MOTION', 'Geç ⏭': 'Skip ⏭', 'TEKRAR': 'REPLAY',
+  'Nasıl oynanır': 'How to play', 'Atla': 'Skip', 'İleri →': 'Next →', 'Hadi başla! 🏁': "Let's go! 🏁",
+  "Misket Yarışı'na hoş geldin!": 'Welcome to Marble Race!', '6 misket yokuştan aşağı yarışır. Misketini seç, gerisini fizik halleder.': '6 marbles race down the hill. Pick yours and let physics do the rest.',
+  'Güç kartları': 'Power cards', 'Yarışta 3 kart çıkar. 15 sn içinde birine dokun: kendini güçlendir ya da rakibe tuzak kur.': '3 cards appear in the race. Tap one within 15 s: boost yourself or trap a rival.',
+  'Puan topla': 'Earn points', "İlk 3'e gir, puan kazan ve yeni parkurları aç. 200 parkur seni bekliyor.": 'Finish top 3 to earn points and unlock new tracks. 200 tracks are waiting.',
+  'Misketini süsle': 'Dress up your marble', 'Puanlarınla mağazadan şapka, gözlük, desen ve iz al.': 'Spend points in the shop on hats, glasses, patterns and trails.',
+  'Arkadaşlarınla yarış': 'Race with friends', 'Çok Oyunculu’dan oda kur, linki gönder. Puanların kaybolmasın istersen hesap oluştur.': 'Create a room in Multiplayer and send the link. Create an account to keep your points.',
   'Geri itilen: {0}': 'Pushed back: {0}', 'Kimse etkilenmedi': 'No one was affected', 'Sersemleyen: {0}': 'Stunned: {0}', 'Kalkanla engellendi': 'Blocked by a shield', 'Hedef: {0}': 'Target: {0}', '{0} kalkanla engelledi': '{0} blocked it with a shield',
   'bombasıyla seni sersemletti!': 'stunned you with a bomb!', 'sana ters rüzgâr estirdi!': 'blew a headwind at you!', 'seni yavaşlattı!': 'slowed you down!', 'seni küçülttü!': 'shrank you!',
   'yoluna balçık döktü!': 'poured slime in your way!', 'önüne duvar dikti!': 'put a wall in front of you!', 'sana {0} uyguladı!': 'used {0} on you!', '{0} saldırısı kalkanına çarptı': '{0} attack hit your shield', 'Kalkanın korudu!': 'Your shield protected you!',

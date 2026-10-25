@@ -819,10 +819,36 @@
   $('cdNew').onclick = showCihaz;
   $('cdBack').onclick = () => { clearInterval(cdTimer); showMenu(); };
 
+  // ---- ilk açılışta bir kez: nasıl oynanır (menüden tekrar açılabilir) ----
+  const OGR_KEY = 'misket-ogretici-v1';
+  const OGR = [
+    { ic: '🔴', t: "Misket Yarışı'na hoş geldin!", m: '6 misket yokuştan aşağı yarışır. Misketini seç, gerisini fizik halleder.' },
+    { ic: '⚡', t: 'Güç kartları', m: 'Yarışta 3 kart çıkar. 15 sn içinde birine dokun: kendini güçlendir ya da rakibe tuzak kur.' },
+    { ic: '🏆', t: 'Puan topla', m: "İlk 3'e gir, puan kazan ve yeni parkurları aç. 200 parkur seni bekliyor." },
+    { ic: '🛒', t: 'Misketini süsle', m: 'Puanlarınla mağazadan şapka, gözlük, desen ve iz al.' },
+    { ic: '👥', t: 'Arkadaşlarınla yarış', m: 'Çok Oyunculu’dan oda kur, linki gönder. Puanların kaybolmasın istersen hesap oluştur.' },
+  ];
+  let ogrI = 0;
+  function showOgretici() { ogrI = 0; renderOgr(); $('ogretici').classList.remove('hidden'); }
+  function renderOgr() {
+    const s = OGR[ogrI];
+    $('ogrSlide').innerHTML = `<span class="oic">${s.ic}</span><h2>${s.t}</h2><p>${s.m}</p>`;
+    $('ogrSlide').style.animation = 'none'; void $('ogrSlide').offsetWidth; $('ogrSlide').style.animation = '';
+    $('ogrDots').innerHTML = OGR.map((_, i) => `<i class="${i === ogrI ? 'on' : ''}"></i>`).join('');
+    $('ogrBack').classList.toggle('hidden', ogrI === 0); $('ogrSkip').classList.toggle('hidden', ogrI === OGR.length - 1);
+    $('ogrNext').textContent = ogrI === OGR.length - 1 ? 'Hadi başla! 🏁' : 'İleri →';
+  }
+  function endOgretici() { $('ogretici').classList.add('hidden'); try { localStorage.setItem(OGR_KEY, '1'); } catch (e) { } }
+  $('ogrNext').onclick = () => { if (ogrI < OGR.length - 1) { ogrI++; renderOgr(); } else endOgretici(); };
+  $('ogrBack').onclick = () => { if (ogrI > 0) { ogrI--; renderOgr(); } };
+  $('ogrSkip').onclick = endOgretici;
+  addEventListener('keydown', e => { if ($('ogretici').classList.contains('hidden')) return; if (e.key === 'ArrowRight' || e.key === 'Enter') $('ogrNext').click(); else if (e.key === 'ArrowLeft') $('ogrBack').click(); else if (e.key === 'Escape') endOgretici(); });
+  $('btnNasil').onclick = showOgretici;
+  const ogrSeen = () => { try { return !!localStorage.getItem(OGR_KEY); } catch (e) { return true; } };
   let opened = false;
   function selectPlayer(name) {
     state.player = Kayit.use(name); if (!state.player) return showProfiles();
-    if (!opened) { opened = true; const g = Kayit.isGuest(state.player); Kayit.track('acilis', { misafir: g, ad: g ? undefined : state.player.name, mobil: !!window.MOBIL }); } // rapor: oyun açıldı
+    if (!opened) { opened = true; const g = Kayit.isGuest(state.player); Kayit.track('acilis', { misafir: g, ad: g ? undefined : state.player.name, mobil: !!window.MOBIL }); if (!ogrSeen()) setTimeout(showOgretici, 400); } // rapor: oyun açıldı; ilk kez gelene rehber
     if (Ag.connected) Ag.connect(agProfile()); // oyuncu değişti: sunucuya yeni adı bildir
     if (pendingRoom) { const k = pendingRoom; pendingRoom = null; showMp(); joinWhenReady(k); return; }
     showMenu();

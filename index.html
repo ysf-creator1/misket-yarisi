@@ -232,6 +232,10 @@
   .sym{display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900;line-height:1;text-shadow:0 0 2px #000,0 0 3px #000}
   #prog .pd{display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900;text-shadow:0 0 2px #000,0 0 3px #000}
   .volrow{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:14px} .volrow input{width:130px;accent-color:var(--accent)} .volv{min-width:38px;font-size:13px;color:var(--muted)}
+  .ogr{width:min(440px,94vw);text-align:center}
+  .ogrslide{min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;animation:tin .3s ease-out}
+  .ogrslide .oic{font-size:72px;line-height:1} .ogrslide h2{margin:4px 0 0} .ogrslide p{margin:0;font-size:17px;font-weight:700;color:#dfe6f5;line-height:1.45}
+  .ogrdots{display:flex;gap:8px;justify-content:center;margin:12px 0} .ogrdots i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.22)} .ogrdots i.on{background:var(--accent);width:24px;border-radius:6px}
   .note.ach{border-color:rgba(255,194,61,.6);color:#ffe199}
 
   /* üst menü çubuğu */
@@ -440,6 +444,7 @@
     <button class="sm" id="btnSound">🔊 Ses: Açık</button>
     <label class="volrow" title="Ses seviyesi">🔉 <input type="range" class="volSlider" id="volMenu" min="0" max="100" step="5"> <span class="volv"></span></label>
     <button class="sm" id="btnGfx">🖥️ Grafik: Yüksek</button>
+    <button class="sm" id="btnNasil">❓ Nasıl oynanır</button>
     <button class="sm" id="btnDil">🌐 English</button>
     <button class="sm" id="btnSwitch">👤 Oyuncu değiştir</button>
     <span id="mHesapAyar" style="display:contents"><button class="sm" id="btnPin">🔑 Şifre değiştir</button>
@@ -494,6 +499,12 @@
   <div id="slowmo" class="hidden">◉ YAVAŞ ÇEKİM</div>
   <div id="help">1 · 2 · 3: güç seç · C: kamera · Esc: çık</div>
 </div>
+<!-- ilk açılışta bir kez: nasıl oynanır -->
+<div id="ogretici" class="overlay hidden"><div class="panel ogr">
+  <div id="ogrSlide" class="ogrslide"></div>
+  <div id="ogrDots" class="ogrdots"></div>
+  <div class="row"><button class="sm" id="ogrSkip">Atla</button><button id="ogrBack">← Geri</button><button class="main" id="ogrNext">İleri →</button></div>
+</div></div>
 <!-- ilk 3 parkurda yarış öncesi güç kartları tanıtımı -->
 <div id="gucIntro" class="overlay hidden"><div class="panel" style="width:min(760px,96vw)">
   <h2>⚡ Güç kartlarını tanı</h2>
