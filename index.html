@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>
   // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
-  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=22" as="fetch" crossorigin="anonymous">');
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=23" as="fetch" crossorigin="anonymous">');
 </script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
@@ -161,6 +161,29 @@
   #cardTime{height:5px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
   #cardTime i{display:block;height:100%;background:var(--accent)}
   #cardsHead{font-weight:900;font-size:13px;text-align:center;color:#ffe199;text-shadow:0 1px 6px #000}
+  /* kart modu seçici: sağa sola kaydır */
+  .modsw{display:flex;align-items:center;gap:8px;margin:12px 0;padding:6px;border-radius:16px;background:var(--panel2);border:1px solid var(--line);touch-action:pan-y;user-select:none;-webkit-user-select:none;overflow:hidden}
+  .modsw .ma{flex:none;width:40px;height:40px;padding:0;border-radius:12px;font-size:24px;font-weight:900;line-height:1}
+  .modsw .mb{flex:1;min-width:0;text-align:center;cursor:pointer}
+  .modsw .mb b{display:block;font-size:16px}
+  .modsw .mb small{display:block;font-size:12.5px;color:var(--muted);font-weight:700;line-height:1.3}
+  .modsw .md{display:flex;gap:5px;justify-content:center;margin-top:5px}
+  .modsw .md i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25)} .modsw .md i.on{background:var(--accent)}
+  .modsw .mb.slr{animation:mslr .22s ease-out} .modsw .mb.sll{animation:msll .22s ease-out}
+  @keyframes mslr{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes msll{from{transform:translateX(-40px);opacity:0}to{transform:none;opacity:1}}
+  .modsw.locked .ma{visibility:hidden} .modsw.locked .mb{cursor:default}
+  /* biriktir modu: alttaki çanta */
+  #bag{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto;width:min(560px,64vw)}
+  .bslot{position:relative;flex:1;min-width:0;height:66px;padding:4px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:rgba(12,19,40,.88);border:2px solid var(--line);transition:opacity .15s}
+  button.bslot{animation:cin .3s ease-out both}
+  .bslot.empty{border-style:dashed;background:rgba(12,19,40,.35)}
+  .bslot.self{border-color:rgba(61,220,132,.7)} .bslot.attack{border-color:rgba(255,92,122,.75)}
+  .bslot .ic{font-size:26px;line-height:1}
+  .bslot b{font-size:11px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bslot .key{position:absolute;top:3px;left:5px;font-size:10px;font-weight:900;color:#2b1700;background:var(--accent);border-radius:5px;padding:0 4px}
+  .bslot.off{opacity:.4}
+  #hud.biriktir #help{bottom:92px} #hud.biriktir #slowmo{bottom:96px}
   @keyframes cin{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
 
   /* tekrar */
@@ -385,6 +408,10 @@
     .card{flex:1;flex-direction:column;gap:3px;padding:10px 5px 12px;text-align:center;align-items:center;min-width:0}
     .card:hover{transform:none} .card .ic{font-size:36px;width:auto} .card b{font-size:15px} .card small{display:block;font-size:11px;line-height:1.25} .card .key{display:none} .card .typ{font-size:11px}
     #cardTime{flex-basis:100%}
+    #bag{left:8px;right:8px;width:auto;transform:none;bottom:calc(8px + env(safe-area-inset-bottom));gap:5px}
+    .bslot{height:58px;border-radius:12px} .bslot .ic{font-size:24px} .bslot b{font-size:10px} .bslot .key{display:none}
+    #hud.biriktir #cards{bottom:calc(74px + env(safe-area-inset-bottom))}
+    #hud.biriktir .card{padding:7px 4px 9px} #hud.biriktir .card small{display:none} #hud.biriktir .card .ic{font-size:28px}
     #count{font-size:96px}
     #slowmo{display:none}
   }
@@ -399,6 +426,8 @@
     .hitb{font-size:12px;padding:6px 9px;gap:6px;border-radius:11px} .hitb .hic{font-size:20px} .hitb small{font-size:10px}
     .pwt{min-width:0;padding:5px 8px 5px 6px} .pwt .pic{font-size:18px} .pwt .pbody>div{font-size:12px} .pwt small{font-size:10.5px}
     #cards{width:200px;gap:6px} .card{padding:6px 10px 10px} .card small{display:none} .card .ic{font-size:24px}
+    #bag{left:50%;right:auto;transform:translateX(-50%);width:min(400px,48vw);bottom:calc(6px + env(safe-area-inset-bottom))} .bslot{height:46px} .bslot b{display:none}
+    #hud.biriktir #cards{bottom:auto}
     #prog{height:34px} #count{font-size:90px}
     #scrShop .panel{max-height:calc(100vh - 16px)}
     #topnav{padding-top:4px;padding-bottom:4px} #topnav button{padding:4px 10px;font-size:13px;min-height:0}
@@ -513,6 +542,7 @@
   <h2 id="pickTitle">Misketini Seç</h2>
   <p class="sub">Misketler kendi yuvarlanır; sen güç kartlarıyla yardım edersin.</p>
   <div class="mgrid" id="mgrid"></div>
+  <div class="modsw" id="pickMode"></div>
   <div class="bet" id="betBox">
     <div class="row" style="justify-content:space-between"><b>🎲 Bahis (isteğe bağlı)</b><span class="muted" style="font-size:13px">Kazanır ×3 · İlk 3 ×1,5</span></div>
     <div class="row" style="margin-top:8px">
@@ -534,6 +564,7 @@
   <div id="hitBanner"></div>
   <div id="toasts"></div>
   <div id="cards" class="hidden"></div>
+  <div id="bag" class="hidden"></div>
   <div id="count" class="hidden"></div>
   <div id="slowmo" class="hidden">◉ YAVAŞ ÇEKİM</div>
   <div id="help">1 · 2 · 3: güç seç · C: kamera · Esc: çık</div>
@@ -636,6 +667,7 @@
       <h3>⚡ Açık hızlı oda yok: parkuru sen seç</h3>
       <p class="sub" style="margin:-4px 0 8px">Seçtiğin parkurla hızlı oda kurulur; gelenler katılır, 20 sn sonra eksiklere bot girer.</p>
       <div class="tpick" id="mpQuickPicker"></div>
+      <div class="modsw" id="quickMode"></div>
       <div class="row"><button id="mpQuickCancel">✖ Vazgeç</button><button class="main" id="mpQuickGo">⚡ Hızlı odayı kur</button></div>
     </div>
     <h3>Oda koduyla katıl</h3>
@@ -646,6 +678,7 @@
     <div class="row" style="justify-content:space-between"><b id="mpTitle">🏠 Özel oda</b><span>Oda kodu: <b id="mpRoomCode" class="mpcode"></b></span><button class="sm" id="mpCopy">🔗 Davet linki</button></div>
     <div class="mptrk"><div class="cur" id="mpTrackCur"></div><button class="sm" id="mpTrackBtn">🔄 Parkuru değiştir</button></div>
     <div class="tpick hidden" id="mpTrackPick"></div>
+    <div class="modsw" id="mpMode"></div>
     <p class="sub" id="mpQuickInfo" style="margin:4px 0 8px"></p>
     <button class="main hidden" id="mpBackToRace" style="margin:0 0 10px">🏁 Yarışa dön</button>
     <div id="mpVote" class="hidden" style="margin-bottom:10px"></div>
@@ -678,31 +711,31 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=22"></script>
-<script src="js/dil-en.js?v=22"></script>
-<script src="js/dil.js?v=22"></script>
+<script src="js/surum.js?v=23"></script>
+<script src="js/dil-en.js?v=23"></script>
+<script src="js/dil.js?v=23"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=22"></script>
-<script src="varliklar/qrcode.js?v=22"></script>
-<script src="three.min.js?v=22"></script>
-<script src="varliklar/RGBELoader.js?v=22"></script>
+<script src="js/isim.js?v=23"></script>
+<script src="varliklar/qrcode.js?v=23"></script>
+<script src="three.min.js?v=23"></script>
+<script src="varliklar/RGBELoader.js?v=23"></script>
 <script>
   // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
-  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=22"><\/script>');
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=23"><\/script>');
 </script>
-<script src="rapier.js?v=22"></script>
-<script src="js/parcalar.js?v=22"></script>
-<script src="js/parkurlar.js?v=22"></script>
-<script src="js/dunyalar.js?v=22"></script>
-<script src="js/fizik.js?v=22"></script>
-<script src="js/guclar.js?v=22"></script>
-<script src="js/kayit-sistemi.js?v=22"></script>
-<script src="js/magaza.js?v=22"></script>
-<script src="js/ses.js?v=22"></script>
-<script src="js/cevre.js?v=22"></script>
-<script src="js/grafik.js?v=22"></script>
-<script src="js/ag.js?v=22"></script>
-<script src="js/oyun.js?v=22"></script>
+<script src="rapier.js?v=23"></script>
+<script src="js/parcalar.js?v=23"></script>
+<script src="js/parkurlar.js?v=23"></script>
+<script src="js/dunyalar.js?v=23"></script>
+<script src="js/fizik.js?v=23"></script>
+<script src="js/guclar.js?v=23"></script>
+<script src="js/kayit-sistemi.js?v=23"></script>
+<script src="js/magaza.js?v=23"></script>
+<script src="js/ses.js?v=23"></script>
+<script src="js/cevre.js?v=23"></script>
+<script src="js/grafik.js?v=23"></script>
+<script src="js/ag.js?v=23"></script>
+<script src="js/oyun.js?v=23"></script>
 <script>
   // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
   if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

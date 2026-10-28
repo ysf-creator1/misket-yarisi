@@ -8,7 +8,7 @@
   const state = {
     player: null, trackId: 1, pick: 0, race: null, track: null, view: null, phase: 'loading', cam: 0,
     countdown: 0, endTimer: 0, slowDone: false, slowT: 0, cup: null, bet: null, mvs: [], colors: [],
-    rec: [], replay: null, hand: null, wasLast: false, shop: { cat: 'renk', tryItem: null, mv: null, ped: null, ang: 0 },
+    rec: [], replay: null, hand: null, bag: [], mode: 'klasik', wasLast: false, shop: { cat: 'renk', tryItem: null, mv: null, ped: null, ang: 0 },
   };
   const CAMS = ['Benim misketim', 'Lider', 'Genel bakış'];
   const SIDE_KINDS = ['jump', 'tramp', 'funnelExit', 'drop'];
@@ -139,7 +139,7 @@
     Grafik.clearTemps(); Grafik.Particles.clear();
     if (state.race) state.race.dispose();
     if (window.Ag && Ag.race) Ag.race = null;
-    state.race = null; state.hand = null; state.rec = []; state.replay = null; state.capture = null;
+    state.race = null; state.hand = null; state.bag = []; $('bag').classList.add('hidden'); $('hud').classList.remove('biriktir'); state.rec = []; state.replay = null; state.capture = null;
     Ses.stopRolling();
   }
 
@@ -225,6 +225,7 @@
     const W = $('prog').clientWidth - 36;
     for (const m of r.marbles) { const el = $('pd' + m.id); if (el) el.style.left = (18 + Math.max(0, Math.min(1, m.s / fs)) * W) + 'px'; }
     $('timer').textContent = '⏱ ' + r.t.toFixed(1);
+    bagState();
     if (r.started && !r.done) { const idx = S.findIndex(m => m.id === state.pick); if (idx === S.length - 1 && r.t > 8) state.wasLast = true; }
   }
   function toast(msg, cls) {
@@ -234,12 +235,14 @@
   }
 
   // ---- güç kartları ----
+  const bagMode = () => !!(state.race && state.race.powers && state.race.powers.mode === 'biriktir');
+  const OFFER_KEYS = ['Q', 'W', 'E']; // biriktir modunda gelen kartlar Q·W·E ile seçilir, çantadakiler 1–5 ile kullanılır
   function showCards(cards, expires) {
     state.hand = { cards, expires };
-    const box = $('cards');
-    box.innerHTML = '<div id="cardsHead">⚡ Bir güç seç!</div>' + cards.map((id, k) => {
+    const box = $('cards'), bm = bagMode();
+    box.innerHTML = `<div id="cardsHead">${bm ? '🎒 Çantana bir kart seç' : '⚡ Bir güç seç!'}</div>` + cards.map((id, k) => {
       const p = MG.byId[id];
-      return `<button class="card ${p.type}" data-card="${k}"><span class="key">${k + 1}</span><span class="ic">${p.icon}</span><span><span class="typ">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'}</span><b>${p.name}</b><small>${p.desc}</small></span></button>`;
+      return `<button class="card ${p.type}" data-card="${k}"><span class="key">${bm ? OFFER_KEYS[k] : k + 1}</span><span class="ic">${p.icon}</span><span><span class="typ">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'}</span><b>${p.name}</b><small>${p.desc}</small></span></button>`;
     }).join('') + '<div id="cardTime"><i style="width:100%"></i></div>';
     box.classList.remove('hidden');
     Ses.card();
@@ -250,6 +253,30 @@
     if (r.powers.choose(state.pick, k)) hideCards();
   }
   $('cards').addEventListener('click', e => { const b = e.target.closest('[data-card]'); if (b) pickCard(+b.dataset.card); });
+  // ---- biriktir modu: alttaki çanta (5 yer), dokununca kart kullanılır ----
+  function renderBag() {
+    const on = bagMode();
+    $('hud').classList.toggle('biriktir', on); $('bag').classList.toggle('hidden', !on);
+    $('help').textContent = on ? 'Q · W · E: kart seç · 1–5: kartı kullan · C: kamera · Esc: çık' : '1 · 2 · 3: güç seç · C: kamera · Esc: çık';
+    if (!on) return;
+    let h = '';
+    for (let k = 0; k < MG.BAG.size; k++) {
+      const id = state.bag[k], p = id && MG.byId[id];
+      h += p ? `<button class="bslot ${p.type}" data-use="${k}" title="${esc(p.desc)}"><span class="key">${k + 1}</span><span class="ic">${p.icon}</span><b>${p.name}</b></button>` : '<div class="bslot empty"></div>';
+    }
+    $('bag').innerHTML = h; bagState();
+  }
+  // kullanılamayan kart soluk: bekleme süresi, bitişe yakın Yer Değiştir, bitirdin
+  function bagState() {
+    if (!bagMode()) return;
+    const P = state.race.powers;
+    for (const b of $('bag').querySelectorAll('[data-use]')) b.classList.toggle('off', !P.canUse(state.pick, +b.dataset.use));
+  }
+  function useCard(k) {
+    const r = state.race; if (!bagMode() || !state.bag[k]) return;
+    if (r.powers.use(state.pick, k)) { const b = $('bag').querySelector(`[data-use="${k}"]`); if (b) b.classList.add('off'); }
+  }
+  $('bag').addEventListener('click', e => { const b = e.target.closest('[data-use]'); if (b) useCard(+b.dataset.use); });
 
   // ================= YARIŞ =================
   // tüm güç kartları (ilk 3 parkurda yarış öncesi tanıtım, menüdeki Güç Kartları ekranı, duraklatma menüsü)
@@ -275,7 +302,7 @@
     ensureTrack(state.trackId);
     disposeRace();
     const r = state.race = new MF.Race(window.RAPIER, state.track, {});
-    new MG.PowerSystem(r, { playerId: state.pick });
+    new MG.PowerSystem(r, { playerId: state.pick, mode: state.mode });
     const p = state.player;
     state.mvs = MF.MARBLES.map((info, i) => Grafik.makeMarble(info, Magaza.lookFor(info, i === state.pick ? p.eq : {}), i === state.pick, MF.PARAMS.r));
     state.colors = state.mvs.map(mv => mv.look.color);
@@ -289,6 +316,7 @@
     state.phase = 'countdown'; state.countdown = INTRO; state.endTimer = 0; state.slowDone = false; state.slowT = 0; state.wasLast = false;
     camInit = false;
     show(null); $('hud').classList.remove('hidden'); $('toasts').innerHTML = ''; $('slowmo').classList.add('hidden'); hideCards();
+    state.bag = []; renderBag();
     buildHud(); updateHud(true);
     lastCount = null;
     if (state.trackId <= 3 && !state.cup) showPowerIntro(); // ilk 3 parkurda: yarıştan önce tüm güç kartları
@@ -378,6 +406,7 @@
       if (e.type === 'gate') state.view.gates.forEach(g => g.opening = true);
       else if (e.type === 'hand' && e.id === state.pick) showCards(e.cards, e.expires);
       else if (e.type === 'handGone' && e.id === state.pick) hideCards();
+      else if (e.type === 'bag' && e.id === state.pick) { state.bag = e.cards.slice(); renderBag(); }
       else if (e.type === 'power') onPower(e);
       else if (e.type === 'atis') { // uçan tuzak: atan misketten hedefe
         const from = state.mvs[e.id] && state.mvs[e.id].mesh.position.clone(); if (!from) continue;
@@ -958,6 +987,28 @@
     state.trackId = tracks[0]; showPick();
   });
 
+  // ---- kart modu seçici: sağa/sola kaydır ya da dokun (iki mod: Klasik, Biriktir); varsayılan Klasik ----
+  const MODES = {
+    klasik: { icon: '⚡', name: 'Klasik', desc: 'Gelen karttan birini seç, hemen etki eder' },
+    biriktir: { icon: '🎒', name: 'Biriktir', desc: 'Kartları biriktir (en fazla 5), istediğin an kullan' },
+  };
+  function modeSwitch(el, onChange) {
+    let cur = 'klasik', locked = false, x0 = null, swiped = false;
+    function render(dir) {
+      const M = MODES[cur];
+      el.innerHTML = `<button class="ma" data-d="-1" aria-label="Önceki mod">‹</button><div class="mb${dir ? ' sl' + (dir > 0 ? 'r' : 'l') : ''}"><b>${M.icon} ${M.name}</b><small>${M.desc}</small><span class="md">${MG.MODES.map(m => `<i class="${m === cur ? 'on' : ''}"></i>`).join('')}</span></div><button class="ma" data-d="1" aria-label="Sonraki mod">›</button>`;
+      el.classList.toggle('locked', locked);
+    }
+    function step(d) { if (locked) return; const L = MG.MODES, i = L.indexOf(cur); cur = L[(i + d + L.length) % L.length]; render(d); onChange(cur); }
+    el.addEventListener('pointerdown', e => { x0 = e.clientX; swiped = false; });
+    el.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 30) { swiped = true; step(dx < 0 ? 1 : -1); } });
+    el.addEventListener('pointercancel', () => { x0 = null; });
+    el.addEventListener('click', e => { if (swiped) { swiped = false; return; } const b = e.target.closest('[data-d]'); step(b ? +b.dataset.d : 1); });
+    render();
+    return { set(m, lock) { const n = MODES[m] ? m : 'klasik', l = !!lock; if (n === cur && l === locked && el.firstChild) return; cur = n; locked = l; render(); }, get: () => cur };
+  }
+  const pickMode = modeSwitch($('pickMode'), m => { state.mode = m; });
+
   // ---- misket seçimi + bahis ----
   function showPick() {
     const t = MP.TRACKS.find(x => x.id === state.trackId);
@@ -967,6 +1018,7 @@
       const look = i === state.pick ? Magaza.lookFor(m, eq) : m;
       return `<button class="mcard${i === state.pick ? ' sel' : ''}" data-pick="${i}"><div class="ball" style="background:radial-gradient(circle at 35% 30%, ${look.color2 || '#ffffff'}, ${look.color} 55%, #000 140%)"></div><b>${m.name}</b>${i === state.pick ? '<small class="muted">kostümün bunda</small>' : ''}</button>`;
     }).join('');
+    pickMode.set(state.mode);
     $('betBox').classList.toggle('hidden', !!state.cup);
     if (!state.cup) setupBet();
     ensureTrack(state.trackId);
@@ -1030,7 +1082,10 @@
     if (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') {
       if (e.key === 'c' || e.key === 'C') cycleCam();
       if (e.key === 'Escape') { if (state.pauseOpen) closePause(); else openPause(); }
-      if (e.key >= '1' && e.key <= '3') pickCard(+e.key - 1);
+      if (bagMode()) { // biriktir: Q·W·E gelen kartı seçer, 1–5 çantadakini kullanır
+        const q = OFFER_KEYS.indexOf(e.key.toUpperCase()); if (q >= 0) pickCard(q);
+        if (e.key >= '1' && e.key <= String(MG.BAG.size)) useCard(+e.key - 1);
+      } else if (e.key >= '1' && e.key <= '3') pickCard(+e.key - 1);
     }
   });
 
@@ -1133,13 +1188,16 @@
   function showQuickPick(on) {
     $('mpQuickPick').classList.toggle('hidden', !on);
     if (!on) return;
-    quickSel = openUpTo(state.player); quickPicker.set(quickSel); $('mpQuickGo').textContent = `⚡ Hızlı odayı kur (Parkur ${quickSel})`;
+    quickSel = openUpTo(state.player); quickPicker.set(quickSel); quickMode.set(state.mode); $('mpQuickGo').textContent = `⚡ Hızlı odayı kur (Parkur ${quickSel})`;
     requestAnimationFrame(() => $('mpQuickPick').scrollIntoView({ block: 'start', behavior: 'smooth' }));
   }
   Ag.on('hizliSec', () => showQuickPick(true));
   Ag.on('bilgi', m => mpMsg('ℹ️ ' + m.mesaj));
   $('mpQuickCancel').onclick = () => showQuickPick(false);
-  $('mpQuickGo').onclick = () => { if (quickSel) Ag.send({ t: 'hizli', sec: true, parkur: quickSel }); showQuickPick(false); };
+  const quickMode = modeSwitch($('quickMode'), m => { state.mode = m; });
+  $('mpQuickGo').onclick = () => { if (quickSel) Ag.send({ t: 'hizli', sec: true, parkur: quickSel, mod: quickMode.get() }); showQuickPick(false); };
+  // odadaki kart modu: kurucu değiştirir (hızlı odada ilk giren); diğerleri sadece görür
+  const roomMode = modeSwitch($('mpMode'), m => Ag.send({ t: 'mod', m }));
   function renderMp() {
     const room = Ag.room, me = Ag.pid, ready = Ag.connected && !!me;
     $('mpStatus').textContent = ready ? '🟢 Sunucuya bağlısın' : Ag.want ? '⏳ Sunucuya bağlanılıyor…' : '🔴 Bağlı değil';
@@ -1156,6 +1214,7 @@
     // kurucu parkuru seçer (özel oda; hızlı odada onu kuran seçtiyse); çok oyunculuda tüm parkurlar açık
     const canPick = host && (!room.hizli || room.secildi) && room.durum === 'lobi' && room.basliyor == null;
     $('mpTrackBtn').classList.toggle('hidden', !canPick); if (!canPick) { $('mpTrackPick').classList.add('hidden'); $('mpTrackBtn').textContent = '🔄 Parkuru değiştir'; }
+    roomMode.set(room.mod, !(host && room.durum === 'lobi' && room.basliyor == null));
     const curHtml = trackLine(T); if ($('mpTrackCur').dataset.id !== String(T.id)) { $('mpTrackCur').innerHTML = curHtml; $('mpTrackCur').dataset.id = T.id; }
     const back = room.durum === 'yaris' && !state.race && !!(mine && mine.izleyici); // yarışı bırakmıştı
     $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' && room.basliyor == null ? `Oyuncular bekleniyor… ${room.bekleme} sn (eksiklere bot)` : back ? '🏁 Bu odada yarış sürüyor. İstersen yarışa dönebilirsin.' : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
@@ -1220,6 +1279,7 @@
     else { state.phase = 'race'; state.view.gates.forEach(g => { g.mesh.visible = false; }); } // yarış ortasında geri bağlandı
     camInit = false;
     show(null); $('hud').classList.remove('hidden'); $('toasts').innerHTML = ''; $('slowmo').classList.add('hidden'); hideCards();
+    state.bag = r.powers.bag || []; renderBag();
     buildHud(); updateHud(true);
     lastCount = null;
     if (m.intro <= 0.3) toast('🔌 Yarışa geri döndün', 'gold');

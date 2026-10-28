@@ -59,11 +59,13 @@ function roomInfo(room) {
   return {
     t: 'oda', kod: room.code, kurucu: room.host, parkur: room.track, hizli: room.quick, secildi: !!(room.quick && room.chosen), durum: room.state,
     bekleme: room.quick && room.state === 'lobi' ? Math.max(0, Math.ceil((room.quickAt - Date.now()) / 1000)) : null,
-    sonParkur: room.lastTrack || null, // son yarışın parkuru (kurucu "aynı / sonraki" seçer)
+    sonParkur: room.lastTrack || null,
+    mod: room.mode || 'klasik', // kart modu: klasik (kart hemen kullanılır) / biriktir (çantada saklanır); kurucu seçer // son yarışın parkuru (kurucu "aynı / sonraki" seçer)
     basliyor: room.countdown ? Math.max(0, room.countdown.at - Date.now()) : null, // geri sayım: kalan ms
     oyuncular: humansOf(room).map(p => ({ pid: p.pid, ad: p.name, misafir: !p.kayitli, misket: p.marble, hazir: p.ready, bagli: online(p), izleyici: !!p.izleyici, eq: p.eq, acik: p.unlocked })),
   };
 }
+const cleanMode = m => m === 'biriktir' ? 'biriktir' : 'klasik';
 const online = p => !!(p && p.ws && p.ws.readyState === 1);
 // Kurucu odayı kurandır. Bağlantısı koptuysa bağlı biri geçici olarak yönetir; kurucu geri gelince yetki ona döner.
 function fixHost(room) {
@@ -145,7 +147,7 @@ function startRace(room) {
   room.wasQuick = room.quick; if (room.quick && !room.startReason) room.startReason = 'hizli';
   const track = getTrack(room.track);
   const race = new MF.Race(RAPIER, track, {});
-  const ps = new MG.PowerSystem(race, { humans: live.map(p => p.marble) });
+  const ps = new MG.PowerSystem(race, { humans: live.map(p => p.marble), mode: room.mode });
   room.race = race; room.ps = ps; room.state = 'yaris'; room.clock0 = Date.now(); room.gateAt = INTRO - 0.2; room.elapsed = 0; room.tick = 0;
   room.walls = new Map();
   room.racers = {}; // misket no → { ad, eq, pid } (yarış başındaki insanlar)
@@ -153,11 +155,11 @@ function startRace(room) {
   for (const p of live) send(p, startMsg(room, p));
   pushRoom(room);
   log('yarış başladı', room.code, 'parkur', room.track, 'insan', humans.length);
-  olay('cok_basla', { kod: room.code, parkur: room.track, insan: humans.length, misafir: humans.filter(p => !p.kayitli).length, sebep: room.startReason || 'kurucu', hizli: !!room.wasQuick });
+  olay('cok_basla', { kod: room.code, parkur: room.track, insan: humans.length, misafir: humans.filter(p => !p.kayitli).length, sebep: room.startReason || 'kurucu', hizli: !!room.wasQuick, mod: ps.mode });
   room.startReason = null; room.raceT0 = Date.now();
 }
 function startMsg(room, p) {
-  return { t: 'basla', kod: room.code, parkur: room.track, intro: Math.max(0, room.gateAt + 0.2 - room.elapsed), pickTime: room.ps.pickTime, benim: p.marble, yarisanlar: room.racers, t0: room.race.t, saat: room.race.clock };
+  return { t: 'basla', kod: room.code, parkur: room.track, intro: Math.max(0, room.gateAt + 0.2 - room.elapsed), pickTime: room.ps.pickTime, mod: room.ps.mode, benim: p.marble, yarisanlar: room.racers, t0: room.race.t, saat: room.race.clock };
 }
 // olayı istemciye gidecek düz nesneye çevir (Rapier nesneleri gönderilmez)
 function plainEvent(e, room) {
@@ -176,9 +178,9 @@ function flushEvents(room) {
   const r = room.race, out = [];
   while (r.events.length) {
     const e = r.events.shift();
-    if (e.type === 'hand' || e.type === 'handGone') { // kart eli sadece sahibine
+    if (e.type === 'hand' || e.type === 'handGone' || e.type === 'bag') { // kart eli ve çanta sadece sahibine
       const p = humansOf(room).find(q => q.marble === e.id);
-      if (p) send(p, e.type === 'hand' ? { t: 'el', cards: e.cards, expires: e.expires } : { t: 'elGitti' });
+      if (p) send(p, e.type === 'hand' ? { t: 'el', cards: e.cards, expires: e.expires } : e.type === 'bag' ? { t: 'canta', cards: e.cards, cd: e.cdUntil } : { t: 'elGitti' });
       continue;
     }
     out.push(plainEvent(e, room));
@@ -257,6 +259,7 @@ function onMessage(p, msg) {
       quickRoom = makeRoom(true, null);
       if (!quickRoom) return send(p, { t: 'hata', mesaj: 'Sunucu şu an dolu, biraz sonra dene.' });
       if (msg.parkur != null) { quickRoom.track = clampTrack(msg.parkur); quickRoom.chosen = true; }
+      quickRoom.mode = cleanMode(msg.mod); // hızlı odada modu ilk gelen (odayı kuran) seçer
       return joinRoom(p, quickRoom);
     }
     case 'ayril': return leaveRoom(p);
@@ -269,6 +272,8 @@ function onMessage(p, msg) {
     case 'hazir': if (room && room.state === 'lobi') { p.ready = !!msg.v; pushRoom(room); } return;
     // kurucu parkuru seçer (çok oyunculuda tüm parkurlar açık); hızlı odada: kuran seçtiyse beklerken değiştirebilir
     case 'parkur': if (room && room.state === 'lobi' && !room.countdown && room.host === p.pid && (!room.quick || room.chosen)) { room.track = clampTrack(msg.id); pushRoom(room); } return;
+    // kart modu: özel odada kurucu, hızlı odada ilk giren (o da kurucudur) seçer
+    case 'mod': if (room && room.state === 'lobi' && !room.countdown && room.host === p.pid) { room.mode = cleanMode(msg.m); pushRoom(room); } return;
     // kurucu başlatır: parkur verilirse önce o seçilir (sonuç ekranındaki "aynı / sonraki parkur" düğmeleri)
     case 'baslat': {
       if (!room || room.state !== 'lobi' || room.countdown) return;
@@ -284,12 +289,18 @@ function onMessage(p, msg) {
       const k = Math.floor(+msg.k); if (k >= 0 && k <= 2) room.ps.choose(p.marble, k);
       return;
     }
+    case 'kullan': { // biriktir modu: çantadaki kartı kullan
+      if (!room || !room.race || p.marble < 0 || !room.ps.humans.has(p.marble)) return;
+      const i = Math.floor(+msg.i); if (i >= 0 && i < MG.BAG.size) room.ps.use(p.marble, i);
+      return;
+    }
     case 'ping': return send(p, { t: 'pong', c: msg.c });
   }
 }
 function resendHand(p) {
   const room = p.room, h = room && room.ps && room.ps.hands[p.marble];
   if (h && !h.used && h.expires > room.race.t) send(p, { t: 'el', cards: h.cards, expires: h.expires });
+  if (room && room.ps && room.ps.mode === 'biriktir') send(p, { t: 'canta', cards: room.ps.bagOf(p.marble).slice(), cd: (room.ps.lastUse[p.marble] || -9) + MG.BAG.cd });
 }
 
 // ================= HTTP + WebSocket =================

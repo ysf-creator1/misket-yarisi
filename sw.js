@@ -4,7 +4,7 @@
  * - Diğer dosyalar (js, doku, ikon): önce önbellekten (anında açılış), arkada internetten tazelenir.
  * - Başka sitelere giden istekler (oyun sunucusu, hesaplar) hiç ellenmez.
  * SURUM, sunucu/surum-artir.sh ile js/surum.js'teki sayıyla birlikte artar; eski önbellek silinir. */
-const SURUM = 22;
+const SURUM = 23;
 const CACHE = 'misket-v' + SURUM;
 
 self.addEventListener('install', () => self.skipWaiting());

@@ -157,7 +157,45 @@ const humanFlags = dv => { const n = dv.getUint8(1), out = []; for (let i = 0; i
     ok('hızlı odayı kuran beklerken parkuru değiştirebiliyor', L.room.parkur === 77, `parkur ${L.room.parkur}`);
     L.send({ t: 'parkur', id: 5 }); await sleep(300);
     ok('kurucu olmayan değiştiremiyor', K.room.parkur === 77);
+    ok('hızlı oda varsayılan klasik', K.room.mod === 'klasik');
+    L.send({ t: 'mod', m: 'biriktir' }); await sleep(200);
+    ok('hızlı odada ilk giren olmayan modu değiştiremez', K.room.mod === 'klasik');
+    K.send({ t: 'mod', m: 'biriktir' }); await sleep(200);
+    ok('hızlı odada ilk giren modu seçer', L.room.mod === 'biriktir');
     for (const c of [K, L]) { c.send({ t: 'ayril' }); c.close(); }
+    await sleep(500);
+    const Q2 = new Client('HızlıB', 1); await Q2.hello(); Q2.send({ t: 'hizli', sec: true, parkur: 4, mod: 'biriktir' });
+    ok('hızlı odayı kurarken mod seçilir', (await Q2.wait(m => m.t === 'oda')).mod === 'biriktir');
+    Q2.send({ t: 'ayril' }); Q2.close(); await sleep(300);
+
+    console.log('4) Biriktir modu: kart çantaya girer, istenince kullanılır');
+    const M1 = new Client('Mert', 3), M2 = new Client('Ece', 3); await M1.hello(); await M2.hello();
+    M1.send({ t: 'odaKur' }); const m0 = await M1.wait(m => m.t === 'oda');
+    ok('oda varsayılan klasik', m0.mod === 'klasik');
+    M2.send({ t: 'katil', kod: m0.kod }); await sleep(300);
+    M2.send({ t: 'mod', m: 'biriktir' }); await sleep(200);
+    ok('kurucu olmayan modu değiştiremez', M1.room.mod === 'klasik');
+    M1.send({ t: 'mod', m: 'biriktir' }); await sleep(200);
+    ok('kurucu modu değiştirir, herkes görür', M2.room.mod === 'biriktir');
+    M1.send({ t: 'mod', m: 'saçma' }); await sleep(200);
+    ok('bilinmeyen mod klasiğe döner', M2.room.mod === 'klasik');
+    M1.send({ t: 'mod', m: 'biriktir' }); await sleep(200);
+    M1.send({ t: 'parkur', id: 3 }); M1.send({ t: 'baslat' });
+    const ms = await M1.wait(m => m.t === 'basla', 8000);
+    ok('başla mesajında mod var', ms.mod === 'biriktir');
+    await M1.wait(m => m.t === 'el', 30000);
+    M1.send({ t: 'kart', k: 1 });
+    const c1 = await M1.wait(m => m.t === 'canta' && m.cards.length === 1, 3000);
+    const myPower = () => M1.events.filter(e => e.type === 'power' && e.id === ms.benim);
+    await sleep(500);
+    ok('seçilen kart çantaya girdi, kullanılmadı', c1.cards.length === 1 && myPower().length === 0, c1.cards.join(','));
+    M2.send({ t: 'kullan', i: 0 }); await sleep(300);
+    ok('başkasının çantası kullanılamaz', !M1.msgs.some(m => m.t === 'canta' && m.cards.length === 0));
+    M1.send({ t: 'kullan', i: 0 });
+    await M1.wait(m => m.t === 'canta' && m.cards.length === 0, 3000); await sleep(600);
+    ok('çantadaki kart kullanılınca güç olayı geldi', myPower().length === 1 && myPower()[0].power === c1.cards[0], myPower().map(e => e.power).join(','));
+    ok('çanta başkasına gönderilmez (kart seçmeyen çanta mesajı almaz)', !M2.msgs.some(m => m.t === 'canta'));
+    for (const c of [M1, M2]) { c.send({ t: 'ayril' }); c.close(); }
     await sleep(500);
     const d = await (await fetch(`http://127.0.0.1:${PORT}/durum`)).json();
     ok('/durum çalışıyor', d.ok === true, JSON.stringify(d));

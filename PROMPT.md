@@ -272,3 +272,15 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
    - Kurucu (`owner`) koparsa bağlı biri geçici olarak yönetir, kurucu dönünce yetki ona geçer. Hızlı odada da süre dolunca / 6 kişi olunca 3 sn geri sayım.
 - Sürüm 22 (`bash sunucu/surum-artir.sh`): sunucu da güncellenmeli (mesajlar değişti).
 - Testler: çok oyunculu 44/44 (kurucu olmayan başlatamaz, 3 sn geri sayım, geri sayımda parkur değişmez, kurucu kopunca yönetim geçer / dönünce geri alır, kopan odada kalır ve yarışta botla yarışçı, yarışı bırakıp geri dönme, hızlı odada geri sayım); iki tarayıcıyla uçtan uca (TR kurucu + EN çocuk): mağazadayken geri sayım ve yarışa alınma, sayfa yenileyince odaya ve yarışa dönüş, yarışı bırakıp "Yarışa dön".
+
+## 22. Güncelleme: Biriktir modu (kartları sakla, istediğin an kullan)
+### Prompt
+> Biriktirme modu olabilir ama ekranda karmaşa, çok yazı ve seçim olmasın. Sağa sola kaydırarak iki mod arası geçilsin, varsayılan klasik. Biriktirilen kart sayısı 5; telefonda ve bilgisayarda altta bir alanda kartlar yan yana dizilsin, dokunarak kullanılsın. Belli sürede çıkan kartlardan istenen seçilerek biriktirilir, istendiği zaman kullanılır. Çoklu oyunda odayı kuranın, hızlı oyunda ilk girenin seçimi geçerli.
+
+### Yapılanlar ve ölçümler
+- Mod seçici (`modeSwitch`, js/oyun.js): misket seçim ekranı, çok oyunculu oda (kurucu değiştirir, diğerleri görür), hızlı oda kurulurken. Kaydır / ok / dokun; varsayılan Klasik.
+- `MG.BAG = { size: 5, cd: 1.5, takasSon: 0.9 }` (js/guclar.js): seçilen kart çantaya girer, çanta doluyken kart gelmez; iki kullanım arası 1,5 sn; Yer Değiştir son %10'da kullanılamaz. Botlar `_botUse` ile uygun anda kullanır (rakip yakınsa saldırı, üstüne atış uçarken kalkan, duvar önünde zıplama…).
+- Ekran: altta 5 yerli çanta (`#bag`); gelen kart Q·W·E, çantadaki 1–5 (bilgisayar). Telefonda teklif kartları çantanın üstünde, açıklamasız.
+- Sunucu: `{t:'mod', m}` (kurucu), `{t:'hizli', mod}`, `{t:'kullan', i}`; oda bilgisinde `mod`, `basla`da `mod`, sahibine `{t:'canta', cards, cd}`.
+- Sürüm 23 (web ve sunucu birlikte).
+- Testler: `node test/biriktir-testi.js` 14/14; çok oyunculu 57/57 (13 yeni); güç senaryo 17/17; Chrome'da bilgisayar + telefon boyutu ve yerel sunucuyla çok oyunculu oda.

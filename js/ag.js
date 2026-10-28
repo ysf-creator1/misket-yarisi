@@ -37,6 +37,7 @@
         case 'olaylar': if (Ag.race) Ag.race.onEvents(m.e); break;
         case 'el': if (Ag.race) Ag.race.events.push({ type: 'hand', id: Ag.race.me, cards: m.cards, expires: m.expires }); break;
         case 'elGitti': if (Ag.race) Ag.race.events.push({ type: 'handGone', id: Ag.race.me }); break;
+        case 'canta': if (Ag.race) { Ag.race.powers.bag = m.cards || []; Ag.race.powers.cdUntil = m.cd || 0; Ag.race.events.push({ type: 'bag', id: Ag.race.me, cards: Ag.race.powers.bag, cdUntil: m.cd || 0 }); } break; // biriktir modu
         case 'sonuc': if (Ag.race) Ag.race.onResult(m); emit('sonuc', m); break;
         case 'hata': emit('hata', m); break;
         case 'bilgi': emit('bilgi', m); break;
@@ -84,7 +85,18 @@
         else if (pr.type === 'kin') this.kins.push({ pr, body: { translation: () => { const P = kinPose(pr, self.clock); return { x: P.p[0], y: P.p[1], z: P.p[2] }; }, rotation: () => kinPose(pr, self.clock).q } });
       }
       const send = o => Ag.send(o);
-      this.powers = { pickTime: start.pickTime || 10, hands: {}, choose(id, k) { return send({ t: 'kart', k }); } };
+      const race = this, BAG = window.MG.BAG;
+      // biriktir modunda çanta sunucuda tutulur; burada son bildirilen hali ve bekleme süresi (ekran için)
+      this.powers = {
+        pickTime: start.pickTime || 10, hands: {}, mode: start.mod === 'biriktir' ? 'biriktir' : 'klasik', bag: [], cdUntil: 0,
+        choose(id, k) { return send({ t: 'kart', k }); },
+        canUse(id, k) {
+          const pid = this.bag[k], m = race.marbles[id];
+          if (!pid || !race.started || race.done || !m || m.finished || race.t < this.cdUntil) return false;
+          return !(pid === 'takas' && m.s > race.track.finishS * BAG.takasSon);
+        },
+        use(id, k) { if (!this.canUse(id, k)) return false; this.cdUntil = race.t + BAG.cd; return send({ t: 'kullan', i: k }); },
+      };
     }
     openGate() { } // kapıyı sunucu açar
     dispose() { if (Ag.race === this) Ag.race = null; }

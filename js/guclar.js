@@ -26,6 +26,9 @@
   // lidere yetişme ayarları: lastik (lidere uzak kalan hafifçe itilir), rüzgâr tüneli (öndekinin arkasında çekilme), kaçan lider eşiği
   MG.DENGE = { lastikBas: 10, lastikK: 0.09, lastikMax: 2.4, tunelMax: 6, tunelA: 1.8, kacan: 10, liderFren: 0.1 };
   MG.FLY = { bomba: 0.7, balcik: 0.62, ruzgar: 0.5 }; // uçuş süresi (sn): atan misketten hedefe
+  // Biriktir modu: çanta 5 kart; iki kullanım arası 1,5 sn; Yer Değiştir parkurun son %10'unda kullanılamaz (bitişte lideri çizgide geçmek olmasın)
+  MG.BAG = { size: 5, cd: 1.5, takasSon: 0.9 };
+  MG.MODES = ['klasik', 'biriktir'];
   MG.PERSONALITIES = [
     { id: 'saldirgan', name: 'Saldırgan', attack: 1.6, self: 0.9, shield: 0.7 },
     { id: 'temkinli', name: 'Temkinli', attack: 0.8, self: 1.4, shield: 1.6 },
@@ -52,6 +55,9 @@
       this.next = opts.firstAt != null ? opts.firstAt : 8 + this.rand() * 3;
       this.hands = {}; this.walls = []; this.slimes = []; this.round = 0; this.delayed = []; // delayed: yolda olan bomba/balçık/rüzgâr
       this.stats = { used: 0 };
+      // Biriktir modu: seçilen kart çantaya girer (en fazla MG.BAG.size), oyuncu istediği an kullanır
+      this.mode = opts.mode === 'biriktir' ? 'biriktir' : 'klasik';
+      this.bags = {}; this.lastUse = {}; this.botUseAt = 0;
       race.marbles.forEach((m, i) => {
         m.fx = {}; m.race = race;
         m.persona = MG.PERSONALITIES[Math.floor(this.rand() * MG.PERSONALITIES.length)];
@@ -81,6 +87,10 @@
         if (h.used) continue;
         if (m.finished || t > h.expires) { h.used = true; if (this.humans.has(+id)) r.events.push({ type: 'handGone', id: +id }); continue; }
         if (!this.humans.has(+id) && t >= h.botAt) this.choose(+id, this._botPick(m, h.cards));
+      }
+      if (this.mode === 'biriktir' && t >= this.botUseAt) { // botlar çantadaki kartı uygun anda kullanır (saniyede 4 kez bakar)
+        this.botUseAt = t + 0.25;
+        for (const m of r.marbles) if (!this.humans.has(m.id) && !m.finished) { const k = this._botUse(m); if (k >= 0) this.use(m.id, k); }
       }
       this._ironWalls();
       // süreli duvarlar
@@ -112,6 +122,7 @@
       this.round++;
       st.forEach((m, idx) => {
         if (m.finished) return;
+        if (this.mode === 'biriktir' && this.bagOf(m.id).length >= MG.BAG.size) return; // çanta dolu: kart gelmez
         const fb = final ? 1.8 : 1; // finalde geride olanın güçlü kart şansı daha da artar
         const frac = n > 1 ? idx / (n - 1) : 0, pool = MG.POWERS.map(p => ({ p, w: BASE_TIER[p.tier] * Math.max(0.15, 1 + BOOST[p.tier] * frac * fb) }));
         const cards = [];
@@ -207,9 +218,67 @@
     choose(id, k) {
       const h = this.hands[id];
       if (!h || h.used || k == null || k < 0 || k > 2) return false;
+      if (this.mode === 'biriktir') { // seçilen kart çantaya girer
+        const bag = this.bagOf(id); if (bag.length >= MG.BAG.size) return false;
+        h.used = true; bag.push(h.cards[k]); this._bagEvent(id);
+        return true;
+      }
       h.used = true;
       this.activate(this.race.marbles[id], h.cards[k]);
       return true;
+    }
+
+    // ---- Biriktir modu: çanta ----
+    bagOf(id) { return this.bags[id] || (this.bags[id] = []); }
+    _bagEvent(id) { if (this.humans.has(+id)) this.race.events.push({ type: 'bag', id: +id, cards: this.bagOf(id).slice(), cdUntil: (this.lastUse[id] || -9) + MG.BAG.cd }); }
+    // çantadaki k. kart şu an kullanılabilir mi
+    canUse(id, k) {
+      const r = this.race, m = r.marbles[id], bag = this.bagOf(id), pid = bag[k];
+      if (this.mode !== 'biriktir' || !pid || !r.started || r.done || m.finished) return false;
+      if (r.t - (this.lastUse[id] != null ? this.lastUse[id] : -9) < MG.BAG.cd) return false;
+      if (pid === 'takas' && m.s > r.track.finishS * MG.BAG.takasSon) return false;
+      return true;
+    }
+    use(id, k) {
+      if (k == null || !this.canUse(id, k)) return false;
+      const pid = this.bagOf(id).splice(k, 1)[0];
+      this.lastUse[id] = this.race.t;
+      this.activate(this.race.marbles[id], pid);
+      this._bagEvent(id);
+      return true;
+    }
+    // bot: çantadaki hangi kartı şimdi kullanmalı (-1: bekle). İnsan gibi hemen değil, biraz gecikmeyle davranır.
+    _botUse(m) {
+      const r = this.race, t = r.t, bag = this.bagOf(m.id);
+      if (!bag.length || r.t - (this.lastUse[m.id] != null ? this.lastUse[m.id] : -9) < MG.BAG.cd) return -1;
+      const st = r.standings().filter(o => !o.finished || o === m), idx = st.indexOf(m), per = m.persona, fs = r.track.finishS;
+      const endF = m.s / fs, full = bag.length >= MG.BAG.size;
+      const incoming = this.delayed.some(d => d.tgs.includes(m) && d.m !== m); // üstüne bomba/balçık/rüzgâr uçuyor
+      const tgt = this.trapTargets(m, 'yavas', 1)[0], dist = tgt ? tgt.s - m.s : 99;
+      const p = m.body.translation(), T = m.lastSample && !m.inZone ? m.lastSample.T : null;
+      const wallAhead = !!T && this.walls.some(w => { if (w.owner === m.id) return false; const dx = w.p[0] - p.x, dy = w.p[1] - p.y, dz = w.p[2] - p.z, a = dx * T[0] + dy * T[1] + dz * T[2]; return a > 1 && a < 7 && Math.hypot(dx, dy, dz) < 8; });
+      const zoneNear = r.track.zones.some(z => z.s0 > m.s - 1 && z.s0 - m.s < 14);
+      let best = -1, bv = 0;
+      bag.forEach((id, k) => {
+        if (!this.canUse(m.id, k)) return;
+        const P = MG.byId[id]; let v = 0;
+        if (id === 'kalkan') v = incoming ? 6 : (m.fx.slow > t || m.fx.stun > t || m.fx.small > t) ? 2.2 : idx === 0 && endF > 0.75 ? 1 : 0;
+        else if (id === 'takas') { const o = this._swapTarget(m), gap = o ? o.s - m.s : 0; v = o && gap > 5 ? 1.2 + gap / 10 : 0; }
+        else if (id === 'ruzgar') v = r.marbles.filter(o => o !== m && !o.finished && o.s > m.s && o.s - m.s < 40).length >= 2 ? 2 : 0;
+        else if (P.type === 'attack') v = tgt && dist > 0 && dist < 14 ? 2 : tgt && dist < 0 && dist > -6 ? 1.2 : 0;
+        else if (id === 'zipla' || id === 'hayalet') v = wallAhead ? 4 : !T ? 0 : 0.5;
+        else if (id === 'demir') v = wallAhead ? 4 : T ? 1.4 : 0;
+        else if (id === 'miknatis') { const o = this._pullTarget(m); v = T && o && o.s - m.s > 4 ? 1.8 : 0; }
+        else if (id === 'isinlan') v = T && !zoneNear ? 1.6 : 0;
+        else if (id === 'turbo') v = T && !zoneNear && m.speed < 11 ? 1.6 : 0;
+        v *= P.type === 'attack' ? per.attack : id === 'kalkan' ? per.shield : per.self;
+        if (v > bv) { bv = v; best = k; }
+      });
+      if (best < 0) return -1;
+      // eşik: çanta dolu ya da bitişe yakınsa daha kolay kullanır; tepki biraz gecikmeli (her bakışta her zaman değil)
+      const lim = incoming && bag[best] === 'kalkan' ? 0 : full || endF > 0.85 ? 0.5 : 1.5;
+      if (bv < lim) return -1;
+      return this.rand() < (incoming ? 0.7 : 0.35) ? best : -1;
     }
 
     // forced: uçan tuzak varınca (bomba, balçık, rüzgâr) atış anında seçilen hedefler

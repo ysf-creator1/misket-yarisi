@@ -86,6 +86,11 @@ window.DIL_EN = {
   // ===== yarış =====
   'Benim misketim': 'My marble', 'Lider': 'Leader', 'Genel bakış': 'Overview', 'BAŞLA!': 'GO!', 'Duraklat / çık': 'Pause / quit',
   '1 · 2 · 3: güç seç · C: kamera · Esc: çık': '1 · 2 · 3: pick power · C: camera · Esc: pause',
+  'Q · W · E: kart seç · 1–5: kartı kullan · C: kamera · Esc: çık': 'Q · W · E: pick card · 1–5: use card · C: camera · Esc: pause',
+  'Çantana bir kart seç': 'Pick a card for your bag', 'Klasik': 'Classic', 'Biriktir': 'Stockpile',
+  'Gelen karttan birini seç, hemen etki eder': 'Pick one of the cards, it works right away',
+  'Kartları biriktir (en fazla 5), istediğin an kullan': 'Save up cards (up to 5), use them whenever you want',
+  'Önceki mod': 'Previous mode', 'Sonraki mod': 'Next mode',
   'Bir güç seç!': 'Pick a power!', 'GÜÇLEN': 'BOOST', 'TUZAK': 'TRAP', 'GÜÇLEN · {0}': 'BOOST · {0}', 'TUZAK · {0}': 'TRAP · {0}', 'Sık çıkar': 'Common', 'Nadir · güçlü': 'Rare · strong',
   'Güçlen (kendine)': 'Boost (yourself)', 'Tuzak (rakiplere)': 'Trap (rivals)', 'Güç kartları': 'Power cards', 'Güç kartlarını tanı': 'Meet the power cards',
   'Yarışta bu kartlar çıkar. Dokunarak (ya da 1·2·3 ile) seç.': 'These cards appear in races. Tap one (or press 1·2·3).', 'Anladım, başla ▶': 'Got it, start ▶',
