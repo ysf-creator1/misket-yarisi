@@ -10,6 +10,10 @@
 <meta name="apple-mobile-web-app-title" content="Misket Yarışı">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="ikon-180.png">
+<script>
+  // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=22" as="fetch" crossorigin="anonymous">');
+</script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
 <style>
@@ -224,10 +228,15 @@
   .vopts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
   .voteopt{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 8px;border-radius:14px}
   .voteopt .vic{font-size:30px} .voteopt b{font-size:17px} .voteopt small{color:var(--muted);font-weight:700;font-size:12px}
-  .voteopt .vwho{font-size:12px;font-weight:800;color:#ffd77a;min-height:16px}
-  .voteopt.on{border-color:var(--accent);background:rgba(255,194,61,.2);box-shadow:0 0 0 2px var(--accent) inset}
-  .voteopt.win{animation:pulse 1s ease-in-out infinite;border-color:#7bd389}
-  .voteopt .vwin{font-size:11px;font-weight:900;color:#2b1700;background:#7bd389;border-radius:8px;padding:1px 8px;margin-top:2px}
+  /* çok oyunculu: "başlat" denince her ekranda 3-2-1 (dokunmayı engellemez: mağazada alışveriş sürer) */
+  #mpGeri{position:fixed;left:0;right:0;top:calc(64px + env(safe-area-inset-top));z-index:45;display:flex;justify-content:center;pointer-events:none}
+  #mpGeri>div{display:flex;flex-direction:column;align-items:center;padding:10px 30px 12px;border-radius:22px;background:rgba(12,19,40,.92);border:2px solid var(--accent);box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  #mpGeri .gb{font-size:16px;font-weight:900}
+  #mpGeri b{font-size:96px;line-height:1;color:var(--accent);text-shadow:0 6px 24px rgba(0,0,0,.5)}
+  #mpGeri b.pop{animation:pop .9s ease-out}
+  #mpGeri small{font-size:13px;font-weight:700;color:var(--muted)}
+  #topnav button.inroom{box-shadow:0 0 0 2px var(--good) inset}
+  #topnav button.inroom span::after{content:"";display:inline-block;width:8px;height:8px;margin-left:3px;border-radius:50%;background:var(--good);vertical-align:6px}
   @keyframes pulse{50%{transform:scale(1.03)}}
   .sym{display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900;line-height:1;text-shadow:0 0 2px #000,0 0 3px #000}
   #prog .pd{display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900;text-shadow:0 0 2px #000,0 0 3px #000}
@@ -417,6 +426,9 @@
   <button data-nav="lider"><span>📊</span><b data-k="Skor">Liderlik</b></button>
   <span class="navpts pill">⭐ <span id="navPoints">0</span></span>
 </nav>
+
+<!-- çok oyunculu geri sayım (her ekranda görünür) -->
+<div id="mpGeri" class="hidden"><div><span class="gb">🏁 Yarış başlıyor</span><b id="mpGeriN">3</b><small id="mpGeriT"></small></div></div>
 
 <!-- Profil / giriş -->
 <div id="scrProfile" class="screen hidden"><div class="panel" style="width:min(600px,96vw)">
@@ -635,6 +647,7 @@
     <div class="mptrk"><div class="cur" id="mpTrackCur"></div><button class="sm" id="mpTrackBtn">🔄 Parkuru değiştir</button></div>
     <div class="tpick hidden" id="mpTrackPick"></div>
     <p class="sub" id="mpQuickInfo" style="margin:4px 0 8px"></p>
+    <button class="main hidden" id="mpBackToRace" style="margin:0 0 10px">🏁 Yarışa dön</button>
     <div id="mpVote" class="hidden" style="margin-bottom:10px"></div>
     <div class="mpslots" id="mpSlots"></div>
     <div class="row" style="margin-top:12px"><button id="mpLeave">← Odadan çık</button><button id="mpReady">Hazırım</button><button class="main" id="mpStart">Yarışı Başlat ▶</button></div>
@@ -665,27 +678,34 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=21"></script>
-<script src="js/dil-en.js?v=21"></script>
-<script src="js/dil.js?v=21"></script>
+<script src="js/surum.js?v=22"></script>
+<script src="js/dil-en.js?v=22"></script>
+<script src="js/dil.js?v=22"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=21"></script>
-<script src="varliklar/qrcode.js?v=21"></script>
-<script src="three.min.js?v=21"></script>
-<script src="varliklar/RGBELoader.js?v=21"></script>
-<script src="varliklar/dokular.js?v=21"></script>
-<script src="rapier.js?v=21"></script>
-<script src="js/parcalar.js?v=21"></script>
-<script src="js/parkurlar.js?v=21"></script>
-<script src="js/dunyalar.js?v=21"></script>
-<script src="js/fizik.js?v=21"></script>
-<script src="js/guclar.js?v=21"></script>
-<script src="js/kayit-sistemi.js?v=21"></script>
-<script src="js/magaza.js?v=21"></script>
-<script src="js/ses.js?v=21"></script>
-<script src="js/cevre.js?v=21"></script>
-<script src="js/grafik.js?v=21"></script>
-<script src="js/ag.js?v=21"></script>
-<script src="js/oyun.js?v=21"></script>
+<script src="js/isim.js?v=22"></script>
+<script src="varliklar/qrcode.js?v=22"></script>
+<script src="three.min.js?v=22"></script>
+<script src="varliklar/RGBELoader.js?v=22"></script>
+<script>
+  // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=22"><\/script>');
+</script>
+<script src="rapier.js?v=22"></script>
+<script src="js/parcalar.js?v=22"></script>
+<script src="js/parkurlar.js?v=22"></script>
+<script src="js/dunyalar.js?v=22"></script>
+<script src="js/fizik.js?v=22"></script>
+<script src="js/guclar.js?v=22"></script>
+<script src="js/kayit-sistemi.js?v=22"></script>
+<script src="js/magaza.js?v=22"></script>
+<script src="js/ses.js?v=22"></script>
+<script src="js/cevre.js?v=22"></script>
+<script src="js/grafik.js?v=22"></script>
+<script src="js/ag.js?v=22"></script>
+<script src="js/oyun.js?v=22"></script>
+<script>
+  // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
+  if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+</script>
 </body>
 </html>

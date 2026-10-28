@@ -1,6 +1,7 @@
 // Misket Yarışı — çok oyunculu sunucu testi (sahte oyuncularla)
 // Sunucuyu ayrı süreçte başlatır; 3 oyuncu bir odaya girer, 3 koltuk bot olur; yarış sonuna kadar sürer.
 // Yarış ortasında bir oyuncu kopar (misketini bot devralır) ve aynı anahtarla geri bağlanır.
+// Yarış sonrası sıradakini kurucu seçer (3 sn geri sayım); kopan oyuncu ve kurucu odada kalır.
 // Ayrıca hızlı oyun: tek oyuncu girer, süre dolunca botlarla başlar.
 // Kullanım: node test/cok-oyunculu-testi.js [parkur=1]  (Node 22+: yerleşik WebSocket)
 const path = require('path');
@@ -87,24 +88,38 @@ const humanFlags = dv => { const n = dv.getUint8(1), out = []; for (let i = 0; i
     ok('olaylarda Rapier nesnesi yok', !JSON.stringify(A.events).includes('"col"'));
     await sleep(300);
     ok('yarıştan sonra oda lobiye döndü', A.room.durum === 'lobi' && A.room.oyuncular.length === 3);
-    // yarış sonrası oylama
-    const vote = () => A.room.oylama;
-    ok('sonuçtan sonra oylama açıldı', vote() && vote().sonParkur === trackId && vote().kalan === null);
+    // yarış sonrası: sıradakini kurucu seçer, 3 sn geri sayımla başlar
+    ok('sonuçtan sonra son parkur bildirildi, geri sayım yok', A.room.sonParkur === trackId && A.room.basliyor === null);
     for (const c of [A, B, C2]) c.autoCard = false;
-    A.send({ t: 'oy', secim: 'sonraki' }); await sleep(300);
-    ok('tek kişi seçince geri sayım yok', vote().oylar[A.pid] === 'sonraki' && vote().kalan === null, `bekleme ${vote().bekleme} sn`);
-    B.send({ t: 'oy', secim: 'ayni' }); C2.send({ t: 'oy', secim: 'sonraki' }); await sleep(300);
-    ok('herkes seçince 5 sn geri sayım, çoğunluk sonraki', vote().kalan >= 4 && vote().secim === 'sonraki', `kalan ${vote().kalan} sn`);
-    C2.send({ t: 'oy', secim: null }); await sleep(300);
-    ok('biri iptal edince geri sayım durur', vote().kalan === null && !vote().oylar[C2.pid]);
-    C2.send({ t: 'oy', secim: 'ayni' }); await sleep(300);
-    ok('fikir değişince çoğunluk aynı parkur', vote().secim === 'ayni' && vote().kalan >= 4);
-    B.send({ t: 'oy', secim: 'sonraki' }); await sleep(300);
-    ok('tekrar değişince sonraki parkur', vote().secim === 'sonraki');
-    const nB = A.msgs.filter(m => m.t === 'basla').length;
-    await A.wait(() => A.msgs.filter(m => m.t === 'basla').length > nB, 12000); const st2 = A.msgs.filter(m => m.t === 'basla').pop();
-    ok('geri sayım bitince sonraki parkurla başladı', st2.parkur === trackId + 1, `parkur ${st2.parkur}`);
-    for (const c of [A, B, C2]) c.close();
+    B.send({ t: 'baslat', parkur: trackId + 1, neden: 'sonraki' }); await sleep(300);
+    ok('kurucu olmayan sıradakini başlatamaz', A.room.basliyor === null && A.room.parkur === trackId);
+    ok('eski oylama mesajı yok', !('oylama' in A.room));
+    // kurucunun bağlantısı koparsa (telefon kilitlendi) bağlı biri yönetir; kurucu odada kalır ve dönünce yetki ona geçer
+    const aKey = A.key, aPid = A.pid; A.close(); await sleep(600);
+    ok('kurucu kopunca odada kalır, yönetim bağlı birine geçer', B.room.oyuncular.length === 3 && B.room.kurucu !== aPid && B.room.oyuncular.find(o => o.pid === aPid).bagli === false, `yönetici ${B.room.oyuncular.find(o => o.pid === B.room.kurucu).ad}`);
+    const A2 = new Client('Ali', trackId, aKey); await A2.hello(); await A2.wait(m => m.t === 'oda');
+    ok('kurucu geri gelince yetki ona döner', A2.room.kurucu === aPid && A2.pid === aPid && A2.room.oyuncular.length === 3);
+    // C2 kopuk kalsın: odada kalır, yarışta misketini bot sürer
+    const c2Marble = C2.start.benim; C2.close(); await sleep(600);
+    ok('kopan oyuncu lobide odadan atılmaz', A2.room.oyuncular.some(o => o.pid === C2.pid && !o.bagli));
+    const nB = B.msgs.filter(m => m.t === 'basla').length, tStart = Date.now();
+    A2.send({ t: 'baslat', parkur: trackId + 1, neden: 'sonraki' }); await sleep(300);
+    ok('kurucu başlatınca herkese 3 sn geri sayım', A2.room.basliyor > 2000 && A2.room.basliyor <= 3000 && B.room.basliyor > 2000 && B.room.parkur === trackId + 1, `kalan ${B.room.basliyor} ms`);
+    A2.send({ t: 'parkur', id: 50 }); await sleep(200);
+    ok('geri sayımda parkur değişmez', B.room.parkur === trackId + 1);
+    await B.wait(() => B.msgs.filter(m => m.t === 'basla').length > nB, 6000); const st2 = B.msgs.filter(m => m.t === 'basla').pop();
+    const waited = (Date.now() - tStart) / 1000;
+    ok('geri sayım bitince sonraki parkurla başladı', st2.parkur === trackId + 1 && waited >= 2.8 && waited < 4.5, `parkur ${st2.parkur}, ${waited.toFixed(1)} sn sonra`);
+    ok('kopuk oyuncu yarışçı listesinde, misketini bot sürüyor', !!st2.yarisanlar[c2Marble]);
+    await sleep(2500);
+    ok('kopuk oyuncunun misketi bot', !humanFlags(B.lastSnap).includes(c2Marble) && humanFlags(B.lastSnap).length === 2, 'insan: ' + humanFlags(B.lastSnap).join(','));
+    // yarışı bırakan odada kalır, isterse geri döner
+    const bMarble = st2.benim; B.send({ t: 'yaristanCik' }); await sleep(600);
+    ok('yarışı bırakan odada kalır, misketini bot sürer', !humanFlags(A2.lastSnap).includes(bMarble) && A2.room.oyuncular.find(o => o.pid === B.pid).izleyici === true);
+    const nB2 = B.msgs.filter(m => m.t === 'basla').length; B.send({ t: 'yarisaDon' });
+    await B.wait(() => B.msgs.filter(m => m.t === 'basla').length > nB2, 3000); await sleep(600);
+    ok('yarışa dönünce misketini geri alır', humanFlags(A2.lastSnap).includes(bMarble) && B.msgs.filter(m => m.t === 'basla').pop().benim === bMarble);
+    for (const c of [A2, B]) c.close();
 
     console.log('1b) Misafir adları');
     const G1 = new Client('Misafir321', 3); await G1.hello(); const h1 = G1.msgs.find(m => m.t === 'hosgeldin');
@@ -124,7 +139,7 @@ const humanFlags = dv => { const n = dv.getUint8(1), out = []; for (let i = 0; i
     const q0 = await Q.wait(m => m.t === 'oda');
     ok('hızlı oda açıldı', q0.hizli && q0.bekleme > 0, `bekleme ${q0.bekleme} sn, parkur ${q0.parkur}`);
     const st = await Q.wait(m => m.t === 'basla', 30000);
-    ok('süre dolunca başladı', !!st, `parkur ${st.parkur}`);
+    ok('süre dolunca 3 sn geri sayımla başladı', !!st && Q.msgs.some(m => m.t === 'oda' && m.basliyor > 0), `parkur ${st.parkur}`);
     Q.send({ t: 'ayril' }); await sleep(500);
     await sleep(1500);
     ok('herkes ayrılınca yarış botlarla bitmeden de devam/temizlenir', true);

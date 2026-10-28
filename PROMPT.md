@@ -252,3 +252,23 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Misket–misket çarpışma sesi: tiz cam tıkırtısı yerine eski çarpma sesi (kısa, aşağı kayan ton), daha pes (1100–1700 Hz) ve altında kısa, pes bir gövde tonu (≈300–440 Hz): tok bir "tak". Tetikleme aynı (yalnız iki misket çarpışınca, 0,25 sn'de en çok 3).
 - Yuvarlanma sesi en yüksek seviyesi 0,015 → 0,022 (≈+3 dB).
 
+## 21. Güncelleme: hızlı açılış, çok oyunculuda odada kalma ve kurucunun seçimi
+### Prompt
+> 1. Web'den açınca yavaşlık oluyor: hızlandır (önce yalnız bu adım; mağaza uygulaması sonra).
+> 2. Çok oyunculuda odaya girildiğinde, odadan çık diyene kadar orada kalınsın ve odayı kuranın seçimleriyle ilerlensin. Diğerleri aynı parkur mu sonraki parkur mu seçmekle uğraşmasın. Çocuklar bölüm geçişlerinde mağazada gezip oyunu kaçırıyor. Mağazada gezebilir, alışveriş yapabilirler; ama oyun başlasın denildiğinde 3 sn ekrandan geriye doğru sayıp sonra oyun başlasın, o sırada kostüm alabilirler.
+
+### Yapılanlar ve ölçümler
+1. Açılış: menüden önce inen dosyalar ~8,5 MB → ~1,5 MB (sıkıştırılmış). Sebep: `varliklar/dokular.js` (7,5 MB) içinde gömülü 2048×1024 HDR gökyüzü (5,4 MB) ve dokular; hepsi inip çözülmeden menü açılmıyordu.
+   - Gökyüzü ikiye ayrıldı: ışık/yansıma/güneş yönü/sis için `gokyuzu-isik.hdr` (512×256, 374 KB) ve görünen arka plan `gokyuzu.jpg` (2048×1024, 215 KB). JPG lineer renk / 4 olarak saklanır, çizerken ×4 yapılıp aynı ton eşlemeden geçer (`skyMat`, js/grafik.js); dünyaya göre değişen pozlama korunur. Güneş parlaklığı 6000'de kesildi: eski görüntüyle aynı ışık (dağlarda ölçülen renk farkı ≤1/255).
+   - Dokular `varliklar/doku/*.jpg` ayrı dosyalar; menü onları beklemez. Resim gelmeden alınan kopyalar (`.clone()`) resim gelince güncellenir (yoksa dağlar ve zemin dokusuz kalıyordu).
+   - `sw.js`: sayfa önce internetten (4 sn), diğer dosyalar önce önbellekten + arkada tazeleme; sürümle önbellek yenilenir. Ölçüm: 2. açılışta 35 dosyanın hepsi önbellekten, sunucu kapalıyken de açılıyor.
+   - file:// açılış için `varliklar/dokular.js` yeniden üretildi (`node varliklar/dokular-uret.js`), yalnız o durumda yüklenir.
+   - Görsel karşılaştırma (eski/yeni, Chrome): Yeşil Vadi (5 açı), Mutfak, Lunapark, Uzay aynı.
+2. Çok oyunculu:
+   - Oylama kaldırıldı. Yarış bitince kurucu sonuç ekranında "🔁 Aynı parkur ▶" / "⏭ Sonraki parkur ▶" (`{t:'baslat', parkur, neden}`); diğerleri "👑 X sıradaki yarışı seçiyor… Bu arada mağazaya bakabilirsin" görür.
+   - Başlat → sunucu 3 sn geri sayım (`basliyor`: kalan ms) → yarış. İstemcide her ekranda üstte büyük 3-2-1 (`#mpGeri`, dokunmayı engellemez); mağazada kostüm değişince sunucuya hemen bildirilir.
+   - Odadan yalnız "Odadan çık" ile çıkılır: sonuç ekranından üst menüye/menüye/parkurlara gitmek artık odadan çıkarmıyordu (asıl sebep buydu: sonuç ekranından Mağaza'ya dokunmak odadan çıkarıyordu). Tek başına yarış odadayken onay ister. Yarıştan çıkan odada kalır (`yaristanCik`), "🏁 Yarışa dön" (`yarisaDon`).
+   - Bağlantısı kopan 30 sn yerine 10 dk odada kalır; yarış bitince atılmaz. Oda kodu cihazda hatırlanır: sayfa yenilenince aynı odaya ve sürüyorsa yarışa döner.
+   - Kurucu (`owner`) koparsa bağlı biri geçici olarak yönetir, kurucu dönünce yetki ona geçer. Hızlı odada da süre dolunca / 6 kişi olunca 3 sn geri sayım.
+- Sürüm 22 (`bash sunucu/surum-artir.sh`): sunucu da güncellenmeli (mesajlar değişti).
+- Testler: çok oyunculu 44/44 (kurucu olmayan başlatamaz, 3 sn geri sayım, geri sayımda parkur değişmez, kurucu kopunca yönetim geçer / dönünce geri alır, kopan odada kalır ve yarışta botla yarışçı, yarışı bırakıp geri dönme, hızlı odada geri sayım); iki tarayıcıyla uçtan uca (TR kurucu + EN çocuk): mağazadayken geri sayım ve yarışa alınma, sayfa yenileyince odaya ve yarışa dönüş, yarışı bırakıp "Yarışa dön".

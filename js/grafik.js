@@ -61,12 +61,31 @@
   };
 
   // ================= DOKULAR =================
+  // Dosyalar varliklar/doku/ klasöründen arka planda yüklenir (menü onları beklemez).
+  // index.html doğrudan (file://) açıldıysa dokular.js'e gömülü kopyaları kullanılır.
   const D = window.MISKET_DOKU || {};
+  const dokuUrl = (key, ext) => D[key] || (location.protocol === 'file:' ? null : 'varliklar/doku/' + key + '.' + ext + '?v=' + (window.OYUN_SURUM || 0));
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
   const texLoader = new THREE.TextureLoader();
   function imgTex(key, srgb, rep) {
-    if (!D[key]) return null;
-    const t = texLoader.load(D[key]);
+    const url = dokuUrl(key, 'jpg');
+    if (!url) return null;
+    // Resim gelmeden alınan kopyalar (parkur kurulurken .clone()) resim gelince güncellenir.
+    const bekleyen = [];
+    const t = texLoader.load(url, () => { for (const c of bekleyen) { c.image = t.image; c.version++; } bekleyen.length = 0; });
+    const kopyala = THREE.Texture.prototype.clone;
+    const izle = x => {
+      x.clone = function () {
+        const c = kopyala.call(this);
+        if (!t.image) { // resim yokken "güncelle" işareti boşa uyarı üretmesin
+          bekleyen.push(c);
+          Object.defineProperty(c, 'needsUpdate', { configurable: true, set(v) { if (v && c.image) c.version++; } });
+        }
+        return izle(c);
+      };
+      return x;
+    };
+    izle(t);
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, maxAniso);
     if (srgb) t.encoding = THREE.sRGBEncoding;
     if (rep) t.repeat.set(rep[0], rep[1]);
@@ -120,27 +139,66 @@
     const m = Math.max(hr, hg, hb) / hn || 1;
     fogColor = new THREE.Color(hr / hn / m, hg / hn / m, hb / hn / m).multiplyScalar(0.82);
   }
+  // Gökyüzü iki dosyadır:
+  //  - gokyuzu-isik.hdr (512×256, HDR): ışık, yansıma, güneş yönü ve sis rengi buradan
+  //  - gokyuzu.jpg (2048×1024): görünen arka plan. Lineer renk / SKY_K olarak sRGB saklanır;
+  //    çizerken ×SKY_K yapılıp aynı ton eşlemeden geçer (HDR'deki görüntüyle aynı, güneşin çevresi hariç).
+  const SKY_K = 4;
+  const skyMat = new THREE.ShaderMaterial({
+    uniforms: { map: { value: null }, k: { value: SKY_K } },
+    vertexShader: 'varying vec3 vDir; void main() { vDir = position; gl_Position = projectionMatrix * vec4((viewMatrix * vec4(position, 0.0)).xyz, 1.0); }',
+    fragmentShader: 'uniform sampler2D map; uniform float k; varying vec3 vDir;\n' +
+      'void main() { vec3 d = normalize(vDir);\n' +
+      '  vec2 uv = vec2(atan(d.z, d.x) * 0.15915494 + 0.5, asin(clamp(d.y, -1.0, 1.0)) * 0.31830988 + 0.5);\n' +
+      '  gl_FragColor = vec4(sRGBToLinear(texture2D(map, uv)).rgb * k, 1.0);\n' +
+      '  #include <tonemapping_fragment>\n  #include <encodings_fragment>\n}',
+    side: THREE.BackSide, depthTest: false, depthWrite: false,
+  });
+  const skyMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), skyMat);
+  skyMesh.frustumCulled = false; skyMesh.renderOrder = -1e6; skyMesh.visible = false; skyMesh.matrixAutoUpdate = false;
+  scene.add(skyMesh);
+  let skyWanted = true; // bu dünyada fotoğraf gökyüzü görünsün mü (iç mekân / gece / uzay: hayır)
+  function updateSky() {
+    const on = skyWanted && !!skyTex;
+    skyMesh.visible = on;
+    if (on) scene.background = null;
+    else if (skyWanted) scene.background = col('#8fc8ff'); // gökyüzü resmi henüz gelmedi
+  }
+  function loadSkyImage() {
+    const url = dokuUrl('gokyuzu', 'jpg'); if (!url) return;
+    texLoader.load(url, t => {
+      t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; // atan dikişinde çizgi olmasın
+      skyMat.uniforms.map.value = t; skyTex = t; updateSky();
+    });
+  }
   Grafik.init = function () {
     loadTextures();
+    loadSkyImage();
     return new Promise(resolve => {
-      if (!D.gokyuzu || !THREE.RGBELoader) { envFallback(); resolve(); return; }
-      const url = base64ToBlobUrl(D.gokyuzu);
+      let bitti = false;
+      const done = () => { if (!bitti) { bitti = true; resolve(); } };
+      const b64 = D['gokyuzu-isik'];
+      const url = b64 ? base64ToBlobUrl(b64) : dokuUrl('gokyuzu-isik', 'hdr');
+      if (!url || !THREE.RGBELoader) { envFallback(); done(); return; }
+      // yavaş bağlantıda menüyü en fazla 6 sn beklet; ışık sonra gelirse yine uygulanır
+      setTimeout(() => { if (!bitti) { envFallback(); done(); } }, 6000);
       new THREE.RGBELoader().setDataType(THREE.HalfFloatType).load(url, tex => {
         try { findSun(tex); } catch (e) { }
         tex.mapping = THREE.EquirectangularReflectionMapping;
         const pm = new THREE.PMREMGenerator(renderer);
-        envTex = pm.fromEquirectangular(tex).texture; pm.dispose();
-        skyTex = tex;
-        scene.environment = envTex; scene.background = skyTex;
-        URL.revokeObjectURL(url);
-        resolve();
-      }, undefined, () => { envFallback(); resolve(); });
+        envTex = pm.fromEquirectangular(tex).texture; pm.dispose(); tex.dispose();
+        if (scene.environment) scene.environment.dispose(); // yedek ışık
+        scene.environment = envTex;
+        if (b64) URL.revokeObjectURL(url);
+        done();
+      }, undefined, () => { envFallback(); done(); });
     });
   };
-  function envFallback() { // doku dosyası yoksa basit gökyüzü
-    scene.background = col('#8fc8ff');
+  function envFallback() { // ışık dosyası (henüz) yoksa düz mavi ışık; gerçeği gelince onun yerine geçer
+    if (envTex || scene.environment) return;
     const pm = new THREE.PMREMGenerator(renderer), es = new THREE.Scene();
-    es.background = new THREE.Color(0x9fd0ff); envTex = pm.fromScene(es).texture; pm.dispose(); scene.environment = envTex;
+    es.background = new THREE.Color(0x9fd0ff); scene.environment = pm.fromScene(es).texture; pm.dispose();
+    updateSky();
   }
 
   // ================= MALZEMELER =================
@@ -337,10 +395,11 @@
     renderer.toneMappingExposure = S.exposure || 1.15;
     sun.color = col(S.sun || '#fff3e0'); sun.intensity = S.sunI || 3.8; hemi.intensity = S.hemi != null ? S.hemi : 0.4;
     scene.fog = new THREE.Fog(S.fog ? col(S.fog) : fogColor.clone(), 160, 1400);
+    skyWanted = !(S.sky === 'uzay' || S.sky === 'gece' || S.sky === 'ic');
     if (S.sky === 'uzay') { scene.background = col('#03040c'); scene.fog.color = col('#0b0d1e'); scene.fog.near = 300; scene.fog.far = 2600; }
     else if (S.sky === 'gece') { scene.background = col(S.fog || '#2a1840'); scene.fog.near = 120; scene.fog.far = 900; }
     else if (S.sky === 'ic') { scene.background = col('#efe9df'); scene.fog.near = 600; scene.fog.far = 4000; }
-    else if (skyTex) scene.background = skyTex;
+    updateSky();
 
     trackStyle = th.trackMat || 'tahta';
     const belts = [], parts = [];

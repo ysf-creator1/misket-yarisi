@@ -269,7 +269,9 @@
   function endPowerIntro() { clearInterval(introTimer); state.introHold = false; $('gucIntro').classList.add('hidden'); }
   $('gucIntroGo').onclick = endPowerIntro;
   function startRace() {
-    if (window.Ag && (Ag.room || state.mp)) leaveMp(); // tek oyunculu yarışa geçerken odadan çık
+    // çok oyunculu odadayken tek başına yarış: odadan ancak oyuncu "evet" derse çıkılır
+    if (window.Ag && Ag.room && !confirm(`Çok oyunculu odadasın (${Ag.room.kod}). Tek başına yarışmak için odadan çıkılsın mı?`)) return;
+    if (window.Ag && (Ag.room || state.mp)) leaveMp();
     ensureTrack(state.trackId);
     disposeRace();
     const r = state.race = new MF.Race(window.RAPIER, state.track, {});
@@ -556,7 +558,7 @@
     show('scrResult');
     if (state.authLost) setTimeout(authLost, 2500);
     state.phase = 'result';
-    renderVote(); // çok oyunculu: aynı parkur / sonraki parkur oylaması
+    renderNext(); // çok oyunculu: sıradaki yarışı kurucu seçer
   }
 
   // ================= DÖNGÜ =================
@@ -609,7 +611,7 @@
     const b = e.target.closest('[data-nav]'); if (!b) return;
     const to = b.dataset.nav;
     if (state.phase === 'shop' && to !== 'shop') leaveShop();
-    if (to !== 'mp' && state.phase === 'result') leaveMp();
+    if (to !== 'mp' && state.phase === 'result') state.mp = null; // odada kalır; yarış başlarken her ekranda geri sayım çıkar
     if (to === 'menu') showMenu();
     else if (to === 'tracks') { state.cup = null; state.world = null; showTracks(); }
     else if (to === 'cups') { state.cup = null; showCups(); }
@@ -994,15 +996,15 @@
     if (state.cup) { if (state.cupDone) { state.cup = null; showCups(); } else { state.trackId = state.cup.tracks[state.cup.idx]; startRace(); } }
     else showPick();
   };
-  $('btnResTracks').onclick = () => { state.cup = null; leaveMp(); showTracks(); };
+  $('btnResTracks').onclick = () => { state.cup = null; state.mp = null; showTracks(); }; // çok oyunculuda odada kalır
   $('btnResNext').onclick = () => { if (state.cup || state.trackId >= MP.TRACKS.length || openUpTo(state.player) < state.trackId + 1) return; state.trackId++; state.world = null; showPick(); };
-  $('btnResMenu').onclick = () => { leaveMp(); showMenu(); };
+  $('btnResMenu').onclick = () => { state.mp = null; showMenu(); };
   function cycleCam() { state.cam = (state.cam + 1) % CAMS.length; $('camName').textContent = CAMS[state.cam]; }
   $('btnCam').onclick = cycleCam;
   function quitRace(sure) {
     if (state.mp) {
       if (!sure && (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') && !confirm('Yarıştan çıkılsın mı? (Misketini bot sürer, puan alınmaz)')) return;
-      Ag.send({ t: 'ayril' }); disposeRace(); state.mp = null; showMp(); return;
+      Ag.send({ t: 'yaristanCik' }); disposeRace(); state.mp = null; showMp(); return; // odada kalır, istersen yarışa döner
     }
     if (!sure && (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending')) { if (!confirm('Yarıştan çıkılsın mı? (Puan alınmaz' + (state.betActive ? ', bahis iade edilir' : '') + ')')) return; }
     if (state.betActive) { state.player.points += state.betActive.amount; state.betActive = null; Kayit.persist(); }
@@ -1037,40 +1039,66 @@
   // Fizik sunucuda (sunucu/oyun-sunucusu.js); burada lobi ve Ag.RemoteRace ile oynatma. Puanlar normal yarış gibi profile yazılır.
   let pendingRoom = null, joinAfter = null, mpMsgTimer = null;
   try { const q = new URLSearchParams(location.search).get('oda'); if (q && /^[A-Za-z0-9]{5}$/.test(q)) pendingRoom = q.toUpperCase(); } catch (e) { }
+  // odadayken sayfa yenilenirse (telefonda sekme kapanıp açılınca da olur) aynı odaya geri dön; "Odadan çık" deyince unutulur
+  const ODA_KEY = 'misket-oda';
+  const rememberRoom = k => { try { if (k) localStorage.setItem(ODA_KEY, k); else localStorage.removeItem(ODA_KEY); } catch (e) { } };
+  try { const k = localStorage.getItem(ODA_KEY); if (!pendingRoom && k && /^[A-Z0-9]{5}$/.test(k)) pendingRoom = k; } catch (e) { }
   const agProfile = () => ({ ad: state.player.name, eq: state.player.eq, acik: openUpTo(state.player), token: Kayit.token() }); // kayıtlı adın sahibi olduğunu göstermek için
   function showMp() {
     if (state.phase === 'shop') leaveShop();
     toMenuScene();
     Ag.connect(agProfile()); // bağlıysa güncel ad/kostüm yeniden bildirilir
-    renderMp(); show('scrMp'); renderVote();
+    renderMp(); show('scrMp'); renderNext();
   }
-  function leaveMp() { if (Ag.room) Ag.send({ t: 'ayril' }); Ag.room = null; state.mp = null; }
+  function leaveMp() { if (Ag.room) Ag.send({ t: 'ayril' }); Ag.room = null; state.mp = null; rememberRoom(null); mpCountdown(null); navRoomDot(); }
   function joinWhenReady(k) { if (Ag.connected && Ag.pid) Ag.send({ t: 'katil', kod: k }); else { joinAfter = k; Ag.connect(agProfile()); } }
   function mpMsg(t) { const el = $('mpMsg'); el.textContent = t || ''; el.classList.toggle('hidden', !t); clearTimeout(mpMsgTimer); if (t) mpMsgTimer = setTimeout(() => el.classList.add('hidden'), 5000); }
   Ag.on('durum', d => { if (d.bagli && joinAfter) { Ag.send({ t: 'katil', kod: joinAfter }); joinAfter = null; } renderMp(); });
-  Ag.on('oda', () => { renderMp(); renderVote(); });
-  // ---- yarış sonrası oylama: aynı parkur mu, sonraki mi? (yarış başlayana kadar değiştirilebilir / iptal edilebilir) ----
-  function voteHTML(room) {
-    const v = room && room.oylama; if (!v) return '';
-    const mine = v.oylar[Ag.pid], last = v.sonParkur, nextId = Math.min(MP.TRACKS.length, last + 1);
-    const names = c => room.oyuncular.filter(o => v.oylar[o.pid] === c).map(o => esc(o.ad)).join(', ');
-    const opt = (c, icon, title, t, dis) => `<button class="voteopt${mine === c ? ' on' : ''}${v.kalan != null && v.secim === c ? ' win' : ''}" data-oy="${c}" ${dis ? 'disabled' : ''}><span class="vic">${icon}</span><b>${title}</b><small>Parkur ${t.id} · ${esc(t.name)}</small><span class="vwho">${names(c) ? '✋ ' + names(c) : 'henüz seçen yok'}</span>${v.kalan != null && v.secim === c ? '<span class="vwin">▶ bu başlayacak</span>' : ''}</button>`;
-    const status = v.kalan != null ? `⏳ <b>${v.kalan} sn</b> sonra: <b>${v.secim === 'sonraki' ? 'Sonraki parkur' : 'Aynı parkur'}</b>. Değiştirmek için diğerine dokun.`
-      : mine ? `Diğerleri bekleniyor…${v.bekleme != null ? ` (en geç ${v.bekleme} sn)` : ''}` : 'Sıradaki yarışı seç:';
-    return `<div class="vote"><p class="vstat">${status}</p><div class="vopts">${opt('ayni', '🔁', 'Aynı parkur', MP.TRACKS[last - 1])}${opt('sonraki', '⏭', 'Sonraki parkur', MP.TRACKS[nextId - 1], last >= MP.TRACKS.length)}</div>${mine ? '<button class="sm" data-oy="iptal">✖ Seçimimi iptal et</button>' : ''}</div>`;
+  Ag.on('oda', room => { rememberRoom(room && room.kod); renderMp(); renderNext(); mpCountdown(room); navRoomDot(); });
+  // ---- yarış sonrası: sıradakini kurucu seçer; diğerleri bekler (mağazaya bakabilir, başlarken her ekranda 3-2-1 çıkar) ----
+  function nextHTML(room, onResult) {
+    if (!room || !room.sonParkur || room.durum !== 'lobi') return '';
+    const T = id => MP.TRACKS[id - 1];
+    if (room.basliyor != null) return `<div class="vote"><p class="vstat">▶ Yarış başlıyor: <b>Parkur ${room.parkur} · ${esc(T(room.parkur).name)}</b></p></div>`;
+    if (room.kurucu !== Ag.pid) {
+      const h = room.oyuncular.find(o => o.pid === room.kurucu);
+      return `<div class="vote"><p class="vstat">👑 <b>${esc(h ? h.ad : '')}</b> sıradaki yarışı seçiyor…</p><p class="sub" style="margin:0">Bu arada mağazaya bakabilirsin. Yarış başlarken ekranda 3-2-1 çıkar.</p></div>`;
+    }
+    if (!onResult) return ''; // lobide kurucu parkur seçiciyi ve "Yarışı Başlat"ı kullanır
+    const last = room.sonParkur, nextId = Math.min(MP.TRACKS.length, last + 1);
+    const opt = (c, icon, title, id, dis) => `<button class="voteopt" data-sira="${c}" data-id="${id}" ${dis ? 'disabled' : ''}><span class="vic">${icon}</span><b>${title}</b><small>Parkur ${id} · ${esc(T(id).name)}</small></button>`;
+    return `<div class="vote"><p class="vstat">👑 Sıradaki yarışı sen seç</p><div class="vopts">${opt('ayni', '🔁', 'Aynı parkur ▶', last)}${opt('sonraki', '⏭', 'Sonraki parkur ▶', nextId, last >= MP.TRACKS.length)}</div><p class="sub" style="margin:0;font-size:13px">Başka parkur için: Lobiye Dön → Parkuru değiştir</p></div>`;
   }
-  function renderVote() {
-    const room = Ag.room, show1 = !!(state.mp && state.phase === 'result' && room && room.oylama);
-    $('resVote').innerHTML = show1 ? voteHTML(room) : ''; $('resVote').classList.toggle('hidden', !show1);
-    const show2 = !!(room && room.oylama && room.oylama.sonParkur);
-    $('mpVote').innerHTML = show2 ? voteHTML(room) : ''; $('mpVote').classList.toggle('hidden', !show2);
+  function renderNext() {
+    const room = Ag.room, onRes = !!(state.mp && state.phase === 'result' && room);
+    const h1 = onRes ? nextHTML(room, true) : '';
+    $('resVote').innerHTML = h1; $('resVote').classList.toggle('hidden', !h1);
+    const h2 = nextHTML(room, false);
+    $('mpVote').innerHTML = h2; $('mpVote').classList.toggle('hidden', !h2);
   }
-  for (const id of ['resVote', 'mpVote']) $(id).addEventListener('click', e => {
-    const b = e.target.closest('[data-oy]'); if (!b || b.disabled) return;
-    const mine = Ag.room && Ag.room.oylama && Ag.room.oylama.oylar[Ag.pid], c = b.dataset.oy;
-    Ag.send({ t: 'oy', secim: c === 'iptal' || c === mine ? null : c }); // aynı seçeneğe tekrar dokunmak da iptal eder
+  $('resVote').addEventListener('click', e => {
+    const b = e.target.closest('[data-sira]'); if (!b || b.disabled) return;
+    Ag.send({ t: 'baslat', parkur: +b.dataset.id, neden: b.dataset.sira });
   });
-  Ag.on('hata', m => { mpMsg('⚠️ ' + m.mesaj); if (state.mp && state.race) toast('⚠️ ' + m.mesaj, 'bad'); });
+  // "başlat" denince her ekranda (mağaza, menü, sonuç…) 3-2-1; ekrana dokunmayı engellemez, alışveriş sürer
+  let geriT = null, geriSon = 0, geriN = null;
+  function mpCountdown(room) {
+    const inRace = !!(state.mp && state.race && ['countdown', 'race', 'ending'].includes(state.phase));
+    const on = !!(room && room.basliyor != null && room.durum === 'lobi' && !inRace);
+    if (!on) { clearInterval(geriT); geriT = null; geriN = null; $('mpGeri').classList.add('hidden'); return; }
+    geriSon = performance.now() + room.basliyor;
+    const T = MP.TRACKS[room.parkur - 1]; $('mpGeriT').textContent = `Parkur ${T.id} · ${T.name}`;
+    if (geriT) return;
+    const tick = () => {
+      const n = Math.max(1, Math.ceil((geriSon - performance.now()) / 1000));
+      if (n === geriN) return;
+      geriN = n; const el = $('mpGeriN'); el.textContent = n; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); Ses.beep(n);
+    };
+    $('mpGeri').classList.remove('hidden'); tick(); geriT = setInterval(tick, 100);
+  }
+  // üst menüde "Çok Oyunculu" düğmesinde yeşil nokta: hâlâ odadasın
+  function navRoomDot() { const b = document.querySelector('#topnav [data-nav="mp"]'); if (b) b.classList.toggle('inroom', !!Ag.room); }
+  Ag.on('hata', m => { mpMsg('⚠️ ' + m.mesaj); if (state.mp && state.race) toast('⚠️ ' + m.mesaj, 'bad'); if (/bulunamadı/.test(m.mesaj)) rememberRoom(null); });
   Ag.on('basla', m => startNetRace(m));
   let surumSoruldu = false;
   Ag.on('surumEski', () => { if (surumSoruldu) return; surumSoruldu = true; if (confirm('Oyunun yeni sürümü var. Çok oyunculu için sayfa şimdi yenilensin mi?')) location.reload(); else mpMsg('⚠️ Oyunun eski sürümünü kullanıyorsun, sayfayı yenile.'); });
@@ -1126,10 +1154,12 @@
     $('mpRoomCode').textContent = room.kod; $('mpCopy').classList.toggle('hidden', room.hizli);
     $('mpTitle').textContent = room.hizli ? '⚡ Hızlı oyun' : '🏠 Özel oda';
     // kurucu parkuru seçer (özel oda; hızlı odada onu kuran seçtiyse); çok oyunculuda tüm parkurlar açık
-    const canPick = host && (!room.hizli || room.secildi) && room.durum === 'lobi';
+    const canPick = host && (!room.hizli || room.secildi) && room.durum === 'lobi' && room.basliyor == null;
     $('mpTrackBtn').classList.toggle('hidden', !canPick); if (!canPick) { $('mpTrackPick').classList.add('hidden'); $('mpTrackBtn').textContent = '🔄 Parkuru değiştir'; }
     const curHtml = trackLine(T); if ($('mpTrackCur').dataset.id !== String(T.id)) { $('mpTrackCur').innerHTML = curHtml; $('mpTrackCur').dataset.id = T.id; }
-    $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' ? `Oyuncular bekleniyor… ${room.bekleme} sn (eksiklere bot)` : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
+    const back = room.durum === 'yaris' && !state.race && !!(mine && mine.izleyici); // yarışı bırakmıştı
+    $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' && room.basliyor == null ? `Oyuncular bekleniyor… ${room.bekleme} sn (eksiklere bot)` : back ? '🏁 Bu odada yarış sürüyor. İstersen yarışa dönebilirsin.' : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
+    $('mpBackToRace').classList.toggle('hidden', !back);
     $('mpSlots').innerHTML = MF.MARBLES.map((info, i) => {
       const q = room.oyuncular.find(x => x.misket === i), isMe = q && q.pid === me, lk = q ? Magaza.lookFor(info, q.eq || {}) : info; // kostüm rengi
       const who = q ? `<b>${esc(q.ad)}${isMe ? ' (sen)' : ''}${q.misafir ? ' 👤' : ''}${q.pid === room.kurucu && !room.hizli ? ' 👑' : ''}</b><small>${!q.bagli ? '📴 bağlantı koptu' : q.hazir ? '✅ hazır' : '⏳ hazırlanıyor'}</small>` : `<b>🤖 Bot</b><small>${room.durum === 'lobi' ? 'seçmek için dokun' : ''}</small>`;
@@ -1137,7 +1167,7 @@
     }).join('');
     const n = room.oyuncular.length;
     $('mpReady').classList.toggle('hidden', room.hizli); $('mpReady').textContent = mine && mine.hazir ? '✅ Hazırsın' : 'Hazırım';
-    $('mpStart').classList.toggle('hidden', !host || room.hizli); $('mpStart').disabled = room.durum !== 'lobi';
+    $('mpStart').classList.toggle('hidden', !host || room.hizli); $('mpStart').disabled = room.durum !== 'lobi' || room.basliyor != null;
     $('mpStart').textContent = `Yarışı Başlat ▶ (${n} kişi + ${6 - n} bot)`;
   }
   $('mpQuick').onclick = () => { showQuickPick(false); Ag.send({ t: 'hizli', sec: true }); };
@@ -1158,6 +1188,7 @@
   $('mpLeave').onclick = () => { leaveMp(); renderMp(); };
   $('mpReady').onclick = () => { const mine = Ag.room && Ag.room.oyuncular.find(q => q.pid === Ag.pid); Ag.send({ t: 'hazir', v: !(mine && mine.hazir) }); };
   $('mpStart').onclick = () => Ag.send({ t: 'baslat' });
+  $('mpBackToRace').onclick = () => Ag.send({ t: 'yarisaDon' });
   $('mpSlots').addEventListener('click', e => { const b = e.target.closest('[data-slot]'); if (b && !b.disabled) Ag.send({ t: 'misket', no: +b.dataset.slot }); });
   $('mpCopy').onclick = () => {
     const link = `${location.origin}${location.pathname}?oda=${Ag.room.kod}`;
@@ -1168,8 +1199,10 @@
   };
   function startNetRace(m) {
     if (!state.player) return;
-    if (state.race && !state.mp && ['countdown', 'race', 'ending'].includes(state.phase)) { Ag.send({ t: 'ayril' }); return; } // tek oyunculu yarıştayken
+    if (state.race && !state.mp && ['countdown', 'race', 'ending'].includes(state.phase) && state.betActive) { state.player.points += state.betActive.amount; state.betActive = null; Kayit.persist(); } // tek oyunculu yarış bırakılır, bahis iade
+    if (state.introHold) endPowerIntro();
     if (state.phase === 'shop') leaveShop();
+    mpCountdown(null);
     state.mp = { kod: m.kod, racers: m.yarisanlar }; state.cup = null; state.betActive = null;
     state.trackId = m.parkur; ensureTrack(m.parkur); disposeRace();
     const r = state.race = Ag.startRace(state.track, m), p = state.player;
@@ -1266,7 +1299,9 @@
         const got = checkAch(p); if (got.length) setTimeout(() => alert(got.map(a => `🏅 Başarım açıldı: ${a.name} (+${a.reward} puan)`).join('\n')), 50);
       } else if (act.dataset.act === 'equip' && it) p.eq[it.cat] = id;
       else if (act.dataset.act === 'unequip') delete p.eq[S.cat];
-      Kayit.persist(); S.tryItem = null; rebuildPreview(); renderShop(); return;
+      Kayit.persist(); S.tryItem = null; rebuildPreview(); renderShop();
+      if (window.Ag && Ag.room && Ag.connected) Ag.connect(agProfile());
+      return;
     }
     const card = e.target.closest('[data-item]'); if (!card) return;
     S.tryItem = { cat: S.cat, item: card.dataset.item }; rebuildPreview(); renderShop();

@@ -32,6 +32,9 @@ Menüdeki **Çok Oyunculu** düğmesinden:
 - **Parkur seçimi:** çok oyunculuda tüm parkurlar açık; oda kurucusu önce dünyayı, sonra o dünyanın 10 parkurundan birini seçer (🎲 rastgele de var).
 - **Oda Kur:** 5 harfli oda kodu ya da **davet linki** (`…/misket-yarisi/?oda=KOD`) ile arkadaşların katılır; kurucu parkuru seçer ve başlatır.
 - En fazla 6 kişi; boş koltuklarda ve bağlantısı kopanın yerinde bot oynar, geri gelen oyuncu misketini geri alır.
+- **Odada kalırsın:** odadan yalnızca "← Odadan çık" ile çıkılır. Yarış arasında mağazaya, menüye ya da parkurlara gitmek odadan çıkarmaz (üst menüde "Çok Oyunculu"da yeşil nokta). Sayfa yenilense ya da telefon kilitlense de aynı odaya dönülür; bağlantısı kopan 10 dakika odada tutulur. Odadayken tek başına yarış başlatmak "odadan çıkılsın mı?" diye sorar.
+- **Sıradakini kurucu seçer:** yarış bitince kurucu sonuç ekranında "🔁 Aynı parkur" ya da "⏭ Sonraki parkur"a basar (başka parkur için lobide "Parkuru değiştir"). Diğerleri seçim yapmaz; beklerken mağazaya bakabilir. Kurucunun bağlantısı koparsa bağlı biri geçici olarak yönetir, kurucu dönünce yetki ona geçer.
+- **3-2-1:** yarış başlatılınca herkesin ekranında, hangi ekranda olursa olsun (mağaza dahil) 3 saniyelik geri sayım çıkar; bu sırada alışveriş sürer, sonra herkes yarışa alınır. Yarıştan çıkan odada kalır ve "🏁 Yarışa dön" ile geri girebilir.
 - Puanlar ve başarımlar normal yarış gibi profiline eklenir (kupa ve bahis tek oyunculu modda).
 
 Fizik sunucuda çalışır (`sunucu/oyun-sunucusu.js`, Node.js + ws); telefonlar sadece görüntüyü çizer.
@@ -47,6 +50,11 @@ node test/yuk-testi.js 20 90                  # yük testi (sunucunun içinde ç
 Yerelde denemek için: `PORT=8790 node sunucu/oyun-sunucusu.js` ve oyunu `index.html?sunucu=ws://127.0.0.1:8790/ws` ile aç.
 İlk kurulum: `sudo bash sunucu/kur.sh` (Ubuntu 24.04; Node 22, Caddy ile otomatik HTTPS).
 Parkur, fizik ya da mesajlar değişince önce `bash sunucu/surum-artir.sh` (oyun sürümü + dosya etiketleri artar; eski sayfayla çok oyunculuya bağlanana "sayfayı yenile" uyarısı çıkar), sonra commit + push + `guncelle.sh`.
+
+## ⚡ Hızlı açılış
+- Gökyüzü ve dokular `varliklar/doku/` klasöründe ayrı dosyalardır. Menü yalnızca küçük ışık dosyasını (`gokyuzu-isik.hdr`, 512×256) bekler; görünen gökyüzü (`gokyuzu.jpg`) ve dokular menü açıldıktan sonra arkada iner. İlk açılışta inen miktar ~8,5 MB'tan ~1,5 MB'a indi.
+- `sw.js` (service worker): ikinci açılıştan itibaren dosyalar telefondan gelir, internetsiz de açılır. Sayfa her açılışta önce internetten istenir (yeni sürüm hemen görünür); `surum-artir.sh` önbelleği de yeniler.
+- `index.html` dosyasına çift tıklayınca (file://) tarayıcı ayrı resimleri yükleyemediği için gömülü kopya `varliklar/dokular.js` kullanılır. `varliklar/doku/` içinde bir dosya değişirse: `node varliklar/dokular-uret.js`.
 
 ## Bilgisayarda kalıcı kayıtla oynamak
 - **Mac:** klasördeki **Misket Yarışı** uygulamasına çift tıkla (ilk seferde sağ tık → Aç). Kayıtlar `kayit/kayit.json` dosyasına yazılır.

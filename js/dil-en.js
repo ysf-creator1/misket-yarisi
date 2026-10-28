@@ -118,10 +118,14 @@ window.DIL_EN = {
   '🎲 Bahsi kazandın! +{0#} puan': '🎲 You won the bet! +{0} pts', '🎲 Bahsi kaybettin (−{0#} puan)': '🎲 You lost the bet (−{0} pts)', '{0} {1} şampiyonu oldun! +{2#} puan': '{0} You are the {1} champion! +{2} pts',
   '{0} Kupayı {1#}. bitirdin': '{0} You finished the cup #{1}', '⭐ Seviye atladın: {0#}. seviye!': '⭐ Level up: level {0}!', '🌍 Yeni dünya açıldı: {0}!': '🌍 New world unlocked: {0}!', '🔓 Yeni parkur açıldı: {0}': '🔓 New track unlocked: {0}',
   '🏅 Başarım: {0} (+{1#})': '🏅 Achievement: {0} (+{1})', '🏅 Başarım açıldı: {0} (+{1#} puan)': '🏅 Achievement unlocked: {0} (+{1} pts)', 'bilinmiyor': 'unknown', 'bitiremedi': 'DNF',
-  // oylama
-  'Aynı parkur': 'Same track', 'Sonraki parkur': 'Next track', 'Parkur {0#} · {1}': 'Track {0} · {1}', 'henüz seçen yok': 'no votes yet', '▶ bu başlayacak': '▶ starting this',
-  'sonra:': 'from now:', '. Değiştirmek için diğerine dokun.': '. Tap the other one to change.', 'Diğerleri bekleniyor…': 'Waiting for others…', 'Diğerleri bekleniyor… (en geç {0#} sn)': 'Waiting for others… (max {0} s)',
-  'Sıradaki yarışı seç:': 'Choose the next race:', '✖ Seçimimi iptal et': '✖ Cancel my vote',
+  // çok oyunculu: sıradaki yarışı kurucu seçer
+  'Aynı parkur': 'Same track', 'Sonraki parkur': 'Next track', 'Parkur {0#} · {1}': 'Track {0} · {1}',
+  'Aynı parkur ▶': 'Same track ▶', 'Sonraki parkur ▶': 'Next track ▶', 'Sıradaki yarışı sen seç': 'You choose the next race',
+  'Başka parkur için: Lobiye Dön → Parkuru değiştir': 'For another track: Back to lobby → Change track',
+  'sıradaki yarışı seçiyor…': 'is choosing the next race…', 'Yarış başlıyor:': 'Race starting:', 'Yarış başlıyor': 'Race starting',
+  'Bu arada mağazaya bakabilirsin. Yarış başlarken ekranda 3-2-1 çıkar.': 'Meanwhile you can visit the shop. A 3-2-1 countdown appears when the race starts.',
+  'Çok oyunculu odadasın ({0}). Tek başına yarışmak için odadan çıkılsın mı?': 'You are in a multiplayer room ({0}). Leave the room to race alone?',
+  'Yarışa dön': 'Back to the race', '🏁 Bu odada yarış sürüyor. İstersen yarışa dönebilirsin.': '🏁 A race is running in this room. You can go back to it.',
   // ===== çok oyunculu =====
   'Hızlı Oyun': 'Quick Play', 'Bekleyenlerle eşleş': 'Match with waiting players', 'Bekleyenlerle eşleş, oda yoksa parkuru sen seç': 'Match with waiting players, or pick the track if no room is open',
   'Açık hızlı oda yok: parkuru sen seç': 'No quick room open: you pick the track', 'Seçtiğin parkurla hızlı oda kurulur; gelenler katılır, 20 sn sonra eksiklere bot girer.': 'A quick room opens on your track; others join, and after 20 s bots fill the empty seats.',
