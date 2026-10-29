@@ -24,7 +24,8 @@
   ];
   MG.byId = Object.fromEntries(MG.POWERS.map(p => [p.id, p]));
   // lidere yetişme ayarları: lastik (lidere uzak kalan hafifçe itilir), rüzgâr tüneli (öndekinin arkasında çekilme), kaçan lider eşiği
-  MG.DENGE = { lastikBas: 10, lastikK: 0.09, lastikMax: 2.4, tunelMax: 6, tunelA: 1.8, kacan: 10, liderFren: 0.1 };
+  // (tünel ve lastik hafif tutulur: güçlüyse kartla kazanılan mesafeyi geri alıp kartları etkisiz bırakıyordu)
+  MG.DENGE = { lastikBas: 16, lastikK: 0.09, lastikMax: 2.4, tunelMax: 6, tunelA: 0.6, kacan: 10, liderFren: 0.1 };
   MG.FLY = { bomba: 0.7, balcik: 0.62, ruzgar: 0.5 }; // uçuş süresi (sn): atan misketten hedefe
   // Biriktir modu: çanta 5 kart; iki kullanım arası 1,5 sn; Yer Değiştir parkurun son %10'unda kullanılamaz (bitişte lideri çizgide geçmek olmasın)
   MG.BAG = { size: 5, cd: 1.5, takasSon: 0.9 };
@@ -111,6 +112,7 @@
       const t = this.race.t; let filter;
       if (m.fx.ghost > t) filter = 0x0001;
       else { filter = 0xFFFF; for (const id in m.ignore) { if (m.ignore[id] > t) filter &= ~this.race.marbles[id].bit; else delete m.ignore[id]; } }
+      if (m.fx.jumpThru > t) filter &= ~MG.OBST_BIT; // engelin dibinden zıplarken yükselme anı
       const g = grp(m.bit, filter);
       if (g !== m._grp) { m.col.setCollisionGroups(g); m._grp = g; }
     }
@@ -303,8 +305,14 @@
           const z = m.inZone || r.track.zones.find(q => q.s0 > m.s - 1 && q.s0 - m.s < 18);
           if (z) { const room = m.inZone ? 0 : z.s0 - m.s - 1.5; vy = 7; fwd = Math.max(along, Math.min(fwd, room / 0.7)); } // hiçbir zaman yavaşlatmaz
           let blocked = false;
-          if (!z) try { const q = m.body.translation(); blocked = !!r.world.castRay(new r.R.Ray({ x: q.x, y: q.y, z: q.z }, { x: T[0], y: T[1], z: T[2] }), 1.9, true, undefined, undefined, m.col, m.body); } catch (e) { }
-          if (blocked) { m.body.setLinvel({ x: T[0] / h * 0.6, y: 11.5, z: T[2] / h * 0.6 }, true); fx.jumpFwdAt = t + 0.26; fx.jumpFwd = fwd; } // dibindeki engel: önce yukarı
+          if (!z) try {
+            const q = m.body.translation(), o = { x: q.x, y: q.y, z: q.z }, dir = { x: T[0], y: T[1], z: T[2] };
+            blocked = !!r.world.castRay(new r.R.Ray(o, dir), 1.9, true, undefined, undefined, m.col, m.body)
+              // misket genişliğinde süpür: tam önde değil de yanda kalan direk/kazık/duvar da görülsün
+              || !!r.world.castShape(o, { x: 0, y: 0, z: 0, w: 1 }, dir, new r.R.Ball(r.P.r * 0.9), 0, 2.2, true, undefined, grp(0xFFFF, MG.OBST_BIT | WALL_BIT), m.col, m.body);
+          } catch (e) { }
+          // dibindeki engel: önce yukarı (yükselirken direk ve kazıklara takılmaz), sonra ileri
+          if (blocked) { m.body.setLinvel({ x: T[0] / h * 0.6, y: 11.5, z: T[2] / h * 0.6 }, true); fx.jumpFwdAt = t + 0.26; fx.jumpFwd = fwd; fx.jumpThru = t + 0.3; this._groups(m); }
           else m.body.setLinvel({ x: T[0] / h * fwd, y: vy, z: T[2] / h * fwd }, true);
           fx.jumpAt = t; fx.safe = t + 2.5;
         }
@@ -312,7 +320,7 @@
         else if (pid === 'demir') { fx.iron = t + 6; fx.safe = t + 6; m.body.setAdditionalMass(mass * 3, true); m._iron = true; }
         else if (pid === 'hayalet') { fx.ghost = t + 4; fx.safe = t + 4; m._ghost = true; this._groups(m); }
         else if (pid === 'miknatis') { fx.magnet = t + 5; fx.safe = t + 5.5; }
-        else if (pid === 'isinlan') { const from = m.body.translation(); ev.from = [from.x, from.y, from.z]; this._teleport(m, 9); const to = m.body.translation(); ev.to = [to.x, to.y, to.z]; }
+        else if (pid === 'isinlan') { const from = m.body.translation(); ev.from = [from.x, from.y, from.z]; this._teleport(m, 6.5); const to = m.body.translation(); ev.to = [to.x, to.y, to.z]; }
       } else if (pid === 'takas') {
         const tg = this._swapTarget(m);
         if (!tg) ev.none = true;
@@ -394,7 +402,7 @@
         if (o.fx.shield > t || o.fx.ghost > t) { ev.blockedIds.push(o.id); continue; }
         const hl = Math.hypot(dx, dz), ox = hl > 0.2 ? dx / hl : 0, oz = hl > 0.2 ? dz / hl : 0, k = 1 - d / 4.5, om = o.body.mass();
         o.body.applyImpulse({ x: (ox * 3.5 - T[0] * 6) * k * om, y: 5 * k * om, z: (oz * 3.5 - T[2] * 6) * k * om }, true);
-        o.fx.stun = t + 1;
+        o.fx.stun = t + 1.5;
         ev.targets.push(o.id);
         this._ignore(m, o, t + 3);
       }
@@ -491,7 +499,7 @@
       }
       // mıknatıs: öndeki en yakın rakibe doğru çekilir (yaklaştıkça içinden geçer); önünde kimse yoksa hafif itiş
       if (fx.magnet > t && T && sp < 13) {
-        const o = this._pullTarget(m), gap = o ? o.s - m.s : 0, a = (o ? 6 + Math.min(4, gap * 0.15) : 2.5) * mass * dt;
+        const o = this._pullTarget(m), gap = o ? o.s - m.s : 0, a = (o ? 4 + Math.min(3, gap * 0.12) : 2) * mass * dt;
         m.body.applyImpulse({ x: T[0] * a, y: Math.min(0, T[1]) * a, z: T[2] * a }, true);
         if (o && gap < 3) this._ignore(m, o, t + 0.4);
       }
@@ -527,13 +535,17 @@
         if (fx.small > t) damp += 1.8;
         if (fx.stun > t) damp += 5.5; // sersem
       }
-      if (fx.ghost > t) damp += 1.3; // hayalet engellerden geçtiği için çok güçlü: biraz yavaş
       fx.inSlime = false;
-      if (!(fx.shield > t) && !(fx.ghost > t)) for (const s of this.slimes) {
+      const jumping = t - (fx.jumpAt || -9) < 0.4; // zıplamanın ilk anı: balçık misketi yerde tutmasın
+      if (!(fx.shield > t) && !(fx.ghost > t) && !jumping) for (const s of this.slimes) {
         if (s.owner === m.id) continue; // kendi balçığı işlemez
-        if (m.s >= s.s0 && m.s <= s.s1) { const p = m.body.translation(); if (Math.hypot(p.x - s.p[0], p.y - s.p[1], p.z - s.p[2]) < s.r + 0.8) { damp += 5; fx.inSlime = true; } }
+        if (m.s >= s.s0 && m.s <= s.s1) {
+          const p = m.body.translation(), dx = p.x - s.p[0], dy = p.y - s.p[1], dz = p.z - s.p[2];
+          const up = s.U ? dx * s.U[0] + dy * s.U[1] + dz * s.U[2] : 0; // balçık yüzeyinden yükseklik: havadaki misketi yavaşlatmaz
+          if (up < 0.35 && Math.hypot(dx, dy, dz) < s.r + 0.8) { damp += 5; fx.inSlime = true; }
+        }
       }
-      const push = fx.iron > t ? 3.5 : 0;
+      const push = fx.iron > t ? 3.5 : fx.ghost > t ? 2 : 0; // hayalet de hafifçe ileri süzülür
       if (push && T && sp < 11) m.body.applyImpulse({ x: T[0] * push * mass * dt, y: Math.min(0, T[1]) * push * mass * dt, z: T[2] * push * mass * dt }, true);
       if (damp > 0 && sp > 0.4) { const k = Math.min(0.9, damp * dt); m.body.applyImpulse({ x: -v.x * k * mass, y: -v.y * k * mass * 0.3, z: -v.z * k * mass }, true); }
     }

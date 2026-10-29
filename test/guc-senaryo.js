@@ -114,7 +114,7 @@ RAPIER.init().then(() => {
     ok('Bomba önce atan misketten hedefe uçuyor', !!atis && atis.sure > 0.3 && atis.targets.length === 1, atis ? `${atis.sure} sn` : 'atış yok');
     run(race, 0.2);
     ok('Bomba birden fazla misketi etkiliyor', ev.targets.length >= 2, `${ev.targets.length} misket`);
-    ok('Bomba hedefleri 1 sn sersemletiyor', [b, c, d].filter(m => ev.targets.includes(m.id)).every(m => m.fx.stun > 0), '');
+    ok('Bomba hedefleri 1,5 sn sersemletiyor', [b, c, d].filter(m => ev.targets.includes(m.id)).every(m => m.fx.stun > 0), '');
     race.dispose();
   }
   // 4) kalkan: yavaşlatma ve rüzgâr işlemez; duvar durdurur

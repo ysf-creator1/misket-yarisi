@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>
   // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
-  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=23" as="fetch" crossorigin="anonymous">');
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=24" as="fetch" crossorigin="anonymous">');
 </script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
@@ -161,18 +161,17 @@
   #cardTime{height:5px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
   #cardTime i{display:block;height:100%;background:var(--accent)}
   #cardsHead{font-weight:900;font-size:13px;text-align:center;color:#ffe199;text-shadow:0 1px 6px #000}
-  /* kart modu seçici: sağa sola kaydır */
-  .modsw{display:flex;align-items:center;gap:8px;margin:12px 0;padding:6px;border-radius:16px;background:var(--panel2);border:1px solid var(--line);touch-action:pan-y;user-select:none;-webkit-user-select:none;overflow:hidden}
-  .modsw .ma{flex:none;width:40px;height:40px;padding:0;border-radius:12px;font-size:24px;font-weight:900;line-height:1}
-  .modsw .mb{flex:1;min-width:0;text-align:center;cursor:pointer}
-  .modsw .mb b{display:block;font-size:16px}
-  .modsw .mb small{display:block;font-size:12.5px;color:var(--muted);font-weight:700;line-height:1.3}
-  .modsw .md{display:flex;gap:5px;justify-content:center;margin-top:5px}
-  .modsw .md i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25)} .modsw .md i.on{background:var(--accent)}
-  .modsw .mb.slr{animation:mslr .22s ease-out} .modsw .mb.sll{animation:msll .22s ease-out}
-  @keyframes mslr{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
-  @keyframes msll{from{transform:translateX(-40px);opacity:0}to{transform:none;opacity:1}}
-  .modsw.locked .ma{visibility:hidden} .modsw.locked .mb{cursor:default}
+  /* kart modu seçici: solda Klasik, sağda Biriktir, ortada iPhone tarzı kayar anahtar */
+  .modsw{margin:12px 0;padding:10px 12px 9px;border-radius:16px;background:var(--panel2);border:1px solid var(--line);touch-action:pan-y;user-select:none;-webkit-user-select:none;text-align:center}
+  .modsw .mr{display:flex;align-items:center;justify-content:center;gap:14px}
+  .modsw .ml{flex:1;min-width:0;font-size:16px;font-weight:900;color:rgba(255,255,255,.32);cursor:pointer;transition:color .25s,opacity .25s,filter .25s}
+  .modsw .ml.l{text-align:right} .modsw .ml.r{text-align:left}
+  .modsw .ml:not(.on){filter:grayscale(1);opacity:.75} .modsw .ml.on{color:var(--text)}
+  .modsw .tg{flex:none;position:relative;width:54px;height:32px;padding:0;border:none;border-radius:16px;background:rgba(120,120,128,.45);cursor:pointer;transition:background .25s}
+  .modsw .tg::after{content:'';position:absolute;top:2px;left:2px;width:28px;height:28px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25),0 1px 1px rgba(0,0,0,.16);transition:transform .25s cubic-bezier(.3,1.4,.6,1)}
+  .modsw.right .tg{background:#34c759} .modsw.right .tg::after{transform:translateX(22px)}
+  .modsw small{display:block;margin-top:7px;font-size:12.5px;color:var(--muted);font-weight:700;line-height:1.3}
+  .modsw.locked{opacity:.75} .modsw.locked .ml,.modsw.locked .tg{cursor:default}
   /* biriktir modu: alttaki çanta */
   #bag{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto;width:min(560px,64vw)}
   .bslot{position:relative;flex:1;min-width:0;height:66px;padding:4px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:rgba(12,19,40,.88);border:2px solid var(--line);transition:opacity .15s}
@@ -711,31 +710,31 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=23"></script>
-<script src="js/dil-en.js?v=23"></script>
-<script src="js/dil.js?v=23"></script>
+<script src="js/surum.js?v=24"></script>
+<script src="js/dil-en.js?v=24"></script>
+<script src="js/dil.js?v=24"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=23"></script>
-<script src="varliklar/qrcode.js?v=23"></script>
-<script src="three.min.js?v=23"></script>
-<script src="varliklar/RGBELoader.js?v=23"></script>
+<script src="js/isim.js?v=24"></script>
+<script src="varliklar/qrcode.js?v=24"></script>
+<script src="three.min.js?v=24"></script>
+<script src="varliklar/RGBELoader.js?v=24"></script>
 <script>
   // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
-  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=23"><\/script>');
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=24"><\/script>');
 </script>
-<script src="rapier.js?v=23"></script>
-<script src="js/parcalar.js?v=23"></script>
-<script src="js/parkurlar.js?v=23"></script>
-<script src="js/dunyalar.js?v=23"></script>
-<script src="js/fizik.js?v=23"></script>
-<script src="js/guclar.js?v=23"></script>
-<script src="js/kayit-sistemi.js?v=23"></script>
-<script src="js/magaza.js?v=23"></script>
-<script src="js/ses.js?v=23"></script>
-<script src="js/cevre.js?v=23"></script>
-<script src="js/grafik.js?v=23"></script>
-<script src="js/ag.js?v=23"></script>
-<script src="js/oyun.js?v=23"></script>
+<script src="rapier.js?v=24"></script>
+<script src="js/parcalar.js?v=24"></script>
+<script src="js/parkurlar.js?v=24"></script>
+<script src="js/dunyalar.js?v=24"></script>
+<script src="js/fizik.js?v=24"></script>
+<script src="js/guclar.js?v=24"></script>
+<script src="js/kayit-sistemi.js?v=24"></script>
+<script src="js/magaza.js?v=24"></script>
+<script src="js/ses.js?v=24"></script>
+<script src="js/cevre.js?v=24"></script>
+<script src="js/grafik.js?v=24"></script>
+<script src="js/ag.js?v=24"></script>
+<script src="js/oyun.js?v=24"></script>
 <script>
   // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
   if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

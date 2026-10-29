@@ -284,3 +284,16 @@ Denge ölçümü: `node test/guc-testi.js 1 40` (oyuncu her turda aynı gücü s
 - Sunucu: `{t:'mod', m}` (kurucu), `{t:'hizli', mod}`, `{t:'kullan', i}`; oda bilgisinde `mod`, `basla`da `mod`, sahibine `{t:'canta', cards, cd}`.
 - Sürüm 23 (web ve sunucu birlikte).
 - Testler: `node test/biriktir-testi.js` 14/14; çok oyunculu 57/57 (13 yeni); güç senaryo 17/17; Chrome'da bilgisayar + telefon boyutu ve yerel sunucuyla çok oyunculu oda.
+
+## 23. Güncelleme: iPhone tarzı mod anahtarı, kart dengesi, zıplama düzeltmesi
+### Prompt
+> Mod geçişi iPhone tarzı bir anahtar olsun: solda Klasik, sağda Biriktir, pasif olan gri. Her kart kullanılınca az da olsa olumlu etki versin. Mıknatıs ve Işınlanma çok güçlü, diğerleriyle dengelensin. Zıplama silindir engellerin yanında ve balçığın içinden kısa kalıyor.
+
+### Yapılanlar ve ölçümler
+- Mod anahtarı (`.modsw`, `modeSwitch`): [⚡ Klasik] [anahtar] [🎒 Biriktir], altında seçili modun açıklaması; anahtara, mod adına dokunma ya da kaydırma. Çok oyunculuda kurucu olmayanlar için kilitli.
+- `MG.DENGE`: tunelA 1,8 → 0,6, lastikBas 10 → 16 (lidere yetişme kartın kazancını siliyordu).
+- Hayalet: 1,3 yavaşlatma kaldırıldı, küçük ileri itiş (2). Işınlanma 9 → 6,5 m. Mıknatıs 6+min(4, fark·0,15) → 4+min(3, fark·0,12); önde kimse yoksa 2,5 → 2. Bomba sersemletme 1 → 1,5 sn.
+- Zıplama: ışına ek top şeklinde engel taraması (r 0,45, 2,2 m); engel varsa önce yukarı, 0,3 sn engelin içinden geçebilir (`jumpThru`). Balçık zıplarken ve havadayken yavaşlatmıyor.
+- Zıplama ölçümü: balçıktan zıplama 2,8 → 13,6 m (kurtulma 3/12 → 12/12); tampon dibinde 5 m altı 10/30 → 0/30, kazık dibinde 5/30 → 0/30.
+- Kart başına sıra kazancı (150×6 parkur, ±0,37): tümü artıda, ortalama 0,33 → 0,41; Bomba 0,07 → 0,15.
+- Testler: güç senaryo 17/17, biriktir 14/14, çok oyunculu 57/57.

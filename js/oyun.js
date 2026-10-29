@@ -987,25 +987,34 @@
     state.trackId = tracks[0]; showPick();
   });
 
-  // ---- kart modu seçici: sağa/sola kaydır ya da dokun (iki mod: Klasik, Biriktir); varsayılan Klasik ----
+  // ---- kart modu seçici: solda Klasik, sağda Biriktir; ortadaki anahtar (iPhone tarzı) hangi taraftaysa o mod açık ----
+  // anahtara ya da mod adına dokun, ya da sağa/sola kaydır; varsayılan Klasik
   const MODES = {
     klasik: { icon: '⚡', name: 'Klasik', desc: 'Gelen karttan birini seç, hemen etki eder' },
     biriktir: { icon: '🎒', name: 'Biriktir', desc: 'Kartları biriktir (en fazla 5), istediğin an kullan' },
   };
   function modeSwitch(el, onChange) {
-    let cur = 'klasik', locked = false, x0 = null, swiped = false;
-    function render(dir) {
-      const M = MODES[cur];
-      el.innerHTML = `<button class="ma" data-d="-1" aria-label="Önceki mod">‹</button><div class="mb${dir ? ' sl' + (dir > 0 ? 'r' : 'l') : ''}"><b>${M.icon} ${M.name}</b><small>${M.desc}</small><span class="md">${MG.MODES.map(m => `<i class="${m === cur ? 'on' : ''}"></i>`).join('')}</span></div><button class="ma" data-d="1" aria-label="Sonraki mod">›</button>`;
-      el.classList.toggle('locked', locked);
+    const [L, R] = MG.MODES; // L: Klasik (sol), R: Biriktir (sağ)
+    let cur = L, locked = false, x0 = null, swiped = false;
+    el.innerHTML = `<div class="mr"><span class="ml l" data-m="${L}">${MODES[L].icon} ${MODES[L].name}</span><button class="tg" role="switch" aria-label="Kart modu"></button><span class="ml r" data-m="${R}">${MODES[R].icon} ${MODES[R].name}</span></div><small></small>`;
+    const tg = el.querySelector('.tg'), desc = el.querySelector('small');
+    function render() {
+      el.classList.toggle('right', cur === R); el.classList.toggle('locked', locked);
+      el.querySelector('.ml.l').classList.toggle('on', cur === L); el.querySelector('.ml.r').classList.toggle('on', cur === R);
+      tg.setAttribute('aria-checked', cur === R); tg.disabled = locked;
+      desc.textContent = MODES[cur].desc;
     }
-    function step(d) { if (locked) return; const L = MG.MODES, i = L.indexOf(cur); cur = L[(i + d + L.length) % L.length]; render(d); onChange(cur); }
+    function choose(m) { if (locked || m === cur) return; cur = m; render(); onChange(cur); }
     el.addEventListener('pointerdown', e => { x0 = e.clientX; swiped = false; });
-    el.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 30) { swiped = true; step(dx < 0 ? 1 : -1); } });
+    el.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 30) { swiped = true; choose(dx > 0 ? R : L); } });
     el.addEventListener('pointercancel', () => { x0 = null; });
-    el.addEventListener('click', e => { if (swiped) { swiped = false; return; } const b = e.target.closest('[data-d]'); step(b ? +b.dataset.d : 1); });
+    el.addEventListener('click', e => {
+      if (swiped) { swiped = false; return; }
+      const lab = e.target.closest('[data-m]');
+      if (lab) choose(lab.dataset.m); else if (e.target.closest('.tg')) choose(cur === L ? R : L);
+    });
     render();
-    return { set(m, lock) { const n = MODES[m] ? m : 'klasik', l = !!lock; if (n === cur && l === locked && el.firstChild) return; cur = n; locked = l; render(); }, get: () => cur };
+    return { set(m, lock) { cur = MODES[m] ? m : L; locked = !!lock; render(); }, get: () => cur };
   }
   const pickMode = modeSwitch($('pickMode'), m => { state.mode = m; });
 
