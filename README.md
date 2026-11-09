@@ -25,6 +25,7 @@ Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam
 ## 📊 Kullanım raporu
 Sunucu oyun olaylarını (açılış, tek/çok oyunculu yarış, oda, bağlantı, hesap açma/giriş) `/opt/misket/veri/olaylar/` altına günlük dosyalara yazar (400 gün).
 Tam IP saklanmaz (yalnız ağ kısmı → yaklaşık şehir/ülke, DB-IP Lite). Rapor: `bash sunucu/rapor.sh 7` (ya da `30`, `bugun`, `dun`, `tumu`, `2026-10-20..2026-10-25`).
+**Canlı rapor sayfası:** `https://misket-yarisi.swedencentral.cloudapp.azure.com/api/rapor#k=ANAHTAR` — her açılışta kayıtları o an okur (dönem seçimi, saatler, oyuncular, konum, grafikler). Anahtar sunucuda `/opt/misket/veri/rapor-anahtar.txt` (ilk açılışta oluşur; görmek için `ssh … sudo cat` ile oku, silinirse yenisi üretilir). Sayfa `sunucu/rapor.html`, veri `sunucu/panel.js`.
 
 ## 👥 Çok oyunculu
 Menüdeki **Çok Oyunculu** düğmesinden:

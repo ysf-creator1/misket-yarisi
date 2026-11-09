@@ -198,5 +198,8 @@ async function report(arg) {
   console.log(out.join('\n'));
 }
 
-if (process.argv[2] === 'gecmis') backfill();
-else report(process.argv[2]).catch(e => { console.error('Rapor hatası:', e.message); process.exit(1); });
+module.exports = { readAll, geoReader };
+if (require.main === module) {
+  if (process.argv[2] === 'gecmis') backfill();
+  else report(process.argv[2]).catch(e => { console.error('Rapor hatası:', e.message); process.exit(1); });
+}

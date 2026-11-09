@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Misket Kullanım Raporu</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10); --wash: rgba(11,11,11,0.05);
+  --s1: #2a78d6; --s2: #eb6834; --accent: #2a78d6; --good: #006300; --bad: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.06);
+    --s1: #3987e5; --s2: #d95926; --accent: #3987e5; --good: #0ca30c; --bad: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.06);
+  --s1: #3987e5; --s2: #d95926; --accent: #3987e5; --good: #0ca30c; --bad: #e66767;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.sub { color: var(--ink-2); font-size: 13px; margin: 4px 0 0; }
+.muted { color: var(--muted); }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+.seg button { border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--wash); color: var(--ink); font-weight: 600; }
+.chk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.btn { border: 1px solid var(--border); background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 8px; cursor: pointer; }
+.btn:hover, .seg button:hover { background: var(--wash); }
+.grid { display: grid; gap: 12px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.tiles { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
+.card > .sub:first-of-type { margin-bottom: 12px; }
+.tile .lbl { font-size: 12px; color: var(--ink-2); }
+.tile .val { font-size: 26px; font-weight: 600; margin: 2px 0; }
+.tile .note { font-size: 12px; color: var(--muted); }
+.delta { font-size: 12px; color: var(--ink-2); }
+.delta .up { color: var(--good); } .delta .dn { color: var(--bad); }
+section { margin-top: 12px; }
+.insights { margin: 0; padding-left: 18px; }
+.insights li { margin: 4px 0; }
+/* sütun grafiği */
+.cc { display: grid; grid-template-columns: 34px 1fr; }
+.cc-y { position: relative; }
+.cc-y span { position: absolute; right: 6px; transform: translateY(50%); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cc-plot { position: relative; border-bottom: 1px solid var(--axis); }
+.cc-plot .gl { position: absolute; left: 0; right: 0; height: 1px; background: var(--grid); }
+.cc-cols { position: absolute; inset: 0; display: flex; align-items: stretch; }
+.cc-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: default; min-width: 0; }
+.cc-col:hover, .cc-col.on { background: var(--wash); }
+.cc-col i { display: block; width: min(24px, 72%); }
+.cc-col i + i { margin-top: 2px; }
+.cc-col i:first-child { border-radius: 4px 4px 0 0; }
+.cc-x { grid-column: 2; display: flex; height: 18px; }
+.cc-x span { flex: 1; min-width: 0; text-align: center; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: visible; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); margin: -4px 0 10px; flex-wrap: wrap; }
+.legend b { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+/* yatay çubuk */
+.hb { display: grid; grid-template-columns: minmax(80px, max-content) 1fr auto; gap: 6px 10px; align-items: center; font-size: 13px; }
+.hb .l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; color: var(--ink); }
+.hb .t { height: 12px; }
+.hb .t i { display: block; height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; min-width: 2px; }
+.hb .v { color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
+.hb .row { display: contents; }
+.hb .row:hover > * { background: var(--wash); }
+/* tablolar */
+.tw { overflow-x: auto; margin: 0 -4px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { font-weight: 600; color: var(--ink-2); font-size: 12px; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr.guest td:first-child { color: var(--ink-2); }
+details { margin-top: 10px; }
+summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
+#tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); display: none; max-width: 260px; }
+#tip b { font-weight: 600; }
+#tip .k { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+.empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+.keybox { max-width: 420px; margin: 15vh auto 0; }
+.keybox input { width: 100%; font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--page); color: var(--ink); margin: 10px 0; }
+.foot { margin-top: 20px; font-size: 12px; color: var(--muted); }
+.foot li { margin: 2px 0; }
+@media (max-width: 520px) { .tile .val { font-size: 22px; } h1 { font-size: 19px; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><p class="muted">Yükleniyor…</p></div>
+<div id="tip" role="tooltip"></div>
+<script>
+'use strict';
+const TZ = 'Europe/Istanbul';
+const fDay = new Intl.DateTimeFormat('sv-SE', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+const fHour = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hour12: false });
+const fDT = new Intl.DateTimeFormat('tr-TR', { timeZone: TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const fDayShort = new Intl.DateTimeFormat('tr-TR', { timeZone: 'UTC', day: 'numeric', month: 'short' });
+const fDayLong = new Intl.DateTimeFormat('tr-TR', { timeZone: 'UTC', day: 'numeric', month: 'long', weekday: 'short' });
+const HG = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const BANDS = [['Sabah', '06–12', h => h >= 6 && h < 12], ['Öğle', '12–17', h => h >= 12 && h < 17], ['Akşam', '17–22', h => h >= 17 && h < 22], ['Gece', '22–02', h => h >= 22 || h < 2], ['Geç gece', '02–06', h => h >= 2 && h < 6]];
+const ACT = new Set(['acilis', 'tek_yaris', 'baglan', 'cok_basla']);
+const KAYNAK = { web: 'internet sitesi', anaekran: 'ana ekran', mac: 'Mac uygulaması', dosya: 'dosyadan' };
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = n => Math.round(n).toLocaleString('tr-TR');
+const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '–';
+const sure = s => s >= 3600 ? (s / 3600).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' sa' : s >= 60 ? Math.round(s / 60) + ' dk' : s > 0 ? Math.round(s) + ' sn' : '–';
+const dayMs = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+const dayAdd = (s, n) => new Date(dayMs(s) + n * 864e5).toISOString().slice(0, 10);
+const daysBetween = (a, b) => Math.round((dayMs(b) - dayMs(a)) / 864e5);
+const short = s => fDayShort.format(dayMs(s));
+const bandOf = h => BANDS.find(b => b[2](h));
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }, del(k) { try { localStorage.removeItem(k); } catch (e) { } } };
+
+let RAW = null, M = null;
+const state = { donem: store.get('misket.donem') || '30', testGizle: store.get('misket.test') !== '0', metrik: 'etkinlik', hepsi: false };
+
+// ---------- anahtar ----------
+function getKey() {
+  const m = /(?:^|[#&])k=([^&]+)/.exec(location.hash);
+  if (m) { store.set('misket.anahtar', decodeURIComponent(m[1])); history.replaceState(null, '', location.pathname); }
+  return store.get('misket.anahtar') || window.__key || '';
+}
+function askKey(msg) {
+  document.getElementById('app').innerHTML = `<div class="card keybox"><h1>Kullanım raporu</h1>
+    <p class="sub">${esc(msg || 'Raporu görmek için anahtarı gir.')}</p>
+    <form id="kf"><input id="ki" type="password" autocomplete="off" placeholder="Rapor anahtarı" aria-label="Rapor anahtarı"><button class="btn" type="submit">Aç</button></form></div>`;
+  document.getElementById('kf').onsubmit = ev => { ev.preventDefault(); const k = document.getElementById('ki').value.trim(); if (!k) return; window.__key = k; store.set('misket.anahtar', k); load(); };
+}
+async function load() {
+  const key = getKey();
+  if (!key) return askKey();
+  try {
+    const r = await fetch(location.pathname.replace(/\/?$/, '/') + 'veri', { headers: { 'X-Anahtar': key }, cache: 'no-store' });
+    if (r.status === 401) { store.del('misket.anahtar'); window.__key = ''; return askKey('Anahtar yanlış, tekrar dene.'); }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    RAW = await r.json();
+    prepare();
+    render();
+  } catch (e) {
+    document.getElementById('app').innerHTML = `<div class="card"><h2>Veri alınamadı</h2><p class="sub">${esc(e.message)}</p><button class="btn" onclick="load()">Tekrar dene</button></div>`;
+  }
+}
+
+// ---------- hazırlık (tüm zamanlar) ----------
+function prepare() {
+  const E = RAW.olaylar;
+  for (const e of E) {
+    const t = new Date(e.z); e.gun = fDay.format(t); e.saat = +fHour.format(t) % 24;
+    e.hg = (new Date(dayMs(e.gun)).getUTCDay() + 6) % 7; e.k = e.cihaz || e.c || null;
+  }
+  E.sort((a, b) => a.z < b.z ? -1 : 1);
+  const names = new Map(), src = new Map(), connName = new Map(), first = new Map();
+  for (const e of E) {
+    if (e.tur === 'acilis' && e.cihaz) {
+      if (!src.has(e.cihaz)) src.set(e.cihaz, new Set()); src.get(e.cihaz).add(e.kaynak || 'web');
+      if (e.ad) { const m = names.get(e.cihaz) || new Map(); m.set(e.ad, (m.get(e.ad) || 0) + 1); names.set(e.cihaz, m); }
+    }
+    if (e.tur === 'merhaba' && e.c && e.ad) connName.set(e.c, e.ad);
+    if (e.k && ACT.has(e.tur) && !first.has(e.k)) first.set(e.k, e.gun);
+  }
+  const test = new Set();
+  for (const [k, s] of src) if ([...s].every(x => x === 'mac' || x === 'dosya')) test.add(k);
+  for (const [c, n] of connName) if (/^(surum)?test$/i.test(n)) test.add(c);
+  const label = k => {
+    const m = names.get(k); if (m) return [...m.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]).join(' / ');
+    return connName.get(k) || null;
+  };
+  const lastCok = [...E].reverse().find(e => e.tur === 'cok_basla');
+  M = { E, test, label, first, lastCok, firstDay: E.length ? E[0].gun : fDay.format(new Date()), backfill: backfillDays(E) };
+}
+
+// sunucu günlüğünden sonradan eklenen günler: açılış kaydı yok
+function backfillDays(E) {
+  const geri = new Set(E.filter(e => e.geri === true && ['oda', 'cok_basla', 'cok_bitti', 'hesap'].includes(e.tur)).map(e => e.gun));
+  const acilis = new Set(E.filter(e => e.tur === 'acilis').map(e => e.gun));
+  return new Set([...geri].filter(d => !acilis.has(d)));
+}
+function range(d) {
+  const today = fDay.format(new Date());
+  if (d === 'bugun') return [today, today, 'Bugün'];
+  if (d === 'tumu') return [M.firstDay, today, 'Tüm zamanlar'];
+  const n = +d, a = dayAdd(today, -(n - 1)); return [a < M.firstDay ? M.firstDay : a, today, `Son ${n} gün`];
+}
+const pick = (a, b) => M.E.filter(e => e.gun >= a && e.gun <= b && !(state.testGizle && e.k && M.test.has(e.k)));
+
+// ---------- hesaplar ----------
+function stats(E) {
+  const T = t => E.filter(e => e.tur === t);
+  const dev = new Map();
+  for (const e of E) {
+    if (!e.k || !ACT.has(e.tur)) continue;
+    let d = dev.get(e.k); if (!d) dev.set(e.k, d = { days: new Set(), mob: new Set() });
+    d.days.add(e.gun); if ('mobil' in e) d.mob.add(!!e.mobil);
+  }
+  const tek = T('tek_yaris');
+  return {
+    E, dev, tek, tekSure: tek.reduce((a, e) => a + (e.sureSn || 0), 0), cok: T('cok_basla'), cokBitti: T('cok_bitti'), oda: T('oda'),
+    ac: T('acilis'), hesap: T('hesap'), baglan: T('baglan'), ayril: T('ayril'), merhaba: T('merhaba'),
+  };
+}
+function players(S) {
+  const P = new Map();
+  const get = k => {
+    const lb = M.label(k), key = lb || 'Misafir · ' + k.slice(0, 5);
+    let p = P.get(key);
+    if (!p) P.set(key, p = { ad: key, misafir: !lb || /^Misafir\d/.test(lb), ac: 0, tek: 0, bir: 0, tekSure: 0, cokN: 0, cokSure: 0, days: new Set(), mob: new Set(), yer: new Map(), saat: new Array(24).fill(0), son: '', maxP: 0, cihaz: new Set() });
+    p.cihaz.add(k); return p;
+  };
+  for (const e of S.E) {
+    if (!e.k) continue;
+    if (!ACT.has(e.tur) && e.tur !== 'ayril') continue;
+    const p = get(e.k);
+    if (ACT.has(e.tur)) { p.days.add(e.gun); p.saat[e.saat]++; if (e.z > p.son) p.son = e.z; }
+    if ('mobil' in e) p.mob.add(!!e.mobil);
+    if (e.sh) { const y = e.il && e.il !== e.sh ? `${e.sh}, ${e.il}` : e.sh; p.yer.set(y, (p.yer.get(y) || 0) + 1); }
+    if (e.tur === 'acilis') p.ac++;
+    if (e.tur === 'tek_yaris') { p.tek++; p.bir += e.sira === 1; p.tekSure += e.sureSn || 0; p.maxP = Math.max(p.maxP, e.parkur || 0); }
+    if (e.tur === 'baglan') p.cokN++;
+    if (e.tur === 'ayril') p.cokSure += e.sureSn || 0;
+  }
+  return [...P.values()].filter(p => p.days.size).sort((a, b) => (b.tekSure + b.cokSure) - (a.tekSure + a.cokSure) || b.ac - a.ac);
+}
+
+// ---------- grafik parçaları ----------
+const tip = document.getElementById('tip');
+function showTip(html, ev) {
+  tip.innerHTML = html; tip.style.display = 'block';
+  const r = tip.getBoundingClientRect(), x = Math.min(ev.clientX + 14, innerWidth - r.width - 8), y = ev.clientY + 14 + r.height > innerHeight ? ev.clientY - r.height - 10 : ev.clientY + 14;
+  tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+}
+function hideTip() { tip.style.display = 'none'; document.querySelectorAll('.cc-col.on').forEach(c => c.classList.remove('on')); }
+document.addEventListener('scroll', hideTip, { passive: true });
+function bindTips(root, tips) {
+  root.querySelectorAll('[data-i]').forEach(el => {
+    const h = ev => { hideTip(); el.classList.add('on'); showTip(tips[+el.dataset.i], ev); };
+    el.addEventListener('pointermove', h); el.addEventListener('pointerdown', h); el.addEventListener('pointerleave', hideTip);
+  });
+}
+function nice(max) {
+  if (max <= 0) return { top: 1, step: 1 };
+  const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  const step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+  return { top: Math.ceil(max / step) * step, step };
+}
+// items: [{x, v:[..], tip}], series: [{ad, renk}]
+function columns(items, series, { h = 170, every = 1, labelW = 0 } = {}) {
+  return { tips: items.map(it => it.tip), build: w => {
+  // dar ekranda etiketler çakışmasın: genişliğe göre seyrelt
+  if (labelW && w) every = Math.max(every, Math.ceil(items.length / Math.max(2, Math.floor((w - 34) / labelW))));
+  const max = Math.max(0, ...items.map(it => it.v.reduce((a, b) => a + b, 0)));
+  const { top, step } = nice(max);
+  let y = '', gl = '';
+  for (let t = 0; t <= top + 1e-9; t += step) { const b = (t / top) * 100; y += `<span style="bottom:${b}%">${num(t)}</span>`; if (t > 0) gl += `<div class="gl" style="bottom:${b}%"></div>`; }
+  const cols = items.map((it, i) => {
+    const segs = it.v.map((v, s) => v > 0 ? `<i style="height:${Math.max(2, v / top * h - 2)}px;background:${series[s].renk}"></i>` : '').reverse().join('');
+    return `<div class="cc-col" data-i="${i}">${segs}</div>`;
+  }).join('');
+  const xs = items.map((it, i) => `<span>${i % every === 0 ? esc(it.x) : ''}</span>`).join('');
+  const leg = series.length > 1 ? `<div class="legend">${series.map(s => `<span><b style="background:${s.renk}"></b>${esc(s.ad)}</span>`).join('')}</div>` : '';
+  return `${leg}<div class="cc"><div class="cc-y" style="height:${h}px">${y}</div><div class="cc-plot" style="height:${h}px">${gl}<div class="cc-cols">${cols}</div></div><div class="cc-x">${xs}</div></div>`;
+  } };
+}
+function hbars(rows, fmt = num) {
+  if (!rows.length) return '<p class="empty">Bu dönemde veri yok.</p>';
+  const max = Math.max(...rows.map(r => r.v));
+  return `<div class="hb">${rows.map(r => `<div class="row" title="${esc(r.title || r.l)}"><span class="l">${esc(r.l)}</span><span class="t"><i style="width:${(r.v / max) * 100}%"></i></span><span class="v">${fmt(r.v)}</span></div>`).join('')}</div>`;
+}
+function table(head, rows, cls = () => '') {
+  return `<div class="tw"><table><thead><tr>${head.map(h => `<th class="${h[1] || ''}">${esc(h[0])}</th>`).join('')}</tr></thead><tbody>${rows.map((r, i) => `<tr class="${cls(i)}">${r.map((c, j) => `<td class="${head[j][1] || ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+function tile(lbl, val, note, delta) {
+  let d = '';
+  if (delta && delta.prev != null) {
+    const diff = delta.now - delta.prev;
+    d = `<div class="delta">${diff === 0 ? '= ' : diff > 0 ? '<span class="up">▲ +' + num(diff) + '</span> ' : '<span class="dn">▼ ' + num(diff) + '</span> '}önceki döneme göre</div>`;
+  }
+  return `<div class="card tile"><div class="lbl">${esc(lbl)}</div><div class="val">${val}</div>${note ? `<div class="note">${note}</div>` : ''}${d}</div>`;
+}
+
+// ---------- sayfa ----------
+function render() {
+  const [A, B, title] = range(state.donem);
+  const S = stats(pick(A, B));
+  const n = daysBetween(A, B) + 1;
+  const prev = state.donem === 'tumu' || dayAdd(A, -n) < M.firstDay ? null : stats(pick(dayAdd(A, -n), dayAdd(A, -1))); // kayıt öncesiyle kıyaslama yapma
+  const PL = players(S);
+  const devN = S.dev.size, newDev = [...S.dev.keys()].filter(k => M.first.get(k) >= A).length;
+  const multiDay = [...S.dev.values()].filter(d => d.days.size > 1).length;
+  const mobN = [...S.dev.values()].filter(d => d.mob.has(true)).length;
+  const insan = S.cok.map(e => e.insan || 0);
+  const tips = {};
+
+  // günlük
+  const days = []; for (let d = A; d <= B; d = dayAdd(d, 1)) days.push(d);
+  const byDay = new Map(days.map(d => [d, { tek: 0, cok: 0, dev: new Set(), ac: 0, oda: 0, hesap: 0 }]));
+  for (const e of S.E) {
+    const x = byDay.get(e.gun); if (!x) continue;
+    if (e.tur === 'tek_yaris') x.tek++; if (e.tur === 'cok_basla') x.cok++; if (e.tur === 'acilis') x.ac++; if (e.tur === 'oda') x.oda++; if (e.tur === 'hesap') x.hesap++;
+    if (e.k && ACT.has(e.tur)) x.dev.add(e.k);
+  }
+  const every = 1, labelW = 48;
+  const cRace = columns(days.map(d => { const x = byDay.get(d); return { x: short(d), v: [x.tek, x.cok], tip: `<b>${esc(fDayLong.format(dayMs(d)))}</b><br><span class="k" style="background:var(--s1)"></span>Tek oyunculu: ${x.tek}<br><span class="k" style="background:var(--s2)"></span>Çok oyunculu: ${x.cok}` }; }),
+    [{ ad: 'Tek oyunculu', renk: 'var(--s1)' }, { ad: 'Çok oyunculu', renk: 'var(--s2)' }], { every, labelW });
+  const cDev = columns(days.map(d => { const x = byDay.get(d); return { x: short(d), v: [x.dev.size], tip: `<b>${esc(fDayLong.format(dayMs(d)))}</b><br>${x.dev.size} farklı cihaz · ${x.ac} açılış` }; }), [{ ad: 'Cihaz', renk: 'var(--s1)' }], { every, labelW });
+
+  // saat / hafta günü
+  const act = S.E.filter(e => ACT.has(e.tur));
+  const hourEv = Array(24).fill(0), hourDev = Array.from({ length: 24 }, () => new Set()), wdEv = Array(7).fill(0), wdDev = Array.from({ length: 7 }, () => new Set());
+  for (const e of act) { hourEv[e.saat]++; wdEv[e.hg]++; if (e.k) { hourDev[e.saat].add(e.k); wdDev[e.hg].add(e.k); } }
+  const kisi = state.metrik === 'kisi';
+  const cHour = columns(hourEv.map((v, h) => ({ x: String(h).padStart(2, '0'), v: [kisi ? hourDev[h].size : v], tip: `<b>${String(h).padStart(2, '0')}:00–${String((h + 1) % 24).padStart(2, '0')}:00</b><br>${v} etkinlik · ${hourDev[h].size} farklı cihaz` })), [{ ad: '', renk: 'var(--s1)' }], { every: 3, labelW: 26 });
+  const cWd = columns(wdEv.map((v, i) => ({ x: HG[i], v: [kisi ? wdDev[i].size : v], tip: `<b>${HG[i]}</b><br>${v} etkinlik · ${wdDev[i].size} farklı cihaz` })), [{ ad: '', renk: 'var(--s1)' }]);
+  const bandStats = BANDS.map(b => ({ b, dev: new Set(act.filter(e => b[2](e.saat)).map(e => e.k).filter(Boolean)), ev: act.filter(e => b[2](e.saat)).length }));
+
+  // konum
+  const city = new Map(), il = new Map(), ul = new Map(), ag = new Set();
+  for (const e of S.E) {
+    if (!e.k || !e.sh) continue;
+    if (e.ag) ag.add(e.ag);
+    const c = e.il && e.il !== e.sh ? `${e.sh}, ${e.il}` : e.sh;
+    for (const [m, key] of [[city, c], [il, e.il || e.sh], [ul, e.ul]]) { if (!m.has(key)) m.set(key, new Set()); m.get(key).add(e.k); }
+  }
+  const top = (m, k) => [...m.entries()].map(([l, s]) => ({ l, v: s.size })).sort((a, b) => b.v - a.v).slice(0, k);
+
+  // parkur / sıra / çok oyunculu
+  const pk = new Map(); for (const e of S.tek) pk.set(e.parkur, (pk.get(e.parkur) || 0) + 1);
+  const sira = [1, 2, 3, 4, 5, 6].map(s => S.tek.filter(e => e.sira === s).length);
+  const cSira = columns(sira.map((v, i) => ({ x: (i + 1) + '.', v: [v], tip: `<b>${i + 1}. sıra</b><br>${v} yarış (${pct(v, S.tek.length)})` })), [{ ad: '', renk: 'var(--s1)' }], { h: 130 });
+  const ins = [1, 2, 3, 4, 5, 6].map(k => insan.filter(x => x === k).length);
+  const cIns = columns(ins.map((v, i) => ({ x: String(i + 1), v: [v], tip: `<b>${i + 1} gerçek oyuncu</b><br>${v} yarış` })), [{ ad: '', renk: 'var(--s2)' }], { h: 130 });
+
+  // öne çıkanlar
+  const ins1 = [];
+  if (PL[0] && S.tek.length) { const tp = [...PL].sort((a, b) => b.tek - a.tek)[0]; if (tp.tek) ins1.push(`Tek oyunculuda en çok oynayan <b>${esc(tp.ad)}</b>: ${tp.tek} yarış, bu dönemdeki tek oyunculu yarışların <b>${pct(tp.tek, S.tek.length)}</b>'i.`); }
+  const bb = [...bandStats].sort((a, b) => b.dev.size - a.dev.size)[0];
+  if (bb && bb.dev.size) ins1.push(`En çok kişinin geldiği zaman dilimi <b>${bb.b[0].toLowerCase()} (${bb.b[1]})</b>: ${bb.dev.size} farklı cihaz.`);
+  if (devN) ins1.push(`${devN} cihazın <b>${devN - multiDay}</b>'i yalnızca bir gün geldi; ${multiDay} cihaz birden fazla gün döndü.`);
+  if (M.lastCok) { const ago = daysBetween(M.lastCok.gun, fDay.format(new Date())); ins1.push(ago >= 2 ? `Son çok oyunculu yarış <b>${ago} gün önce</b> (${esc(fDayLong.format(dayMs(M.lastCok.gun)))}) oynandı.` : `Çok oyunculu en son ${ago === 0 ? 'bugün' : 'dün'} oynandı.`); }
+  const bestDay = days.map(d => [d, byDay.get(d).dev.size]).sort((a, b) => b[1] - a[1])[0];
+  if (bestDay && bestDay[1] && days.length > 1) ins1.push(`En kalabalık gün <b>${esc(fDayLong.format(dayMs(bestDay[0])))}</b>: ${bestDay[1]} farklı cihaz.`);
+  const t0 = fDay.format(new Date()), w1 = stats(pick(dayAdd(t0, -6), t0)).dev.size, w0 = stats(pick(dayAdd(t0, -13), dayAdd(t0, -7))).dev.size;
+  ins1.push(`Son 7 günde <b>${w1}</b> farklı cihaz geldi${dayAdd(t0, -13) >= M.firstDay ? ` (önceki 7 gün: ${w0})` : ''}.`);
+
+  // oyuncu tablosu
+  const shown = state.hepsi ? PL : PL.slice(0, 15);
+  const plRows = shown.map(p => {
+    const yer = [...p.yer.entries()].sort((a, b) => b[1] - a[1])[0];
+    const hb = p.saat.indexOf(Math.max(...p.saat)), band = bandOf(hb);
+    const cihaz = p.mob.has(true) && p.mob.has(false) ? 'Telefon + PC' : p.mob.has(true) ? 'Telefon' : p.mob.has(false) ? 'Bilgisayar' : '–';
+    return [esc(p.ad), cihaz, esc(yer ? yer[0] : '–'), p.days.size, p.ac || '–', p.tek || '–', p.tek ? `${p.bir} <span class="muted">(${pct(p.bir, p.tek)})</span>` : '–', sure(p.tekSure), p.cokN ? `${sure(p.cokSure)} <span class="muted">· ${p.cokN} bağl.</span>` : '–', p.maxP ? 'P' + p.maxP : '–', `${band[0]} <span class="muted">${band[1]}</span>`, esc(fDT.format(new Date(p.son)))];
+  });
+
+  // hesaplar
+  const acc = [...RAW.hesaplar].sort((a, b) => b.puan - a.puan);
+  const accNew = acc.filter(a => a.acildi && fDay.format(new Date(a.acildi)) >= A && fDay.format(new Date(a.acildi)) <= B).length;
+
+  const backNote = [...M.backfill].some(d => d >= A && d <= B) ? `<p class="sub">Not: ${[...M.backfill].sort().map(short).join(', ')} için yalnızca oda, yarış ve hesap bilgisi var (açılış ve konum kaydı o tarihten sonra başladı).</p>` : '';
+
+  document.getElementById('app').innerHTML = `
+  <header>
+    <div><h1>Misket Yarışı · Kullanım raporu</h1>
+      <p class="sub">${esc(title)} · Türkiye saati · veriler ${esc(fDT.format(new Date(RAW.uretildi)))} itibarıyla · kayıtlar ${esc(fDayLong.format(dayMs(M.firstDay)))}'den beri</p></div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Dönem">${[['bugun', 'Bugün'], ['7', '7 gün'], ['30', '30 gün'], ['tumu', 'Tümü']].map(([k, l]) => `<button data-donem="${k}" aria-pressed="${state.donem === k}">${l}</button>`).join('')}</div>
+      <label class="chk"><input type="checkbox" id="tg" ${state.testGizle ? 'checked' : ''}> Testleri gizle</label>
+      <button class="btn" id="yenile">↻ Yenile</button>
+    </div>
+  </header>
+  ${backNote}
+  <div class="grid tiles">
+    ${tile('Farklı cihaz', num(devN), `ilk kez gelen: ${newDev}`, prev && { now: devN, prev: prev.dev.size })}
+    ${tile('Tek oyunculu yarış', num(S.tek.length), `toplam ${sure(S.tekSure)} · birincilik ${S.tek.filter(e => e.sira === 1).length}`, prev && { now: S.tek.length, prev: prev.tek.length })}
+    ${tile('Çok oyunculu yarış', num(S.cok.length), `${S.oda.length} oda · yarış başına ${insan.length ? (insan.reduce((a, b) => a + b, 0) / insan.length).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) : '–'} kişi`, prev && { now: S.cok.length, prev: prev.cok.length })}
+    ${tile('Tekrar gelen', pct(multiDay, devN), `${multiDay} cihaz birden fazla gün geldi`)}
+    ${tile('Telefondan', pct(mobN, devN), `${mobN} telefon/tablet · ${devN - mobN} bilgisayar`)}
+    ${tile('Yeni hesap', num(accNew), `toplam hesap: ${RAW.hesaplar.length}`)}
+  </div>
+  <div class="card"><h2>Öne çıkanlar</h2><ul class="insights">${ins1.map(s => `<li>${s}</li>`).join('')}</ul></div>
+
+  <section class="grid g2">
+    <div class="card"><h2>Günlük yarışlar</h2><p class="sub">Biten tek oyunculu ve başlayan çok oyunculu yarış sayısı</p><div id="c-race"></div></div>
+    <div class="card"><h2>Günlük farklı cihaz</h2><p class="sub">O gün oyunu açan, yarışan ya da çok oyunculuya bağlanan</p><div id="c-dev"></div>
+      <details><summary>Tablo olarak göster</summary>${table([['Gün'], ['Cihaz', 'n'], ['Açılış', 'n'], ['Tek yarış', 'n'], ['Oda', 'n'], ['Çok yarış', 'n'], ['Yeni hesap', 'n']], [...days].reverse().map(d => { const x = byDay.get(d); return [esc(fDayLong.format(dayMs(d))), x.dev.size, x.ac, x.tek, x.oda, x.cok, x.hesap]; }))}</details></div>
+  </section>
+
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:flex-start">
+      <div><h2>Ne zaman oynanıyor?</h2><p class="sub">Açılış, yarış ve bağlantılar · Türkiye saati</p></div>
+      <div class="seg" role="group" aria-label="Ölçü">${[['etkinlik', 'Etkinlik sayısı'], ['kisi', 'Farklı cihaz']].map(([k, l]) => `<button data-metrik="${k}" aria-pressed="${state.metrik === k}">${l}</button>`).join('')}</div>
+    </div>
+    <div class="grid g2" style="margin-top:10px">
+      <div><div class="sub" style="margin:0 0 6px">Saatlere göre</div><div id="c-hour"></div></div>
+      <div><div class="sub" style="margin:0 0 6px">Haftanın günlerine göre</div><div id="c-wd"></div></div>
+    </div>
+    <details><summary>Zaman dilimleri</summary>${table([['Dilim'], ['Saat'], ['Farklı cihaz', 'n'], ['Etkinlik', 'n']], bandStats.map(x => [x.b[0], x.b[1], x.dev.size, x.ev]))}</details>
+  </section>
+
+  <section class="card">
+    <h2>Kimler oynadı?</h2>
+    <p class="sub">Aynı cihazdaki ve aynı adla çok oyunculuya girenler birleştirildi · oynama süresine göre sıralı · adı olmayanlar "Misafir · cihaz kodu"</p>
+    ${PL.length ? table([['Oyuncu'], ['Cihaz'], ['Yer (yaklaşık)'], ['Gün', 'n'], ['Açılış', 'n'], ['Tek yarış', 'n'], ['Birincilik', 'n'], ['Tek süre', 'n'], ['Çok oyunculu', 'n'], ['En uzak', 'n'], ['Sık saat'], ['Son görülme']], plRows, i => shown[i].misafir ? 'guest' : '') : '<p class="empty">Bu dönemde oyuncu yok.</p>'}
+    ${PL.length > 15 ? `<p><button class="btn" id="hepsi">${state.hepsi ? 'İlk 15\'i göster' : `Tümünü göster (${PL.length})`}</button></p>` : ''}
+  </section>
+
+  <section class="grid g2">
+    <div class="card"><h2>Nerelerden?</h2><p class="sub">Farklı cihaz sayısı · IP'den yaklaşık konum · ${ag.size} farklı internet ağı</p>
+      <div class="sub" style="margin:0 0 6px">İl</div>${hbars(top(il, 10))}
+      <div class="sub" style="margin:14px 0 6px">Ülke</div>${hbars(top(ul, 6))}</div>
+    <div class="card"><h2>İlçe / şehir</h2><p class="sub">İnternet sağlayıcısının merkezi görünebilir</p>${hbars(top(city, 14))}</div>
+  </section>
+
+  <section class="grid g2">
+    <div class="card"><h2>Tek oyunculu</h2><p class="sub">En çok oynanan parkurlar · ${S.tek.filter(e => e.mod === 'kupa').length} kupa yarışı</p>
+      ${hbars([...pk.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([p, v]) => ({ l: 'Parkur ' + p, v })))}
+      <div class="sub" style="margin:16px 0 6px">Bitiş sırası dağılımı</div><div id="c-sira"></div></div>
+    <div class="card"><h2>Çok oyunculu</h2><p class="sub">${S.oda.length} oda (özel ${S.oda.filter(e => !e.hizli).length} · hızlı ${S.oda.filter(e => e.hizli).length}) · ${S.cok.length} yarış başladı, ${S.cokBitti.length} bitti · ${new Set(S.baglan.map(e => e.c)).size} oyuncu bağlandı</p>
+      ${S.cok.length ? `<div class="sub" style="margin:0 0 6px">Yarıştaki gerçek oyuncu sayısı (kalan koltuklarda bot)</div><div id="c-ins"></div>` : '<p class="empty">Bu dönemde çok oyunculu yarış yok.</p>'}</div>
+  </section>
+
+  <section class="card"><h2>Hesaplar</h2><p class="sub">Toplam ${acc.length} hesap · puana göre</p>
+    ${table([['Ad'], ['Açıldı'], ['Şifre'], ['Puan', 'n'], ['Yarış', 'n'], ['Son kayıt']], acc.map(a => [esc(a.ad), a.acildi ? esc(fDT.format(new Date(a.acildi))) : '–', a.sifre === 'resim' ? 'resim' : 'PIN', num(a.puan), num(a.yaris), a.guncel ? esc(fDT.format(new Date(a.guncel))) : '–']))}
+  </section>
+
+  <ul class="foot">
+    <li>"Cihaz" bir tarayıcıdır: aynı kişi iki tarayıcıdan girerse iki cihaz sayılır. Çok oyunculu bağlantılar ayrı bir kimlikle tutulur.</li>
+    <li>"Testleri gizle": yalnızca Mac uygulamasından ya da dosyadan açılan cihazlar ve "Test" adlı bağlantılar gizlenir.</li>
+    <li>Konum IP'nin ağ kısmından tahmin edilir. ${RAW.konum ? '' : '<b>Konum veritabanı şu an yüklenemedi.</b> '}IP Geolocation by <a href="https://db-ip.com" style="color:inherit">DB-IP</a>.</li>
+  </ul>`;
+
+  const put = (id, c) => { const el = document.getElementById(id); if (el) { el.innerHTML = c.build(el.clientWidth); bindTips(el, c.tips); } };
+  put('c-race', cRace); put('c-dev', cDev); put('c-hour', cHour); put('c-wd', cWd); put('c-sira', cSira); if (S.cok.length) put('c-ins', cIns);
+  document.querySelectorAll('[data-donem]').forEach(b => b.onclick = () => { state.donem = b.dataset.donem; state.hepsi = false; store.set('misket.donem', state.donem); render(); });
+  document.querySelectorAll('[data-metrik]').forEach(b => b.onclick = () => { state.metrik = b.dataset.metrik; render(); });
+  document.getElementById('tg').onchange = ev => { state.testGizle = ev.target.checked; store.set('misket.test', state.testGizle ? '1' : '0'); render(); };
+  document.getElementById('yenile').onclick = load;
+  const hb = document.getElementById('hepsi'); if (hb) hb.onclick = () => { state.hepsi = !state.hepsi; render(); };
+}
+let lastW = innerWidth;
+addEventListener('resize', () => { if (RAW && Math.abs(innerWidth - lastW) > 40) { lastW = innerWidth; render(); } });
+load();
+</script>
+</body>
+</html>

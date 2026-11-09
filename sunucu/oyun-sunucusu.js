@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const hesaplar = require('./hesaplar'); // bulut oyuncu hesapları (/api/*)
 const { olay, ipKisa, kisalt, flush: olayFlush } = require('./kayitci'); // kullanım raporu için olaylar
+const panel = require('./panel'); // canlı kullanım raporu sayfası (/api/rapor)
 
 const root = path.join(__dirname, '..');
 for (const f of ['js/surum.js', 'rapier.js', 'js/parcalar.js', 'js/parkurlar.js', 'js/dunyalar.js', 'js/fizik.js', 'js/guclar.js']) require(path.join(root, f));
@@ -305,6 +306,7 @@ function resendHand(p) {
 
 // ================= HTTP + WebSocket =================
 const server = http.createServer((req, res) => {
+  if (req.url.startsWith('/api/rapor')) return void panel.handle(req, res);
   if (req.url.startsWith('/api/')) {
     const xff = req.headers['x-forwarded-for'], ip = (xff || req.socket.remoteAddress || '').split(',')[0].trim();
     const local = !xff && /^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress || ''); // yönetici komutları yalnız sunucunun içinden
