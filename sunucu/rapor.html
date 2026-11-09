@@ -97,6 +97,27 @@ summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
 .foot { margin-top: 20px; font-size: 12px; color: var(--muted); }
 .foot li { margin: 2px 0; }
 @media (max-width: 520px) { .tile .val { font-size: 22px; } h1 { font-size: 19px; } }
+/* PDF / yazdırma: her zaman açık tema, kontroller gizli, kartlar bölünmesin */
+@media print {
+  :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+    color-scheme: light;
+    --page: #ffffff; --surface: #ffffff; --ink: #0b0b0b; --ink-2: #52514e; --muted: #6f6d68;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.14); --wash: transparent;
+    --s1: #2a78d6; --s2: #eb6834; --accent: #2a78d6; --good: #006300; --bad: #d03b3b;
+  }
+  @page { size: A4; margin: 12mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 12px; }
+  .wrap { max-width: none; padding: 0; }
+  .controls, #tip, #hepsi, .seg, summary { display: none !important; }
+  .card { break-inside: avoid; page-break-inside: avoid; box-shadow: none; }
+  .card.wide { break-inside: auto; page-break-inside: auto; }
+  tr { break-inside: avoid; }
+  .tw { overflow: visible; }
+  th, td { padding: 4px 6px; }
+  section { margin-top: 10px; }
+  .g2 { align-items: start; }
+}
 </style>
 </head>
 <body>
@@ -379,6 +400,7 @@ function render() {
       <div class="seg" role="group" aria-label="Dönem">${[['bugun', 'Bugün'], ['7', '7 gün'], ['30', '30 gün'], ['tumu', 'Tümü']].map(([k, l]) => `<button data-donem="${k}" aria-pressed="${state.donem === k}">${l}</button>`).join('')}</div>
       <label class="chk"><input type="checkbox" id="tg" ${state.testGizle ? 'checked' : ''}> Testleri gizle</label>
       <button class="btn" id="yenile">↻ Yenile</button>
+      <button class="btn" id="pdf" title="Yazdır penceresinde hedef olarak 'PDF olarak kaydet'i seç">⤓ PDF</button>
     </div>
   </header>
   ${backNote}
@@ -410,7 +432,7 @@ function render() {
     <details><summary>Zaman dilimleri</summary>${table([['Dilim'], ['Saat'], ['Farklı cihaz', 'n'], ['Etkinlik', 'n']], bandStats.map(x => [x.b[0], x.b[1], x.dev.size, x.ev]))}</details>
   </section>
 
-  <section class="card">
+  <section class="card wide">
     <h2>Kimler oynadı?</h2>
     <p class="sub">Aynı cihazdaki ve aynı adla çok oyunculuya girenler birleştirildi · oynama süresine göre sıralı · adı olmayanlar "Misafir · cihaz kodu"</p>
     ${PL.length ? table([['Oyuncu'], ['Cihaz'], ['Yer (yaklaşık)'], ['Gün', 'n'], ['Açılış', 'n'], ['Tek yarış', 'n'], ['Birincilik', 'n'], ['Tek süre', 'n'], ['Çok oyunculu', 'n'], ['En uzak', 'n'], ['Sık saat'], ['Son görülme']], plRows, i => shown[i].misafir ? 'guest' : '') : '<p class="empty">Bu dönemde oyuncu yok.</p>'}
@@ -432,7 +454,7 @@ function render() {
       ${S.cok.length ? `<div class="sub" style="margin:0 0 6px">Yarıştaki gerçek oyuncu sayısı (kalan koltuklarda bot)</div><div id="c-ins"></div>` : '<p class="empty">Bu dönemde çok oyunculu yarış yok.</p>'}</div>
   </section>
 
-  <section class="card"><h2>Hesaplar</h2><p class="sub">Toplam ${acc.length} hesap · puana göre</p>
+  <section class="card wide"><h2>Hesaplar</h2><p class="sub">Toplam ${acc.length} hesap · puana göre</p>
     ${table([['Ad'], ['Açıldı'], ['Şifre'], ['Puan', 'n'], ['Yarış', 'n'], ['Son kayıt']], acc.map(a => [esc(a.ad), a.acildi ? esc(fDT.format(new Date(a.acildi))) : '–', a.sifre === 'resim' ? 'resim' : 'PIN', num(a.puan), num(a.yaris), a.guncel ? esc(fDT.format(new Date(a.guncel))) : '–']))}
   </section>
 
@@ -448,8 +470,14 @@ function render() {
   document.querySelectorAll('[data-metrik]').forEach(b => b.onclick = () => { state.metrik = b.dataset.metrik; render(); });
   document.getElementById('tg').onchange = ev => { state.testGizle = ev.target.checked; store.set('misket.test', state.testGizle ? '1' : '0'); render(); };
   document.getElementById('yenile').onclick = load;
+  document.getElementById('pdf').onclick = () => window.print();
+  if (printing) document.querySelectorAll('details').forEach(d => d.open = true);
   const hb = document.getElementById('hepsi'); if (hb) hb.onclick = () => { state.hepsi = !state.hepsi; render(); };
 }
+// yazdırırken tüm oyuncular ve tablolar açık olsun
+let printing = false, hepsiOnce = false;
+addEventListener('beforeprint', () => { if (!RAW || printing) return; printing = true; hepsiOnce = state.hepsi; state.hepsi = true; render(); });
+addEventListener('afterprint', () => { if (!printing) return; printing = false; state.hepsi = hepsiOnce; render(); });
 let lastW = innerWidth;
 addEventListener('resize', () => { if (RAW && Math.abs(innerWidth - lastW) > 40) { lastW = innerWidth; render(); } });
 load();
