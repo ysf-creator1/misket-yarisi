@@ -257,6 +257,25 @@ function players(S) {
   return [...P.values()].filter(p => p.days.size).sort((a, b) => (b.tekSure + b.cokSure) - (a.tekSure + a.cokSure) || b.ac - a.ac);
 }
 
+// yeni gelenler: ilk günü dönemde olan cihazlar → ilk yarışı bitirdi mi, ertesi gün / 7 gün içinde döndü mü
+function yeniGelenler(A, B) {
+  const today = fDay.format(new Date()), all = M.E.filter(e => e.k && !(state.testGizle && M.test.has(e.k)));
+  const days = new Map(), races = new Map();
+  for (const e of all) {
+    if (ACT.has(e.tur)) { if (!days.has(e.k)) days.set(e.k, new Set()); days.get(e.k).add(e.gun); }
+    if (e.tur === 'tek_yaris') races.set(e.k, (races.get(e.k) || 0) + 1);
+  }
+  const yeni = [...M.first.entries()].filter(([k, d]) => d >= A && d <= B && days.has(k));
+  let d1 = 0, d1n = 0, d7 = 0, d7n = 0, r1 = 0, r3 = 0;
+  for (const [k, f] of yeni) {
+    const D = days.get(k);
+    if (dayAdd(f, 1) <= today) { d1n++; if (D.has(dayAdd(f, 1))) d1++; }
+    if (dayAdd(f, 7) <= today) { d7n++; for (let i = 1; i <= 7; i++) if (D.has(dayAdd(f, i))) { d7++; break; } }
+    const n = races.get(k) || 0; if (n >= 1) r1++; if (n >= 3) r3++;
+  }
+  return { n: yeni.length, d1, d1n, d7, d7n, r1, r3 };
+}
+
 // ---------- grafik parçaları ----------
 const tip = document.getElementById('tip');
 function showTip(html, ev) {
@@ -453,6 +472,35 @@ function render() {
     <div class="card"><h2>Çok oyunculu</h2><p class="sub">${S.oda.length} oda (özel ${S.oda.filter(e => !e.hizli).length} · hızlı ${S.oda.filter(e => e.hizli).length}) · ${S.cok.length} yarış başladı, ${S.cokBitti.length} bitti · ${new Set(S.baglan.map(e => e.c)).size} oyuncu bağlandı</p>
       ${S.cok.length ? `<div class="sub" style="margin:0 0 6px">Yarıştaki gerçek oyuncu sayısı (kalan koltuklarda bot)</div><div id="c-ins"></div>` : '<p class="empty">Bu dönemde çok oyunculu yarış yok.</p>'}</div>
   </section>
+
+  ${(() => {
+    const Y = yeniGelenler(A, B), T = t => S.E.filter(e => e.tur === t);
+    const bir = T('birakti'), ik = T('ilk_kart'), og = T('ogretici'), ay = T('ayar').filter(e => !e.acik), my = T('meydan'), ae = T('anaekran'), et = S.tek.filter(e => 'etki' in e);
+    const ayN = {}; for (const e of ay) ayN[e.ayar] = (ayN[e.ayar] || 0) + 1;
+    const AYAD = { etkile: 'Misketi etkile', kolay: 'Kolay başlangıç', ipucu: 'İpuçları', oto: 'Otomatik sonraki yarış', anlatici: 'Anlatıcı' };
+    const med = a => { if (!a.length) return '–'; const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)] + ' sn'; };
+    return `<section class="grid g2">
+    <div class="card"><h2>Yeni gelenler</h2><p class="sub">İlk kez bu dönemde gelen ${num(Y.n)} cihaz</p>
+      ${table([['Adım'], ['Cihaz', 'n'], ['Oran', 'n']], [
+        ['İlk yarışını bitirdi', num(Y.r1), pct(Y.r1, Y.n)],
+        ['3+ yarış bitirdi', num(Y.r3), pct(Y.r3, Y.n)],
+        ['Ertesi gün geri geldi', num(Y.d1), pct(Y.d1, Y.d1n) + (Y.d1n < Y.n ? ` <span class="muted">(${Y.d1n} cihazın ertesi günü geldi)</span>` : '')],
+        ['7 gün içinde geri geldi', num(Y.d7), pct(Y.d7, Y.d7n) + (Y.d7n < Y.n ? ` <span class="muted">(${Y.d7n} cihazın 7 günü doldu)</span>` : '')],
+      ])}</div>
+    <div class="card"><h2>Oyun içi davranış</h2><p class="sub">Yeni ölçümler (bu sürümden sonra dolmaya başlar)</p>
+      ${table([['Ölçüm'], ['Değer', 'n']], [
+        ['Yarışı yarıda bıraktı / sayfayı kapattı', `${num(bir.filter(e => !e.kapatti).length)} / ${num(bir.filter(e => e.kapatti).length)}`],
+        ['İlk yarışında bıraktı', num(bir.filter(e => e.ilk).length)],
+        ['Bırakma anı (ortanca)', med(bir.map(e => e.sn || 0))],
+        ['İlk kartını seçti', `${num(ik.filter(e => e.secti).length)} / ${num(ik.length)} · ${pct(ik.filter(e => e.secti).length, ik.length)}`],
+        ['"Nasıl oynanır" rehberini atladı', `${num(og.filter(e => e.atlandi).length)} / ${num(og.length)}`],
+        ['Misketi etkileyen yarış', `${num(et.filter(e => e.etki).length)} / ${num(et.length)} · ${pct(et.filter(e => e.etki).length, et.length)}`],
+        ['Meydan okuma kabul', `${num(my.filter(e => e.kabul).length)} / ${num(my.length)}`],
+        ['Ana ekrana ekledi', `${num(ae.filter(e => e.kabul).length)} / ${num(ae.length)}`],
+        ...Object.keys(ayN).map(k => [`Kapattı: ${esc(AYAD[k] || k)}`, num(ayN[k])]),
+      ])}</div>
+  </section>`;
+  })()}
 
   <section class="card wide"><h2>Hesaplar</h2><p class="sub">Toplam ${acc.length} hesap · puana göre</p>
     ${table([['Ad'], ['Açıldı'], ['Şifre'], ['Puan', 'n'], ['Yarış', 'n'], ['Son kayıt']], acc.map(a => [esc(a.ad), a.acildi ? esc(fDT.format(new Date(a.acildi))) : '–', a.sifre === 'resim' ? 'resim' : 'PIN', num(a.puan), num(a.yaris), a.guncel ? esc(fDT.format(new Date(a.guncel))) : '–']))}

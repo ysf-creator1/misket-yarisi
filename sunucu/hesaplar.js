@@ -2,7 +2,7 @@
  * Şifre türü: 4 haneli PIN ya da 12 resimden 1'i (resimli şifre). Giriş yapılan cihaz hatırlanır, yeni cihazda yeniden sorulur.
  * Unutmaya karşı: "yeni cihaz ekle" kodu (5 dk, tek kullanımlık) ve yönetici sıfırlaması. Hesap açmak zorunlu değil: misafirler sunucuda kayıtlı değildir.
  * Kayıtlar tek JSON dosyasında (VERI/hesaplar.json), değişiklikten 2 sn sonra güvenli yazılır; her gün yedeklenir (30 gün).
- * HTTP: /api/isim, kayit, giris, kodla, profil (GET/PUT), sifre, cihazkodu, cikis, liderlik, rekor, yonetici/sifirla (yalnız sunucu içinden)
+ * HTTP: /api/isim, kayit, giris, kodla, profil (GET/PUT), sifre, cihazkodu, cikis, liderlik, rekor, gunluk, yonetici/sifirla (yalnız sunucu içinden)
  */
 'use strict';
 const fs = require('fs');
@@ -106,6 +106,12 @@ function leaderboard() {
   };
   boardAt = Date.now(); return board;
 }
+// günün parkuru: o gün (oyuncunun tarihi) en iyi süreler; profil.stats.gp = { gun, parkur, sure }
+function gunluk(gun) {
+  const out = [];
+  for (const a of Object.values(db.players)) { const g = a.profile.stats && a.profile.stats.gp; if (g && g.gun === gun && typeof g.sure === 'number' && g.sure > 5) out.push({ ad: a.profile.name, sure: g.sure, parkur: num(g.parkur, 200) }); }
+  return out.sort((x, y) => x.sure - y.sure).slice(0, 20);
+}
 function records(track) {
   const out = [];
   for (const a of Object.values(db.players)) { const b = a.profile.best && a.profile.best[track]; if (b && b.time && b.place === 1) out.push({ ad: a.profile.name, sure: b.time }); }
@@ -190,10 +196,18 @@ async function handle(req, res, ip, local) {
       const b = await readBody(req), tur = b.tur;
       const cihaz = String(b.cihaz || '').replace(/[^a-f0-9]/gi, '').slice(0, 12);
       if (tur === 'acilis') olay('acilis', { cihaz, misafir: !!b.misafir, ad: b.misafir ? undefined : MI.tidy(b.ad).slice(0, 16), mobil: !!b.mobil, kaynak: ['web', 'mac', 'anaekran', 'dosya'].includes(b.kaynak) ? b.kaynak : 'web', ip: ipKisa(ip) });
-      else if (tur === 'yaris') olay('tek_yaris', { cihaz, misafir: !!b.misafir, parkur: num(b.parkur, 200), sira: num(b.sira, 6), sureSn: num(b.sure, 3600), mod: b.mod === 'kupa' ? 'kupa' : 'tek' });
+      else if (tur === 'yaris') olay('tek_yaris', { cihaz, misafir: !!b.misafir, parkur: num(b.parkur, 200), sira: num(b.sira, 6), sureSn: num(b.sure, 3600), mod: b.mod === 'kupa' ? 'kupa' : 'tek', etki: !!b.etki, kolay: !!b.kolay });
+      // oyuncu deneyimi ölçümleri: rehber, yarıştan çıkma, ilk kart, ayarlar, meydan okuma, ana ekran
+      else if (tur === 'ogretici') olay('ogretici', { cihaz, adim: num(b.adim, 10), atlandi: !!b.atlandi });
+      else if (tur === 'birakti') olay('birakti', { cihaz, parkur: num(b.parkur, 200), sn: num(b.sn, 3600), ilk: !!b.ilk, kapatti: !!b.kapatti });
+      else if (tur === 'ilk_kart') olay('ilk_kart', { cihaz, sn: num(b.sn, 600), secti: !!b.secti });
+      else if (tur === 'ayar' && ['etkile', 'kolay', 'ipucu', 'oto', 'anlatici'].includes(b.ayar)) olay('ayar', { cihaz, ayar: b.ayar, acik: !!b.acik });
+      else if (tur === 'meydan') olay('meydan', { cihaz, kabul: !!b.kabul });
+      else if (tur === 'anaekran') olay('anaekran', { cihaz, kabul: !!b.kabul });
       return reply(200, { ok: true });
     }
     if (route === 'liderlik' && req.method === 'GET') return reply(200, leaderboard());
+    if (route === 'gunluk' && req.method === 'GET') { const gun = String(url.searchParams.get('gun') || ''); return reply(200, { gun, liste: /^\d{4}-\d{2}-\d{2}$/.test(gun) ? gunluk(gun) : [] }); }
     if (route === 'rekor' && req.method === 'GET') return reply(200, { parkur: num(url.searchParams.get('parkur'), 200), liste: records(num(url.searchParams.get('parkur'), 200)) });
     if (route === 'yonetici/sifirla' && req.method === 'POST') { // yalnızca sunucunun içinden (ssh): unutan oyuncuya yeni PIN
       if (!local) return reply(403, { hata: 'yasak' });

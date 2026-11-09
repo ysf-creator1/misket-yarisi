@@ -191,6 +191,7 @@
     },
     leaderboard: async () => { const r = await call('liderlik'); return r.code === 200 ? r.j : null; },
     records: async id => { const r = await call('rekor?parkur=' + id); return r.code === 200 ? r.j.liste : null; },
+    gunluk: async gun => { const r = await call('gunluk?gun=' + gun); return r.code === 200 ? r.j.liste : null; }, // günün parkuru sıralaması
     legacyPlayers, dismissLegacy: markMoved, trLower: s => MI.key(s),
     // kullanım bildirimi (rapor için; ad dışında kişisel bilgi yok, misafirde ad da yok)
     track(tur, veri) {

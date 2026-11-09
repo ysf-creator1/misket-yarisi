@@ -102,6 +102,14 @@
     const me = MI.key(state.player.name), box = $('liderList');
     box.innerHTML = '<p class="muted" style="text-align:center">⏳ Yükleniyor…</p>';
     const row = (k, ad, val, sub) => `<div class="lrow${MI.key(ad) === me ? ' me' : ''}"><span class="lk">${MEDAL[k] || k + 1}</span><b>${esc(ad)}</b><span class="muted">${sub || ''}</span><span class="lv">${val}</span></div>`;
+    if (liderTab === 'gunluk') {
+      const gid = gunParkur(), list = await Kayit.gunluk(today());
+      const head = `<p class="muted" style="text-align:center;margin:0 0 8px">📅 Bugün: Parkur ${gid} · ${esc(MP.TRACKS[gid - 1].name)}</p>`;
+      const foot = `<div class="row" style="margin-top:10px"><button class="main sm" id="liderGpOyna">Yarış ▶</button></div>` + (Kayit.isGuest(state.player) ? '<p class="muted" style="text-align:center;font-size:12px">Misafirler listede görünmez: hesap oluştur.</p>' : '');
+      box.innerHTML = head + (!list ? '<p class="muted" style="text-align:center">⚠️ Sunucuya ulaşılamadı</p>' : list.length ? list.map((x, k) => row(k, x.ad, x.sure.toFixed(1) + ' sn')).join('') : '<p class="muted" style="text-align:center">Bugün henüz kimse bitirmedi. İlk sen ol!</p>') + foot;
+      $('liderGpOyna').onclick = () => hizliBasla(gid);
+      return;
+    }
     if (liderTab === 'rekor') {
       const sel = $('liderTrack');
       if (!sel.options.length) sel.innerHTML = MP.TRACKS.map(t => `<option value="${t.id}">${t.id} · ${esc(t.name)}</option>`).join('');
@@ -140,7 +148,7 @@
     if (state.race) state.race.dispose();
     if (window.Ag && Ag.race) Ag.race = null;
     state.race = null; state.hand = null; state.bag = []; $('bag').classList.add('hidden'); $('hud').classList.remove('biriktir'); state.rec = []; state.replay = null; state.capture = null;
-    Ses.stopRolling();
+    Ses.stopRolling(); hudTemizle(); state.etki = null;
   }
 
   // ================= KAMERA =================
@@ -220,13 +228,16 @@
       const me = m.id === state.pick;
       const fx = FX_ICONS.filter(([k2]) => m.fx && m.fx[k2] > r.t).map(x => x[1]).join('') + (m.fx && m.fx.inSlime ? '🟢' : '');
       const tm = m.finished ? `<span class="tm">${m.finishTime.toFixed(1)}</span>` : '';
-      return `<div class="srow${me ? ' me' : ''}"><span class="rk">${k + 1}</span><span class="dot sym" style="background:${state.colors[m.id]}">${MF.MARBLES[m.id].sembol}</span><span class="nm">${esc(m.info.name)}</span><span class="fx">${fx}</span>${me ? '<span class="tag">SEN</span>' : ''}${tm}</div>`;
+      const pr = !state.mp && !me && m.persona && PERSONA[m.persona.id];
+      return `<div class="srow${me ? ' me' : ''}"><span class="rk">${k + 1}</span><span class="dot sym" style="background:${state.colors[m.id]}">${MF.MARBLES[m.id].sembol}</span><span class="nm">${esc(m.info.name)}</span>${pr ? `<span class="pr" title="${pr[1]}">${pr[0]}</span>` : ''}<span class="fx">${fx}</span>${me ? '<span class="tag">SEN</span>' : ''}${tm}</div>`;
     }).join('');
     const W = $('prog').clientWidth - 36;
     for (const m of r.marbles) { const el = $('pd' + m.id); if (el) el.style.left = (18 + Math.max(0, Math.min(1, m.s / fs)) * W) + 'px'; }
     $('timer').textContent = '⏱ ' + r.t.toFixed(1);
     bagState();
     if (r.started && !r.done) { const idx = S.findIndex(m => m.id === state.pick); if (idx === S.length - 1 && r.t > 8) state.wasLast = true; }
+    siraTakip(r, S); etkiUI();
+    if (state.meydan && !r.marbles[state.pick].finished) $('hedefBox').classList.toggle('gecti', r.t > state.meydan.hedef);
   }
   function toast(msg, cls) {
     const el = document.createElement('div'); el.className = 'toast' + (cls ? ' ' + cls : ''); el.textContent = msg;
@@ -244,13 +255,26 @@
       const p = MG.byId[id];
       return `<button class="card ${p.type}" data-card="${k}"><span class="key">${bm ? OFFER_KEYS[k] : k + 1}</span><span class="ic">${p.icon}</span><span><span class="typ">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'}</span><b>${p.name}</b><small>${p.desc}</small></span></button>`;
     }).join('') + '<div id="cardTime"><i style="width:100%"></i></div>';
-    box.classList.remove('hidden');
+    box.classList.remove('hidden'); $('hud').classList.add('kartvar');
     Ses.card();
+    const r = state.race, dx = state.dx;
+    if (r && !Kayit.save.ilkKart && dx.ilkKart == null) dx.ilkKart = r.t; // ölçüm: ilk kart ne zaman, seçildi mi
+    // ilk kartlarda: kartlar parlar, oyun ağır çekime geçer (tek oyunculu), ipucu çıkar
+    if (r && !dx.kartOgret && ipucu('kart', '👆 Bir karta dokun! Yeşil kartlar seni güçlendirir, kırmızılar öndeki rakibe tuzak kurar.', 9000)) {
+      dx.kartOgret = true; box.classList.add('ogret'); if (!state.mp) r.timeScale = 0.35;
+    }
   }
-  function hideCards() { state.hand = null; $('cards').classList.add('hidden'); }
+  function hideCards() {
+    state.hand = null; $('cards').classList.add('hidden'); $('hud').classList.remove('kartvar');
+    if ($('cards').classList.contains('ogret')) { $('cards').classList.remove('ogret'); hideIpucu(); if (state.race && !state.mp) state.race.timeScale = 1; }
+  }
+  function ilkKartKaydet(secti) {
+    const r = state.race, dx = state.dx; if (!r || dx.ilkKart == null || Kayit.save.ilkKart) return;
+    Kayit.save.ilkKart = 1; Kayit.persist(); Kayit.track('ilk_kart', { sn: Math.round(r.t - dx.ilkKart), secti }); dx.ilkKart = null;
+  }
   function pickCard(k) {
     const r = state.race; if (!r || !state.hand) return;
-    if (r.powers.choose(state.pick, k)) hideCards();
+    if (r.powers.choose(state.pick, k)) { ilkKartKaydet(true); hideCards(); }
   }
   $('cards').addEventListener('click', e => { const b = e.target.closest('[data-card]'); if (b) pickCard(+b.dataset.card); });
   // ---- biriktir modu: alttaki çanta (5 yer), dokununca kart kullanılır ----
@@ -282,7 +306,8 @@
   // tüm güç kartları (ilk 3 parkurda yarış öncesi tanıtım, menüdeki Güç Kartları ekranı, duraklatma menüsü)
   const TIER = { 1: 'Sık çıkar', 2: 'Orta', 3: 'Nadir · güçlü' };
   function powerCardsHTML() {
-    const card = p => `<div class="gcard ${p.type}"><span class="gic">${p.icon}</span><span class="gtx"><span class="gtyp">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'} · ${TIER[p.tier]}</span><b>${p.name}</b><small>${p.desc}</small></span></div>`;
+    const pl = state.player, kilit = id => pl && ayar('kolay') && !MK.acikKartlar(pl.unlocked).includes(id) ? MK.KART_ACILIS[id] : 0;
+    const card = p => { const k = kilit(p.id); return `<div class="gcard ${p.type}${k ? ' kilit' : ''}"><span class="gic">${p.icon}</span><span class="gtx"><span class="gtyp">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'} · ${TIER[p.tier]}</span><b>${p.name}</b><small>${p.desc}</small>${k ? `<span class="gkl">🔒 ${k}. parkuru açınca</span>` : ''}</span></div>`; };
     return `<h3>💪 Güçlen (kendine)</h3><div class="ggrid">${MG.POWERS.filter(p => p.type === 'self').map(card).join('')}</div><h3>🪤 Tuzak (rakiplere)</h3><div class="ggrid">${MG.POWERS.filter(p => p.type === 'attack').map(card).join('')}</div>`;
   }
   function showGucler() { toMenuScene(); $('gucList').innerHTML = powerCardsHTML(); show('scrGuc'); }
@@ -296,20 +321,25 @@
   function endPowerIntro() { clearInterval(introTimer); state.introHold = false; $('gucIntro').classList.add('hidden'); }
   $('gucIntroGo').onclick = endPowerIntro;
   function startRace() {
+    const skipBet = state.betSkip; state.betSkip = false; const meydan = state.meydanNext || null; state.meydanNext = null;
     // çok oyunculu odadayken tek başına yarış: odadan ancak oyuncu "evet" derse çıkılır
     if (window.Ag && Ag.room && !confirm(`Çok oyunculu odadasın (${Ag.room.kod}). Tek başına yarışmak için odadan çıkılsın mı?`)) return;
     if (window.Ag && (Ag.room || state.mp)) leaveMp();
     ensureTrack(state.trackId);
     disposeRace();
     const r = state.race = new MF.Race(window.RAPIER, state.track, {});
-    new MG.PowerSystem(r, { playerId: state.pick, mode: state.mode });
-    const p = state.player;
+    const p = state.player, kolayOn = ayar('kolay') && !state.cup;
+    // kolay başlangıç: kademeli kartlar (botlar da aynı kartlarla oynar) ve ilk parkurlarda biraz yavaş botlar
+    const pool = kolayOn && !MK.tumKartlarAcik(p.unlocked) ? MK.acikKartlar(p.unlocked) : null;
+    new MG.PowerSystem(r, { playerId: state.pick, mode: state.mode, pool });
+    state.etki = MK.bagla(r, { player: state.pick, soft: kolayOn ? MK.yumusak(state.trackId, p.wins) : 0, etkile: ayar('etkile') });
+    state.kolayOn = kolayOn; state.meydan = meydan; dxReset();
     state.mvs = MF.MARBLES.map((info, i) => Grafik.makeMarble(info, Magaza.lookFor(info, i === state.pick ? p.eq : {}), i === state.pick, MF.PARAMS.r));
     state.colors = state.mvs.map(mv => mv.look.color);
     state.prevV = MF.MARBLES.map(() => [0, 0, 0]); state.touch = {};
     // bahis
     state.betActive = null;
-    if (state.bet && state.bet.amount > 0 && !state.cup && p.points >= state.bet.amount) {
+    if (!skipBet && acik(p, 'bahis') && state.bet && state.bet.amount > 0 && !state.cup && p.points >= state.bet.amount) {
       p.points -= state.bet.amount; Kayit.persist(); state.betActive = Object.assign({}, state.bet);
     }
     state.view.gates.forEach(g => { g.mesh.visible = true; g.mesh.position.y = g.y0; g.opening = false; });
@@ -319,7 +349,7 @@
     state.bag = []; renderBag();
     buildHud(); updateHud(true);
     lastCount = null;
-    if (state.trackId <= 3 && !state.cup) showPowerIntro(); // ilk 3 parkurda: yarıştan önce tüm güç kartları
+    yarisOncesi(); // kart tanıtımı artık yarışın içinde (ilk kart çıkınca)
   }
   let lastCount = null;
   function countdownTick(dt) {
@@ -328,7 +358,7 @@
     if (n > 3) return; // giriş animasyonu sürerken geri sayım yok
     if (txt !== lastCount) { lastCount = txt; el.textContent = txt; el.classList.remove('hidden', 'pop'); void el.offsetWidth; el.classList.add('pop'); Ses.beep(n); }
     if (state.countdown <= 0.2 && state.phase === 'countdown') {
-      state.phase = 'race'; state.race.openGate(); Ses.gate();
+      state.phase = 'race'; state.race.openGate(); Ses.gate(); yarisBasladi();
       setTimeout(() => $('count').classList.add('hidden'), 700);
     }
   }
@@ -346,8 +376,13 @@
     else if (e.power === 'ruzgar') for (const id of e.targets || []) { const m = r.marbles[id], q = m.body.translation(); Grafik.wind(q, m.lastSample ? m.lastSample.T : [0, 0, 1]); }
     else if (e.power === 'kalkan' || e.power === 'turbo' || e.power === 'demir' || e.power === 'miknatis') Grafik.sparkle(up, e.power === 'kalkan' ? '#7fd8ff' : e.power === 'miknatis' ? '#ff4d6d' : '#ffd166');
     const s = st(state.player);
-    if (mine) { s.powers = (s.powers || 0) + 1; dailyAdd('guc'); if (P.type === 'attack') { s.traps = (s.traps || 0) + 1; dailyAdd('tuzak'); } }
-    for (const bid of (e.blockedIds || []).concat(e.blocked && tg && !(e.blockedIds || []).length ? [tg.id] : [])) { Grafik.sparkle(r.marbles[bid].body.translation(), '#7fd8ff'); Ses.blocked(); if (bid === state.pick) { s.blocks = (s.blocks || 0) + 1; dailyAdd('kalkan'); } }
+    if (mine) {
+      s.powers = (s.powers || 0) + 1; dailyAdd('guc'); if (P.type === 'attack') { s.traps = (s.traps || 0) + 1; dailyAdd('tuzak'); }
+      const rank = r.standings().findIndex(m => m.id === state.pick);
+      state.dx.uses.push({ pid: e.power, t: r.t, r0: rank, n: (e.targets || []).length || (tg && !e.blocked && P.type === 'attack' ? 1 : 0) });
+    }
+    if ((e.targets || []).length >= 2 && e.power === 'bomba') anlat(`💣 Büyük patlama! ${e.targets.length} misket savruldu`);
+    for (const bid of (e.blockedIds || []).concat(e.blocked && tg && !(e.blockedIds || []).length ? [tg.id] : [])) { Grafik.sparkle(r.marbles[bid].body.translation(), '#7fd8ff'); Ses.blocked(); if (bid === state.pick) { s.blocks = (s.blocks || 0) + 1; dailyAdd('kalkan'); state.dx.blocks++; } }
     // bildirim: kim (renkli ad), hangi kart, kime — 3 sn
     const who = mine ? 'Sen' : nameOf(r, e.id), nm = id => id === state.pick ? 'SEN' : nameOf(r, id);
     let detail = P.desc, blockedAll = false;
@@ -360,18 +395,28 @@
     const myBlocked = (e.blockedIds || []).includes(state.pick) || (e.blocked && tg && tg.id === state.pick);
     if (!mine && (meHit || myBlocked)) {
       const HIT = { bomba: 'bombasıyla seni sersemletti!', ruzgar: 'sana ters rüzgâr estirdi!', yavas: 'seni yavaşlattı!', kucult: 'seni küçülttü!', balcik: 'yoluna balçık döktü!', duvar: 'önüne duvar dikti!', takas: 'seninle yer değiştirdi!' };
-      if (myBlocked) hitBanner('🛡️', nameOf(r, e.id), state.colors[e.id], `${P.icon} ${P.name} saldırısı kalkanına çarptı`, 'Kalkanın korudu!', true);
-      else hitBanner(P.icon, nameOf(r, e.id), state.colors[e.id], HIT[e.power] || `sana ${P.name} uyguladı!`, P.name, false);
+      const pr = !state.mp && u.persona && PERSONA[u.persona.id], ek = pr ? pr[0] : '';
+      if (myBlocked) hitBanner('🛡️', nameOf(r, e.id), state.colors[e.id], `${P.icon} ${P.name} saldırısı kalkanına çarptı`, 'Kalkanın korudu!', true, ek);
+      else {
+        const dx = state.dx, yine = (dx.hits[e.id] || 0) > 0;
+        dx.hits[e.id] = (dx.hits[e.id] || 0) + 1;
+        const rk = s.rakip || (s.rakip = {}); rk[nameOf(r, e.id)] = (rk[nameOf(r, e.id)] || 0) + 1;
+        const txt = HIT[e.power] || `sana ${P.name} uyguladı!`;
+        hitBanner(P.icon, nameOf(r, e.id), state.colors[e.id], yine ? `${txt} (yine!)` : txt, P.name, false, ek);
+        if (!state.mp) ipucu('tuzak', '🛡️ Kalkan kartı bu tür saldırıları 8 sn engeller. Bir dahaki sefere dene!');
+      }
       return;
     }
     // telefonda ekran küçük: yalnızca seni ilgilendiren güç bildirimleri
     if (mine || (meHit && !window.MOBIL) || (!window.MOBIL && Math.random() < 0.6)) powerToast({ icon: blockedAll ? '🛡️' : P.icon, who, color: state.colors[e.id], power: P.name, type: P.type, detail, cls: mine ? 'mine' : meHit ? 'hit' : P.type === 'self' ? 'self' : 'atk' });
   }
-  function hitBanner(icon, who, color, text, sub, good) {
+  function hitBanner(icon, who, color, text, sub, good, ek) {
     const el = document.createElement('div'); el.className = 'hitb' + (good ? ' ok' : '');
     const ic = document.createElement('span'); ic.className = 'hic'; ic.textContent = icon;
     const body = document.createElement('div');
-    const top = document.createElement('div'); const w = document.createElement('b'); w.textContent = who; w.style.color = color; top.append(w, document.createTextNode(' ' + text));
+    const top = document.createElement('div'); const w = document.createElement('b'); w.textContent = who; w.style.color = color; top.append(w);
+    if (ek) { const pe = document.createElement('span'); pe.textContent = ' ' + ek; top.append(pe); }
+    top.append(document.createTextNode(' ' + text));
     const sm = document.createElement('small'); sm.textContent = sub;
     body.append(top, sm); el.append(ic, body);
     $('hitBanner').appendChild(el);
@@ -405,7 +450,7 @@
       const e = r.events.shift();
       if (e.type === 'gate') state.view.gates.forEach(g => g.opening = true);
       else if (e.type === 'hand' && e.id === state.pick) showCards(e.cards, e.expires);
-      else if (e.type === 'handGone' && e.id === state.pick) hideCards();
+      else if (e.type === 'handGone' && e.id === state.pick) { ilkKartKaydet(false); hideCards(); }
       else if (e.type === 'bag' && e.id === state.pick) { state.bag = e.cards.slice(); renderBag(); }
       else if (e.type === 'power') onPower(e);
       else if (e.type === 'atis') { // uçan tuzak: atan misketten hedefe
@@ -417,7 +462,7 @@
       else if (e.type === 'finalRound') toast('🔥 Final kart turu! Geridekilere güçlü kartlar', 'gold');
       else if (e.type === 'finish') {
         const m = r.marbles[e.id], me = e.id === state.pick;
-        Ses.finishCross();
+        Ses.finishCross(); fotoFinis(e);
         if (e.place <= 3) toast(`${MEDAL[e.place - 1]} ${m.info.name} ${e.place}. oldu! (${e.time.toFixed(1)} sn)`, me ? 'gold' : '');
         else if (me) toast(`Misketin ${e.place}. bitirdi`, 'gold');
         if (me) hideCards();
@@ -426,7 +471,8 @@
           // tekrar için birincinin bitiş anını ayrıca sakla (yarış birkaç saniye daha sürer)
           state.capture = { frames: state.rec.filter(f => f.t >= e.time - 2.6), t1: e.time + 1.0, winner: e.id, tf: e.time };
         }
-      } else if (e.type === 'respawn' && e.id === state.pick) toast(e.safe ? 'Düştün ama gücün korudu: kaldığın yere kondun' : 'Misketin takıldı, yola geri kondu', 'gold');
+      } else if (e.type === 'respawn' && e.id !== state.pick && e.why === 'fall' && !e.safe && Math.random() < 0.5) anlat(`💥 ${nameOf(r, e.id)} yoldan uçtu!`);
+      else if (e.type === 'respawn' && e.id === state.pick) toast(e.safe ? 'Düştün ama gücün korudu: kaldığın yere kondun' : 'Misketin takıldı, yola geri kondu', 'gold');
       else if (e.type === 'end') { state.phase = 'ending'; state.endTimer = 1.0; }
     }
   }
@@ -511,6 +557,7 @@
     const r = state.race, p = state.player, id = state.trackId;
     const me = r.marbles[state.pick], place = me.place, gain = prizeFor(id, place);
     const xpGain = 10 + Math.round(gain / 2) + (6 - place) * 3, lvlBefore = levelOf(p.xp);
+    const unlBefore = p.unlocked || 1, yzBefore = yildiz(p.best[id]), etkiVar = !!(state.etki && state.etki.kullandi);
     p.races++; p.points += gain; p.earned += gain; p.xp += xpGain;
     if (place === 1) { p.wins++; if (state.wasLast) st(p).comeback = (st(p).comeback || 0) + 1; }
     let unlockedNew = false;
@@ -519,10 +566,13 @@
     // dünyanın son parkurunda yarışı sonuna kadar oynayan (kaçıncı olursa olsun) sonraki dünyanın ilk parkurunu açar; yarıştan çıkan açamaz
     else if (id % 10 === 0 && id < MP.TRACKS.length) { const lim = openUpTo(p); if (id + 1 > lim && id <= lim) { p.unlocked = id + 1; unlockedNew = true; } }
     if (state.mp) { st(p).mpRaces = (st(p).mpRaces || 0) + 1; if (place === 1) st(p).mpWins = (st(p).mpWins || 0) + 1; }
-    if (!state.mp) Kayit.track('yaris', { misafir: Kayit.isGuest(p), parkur: id, sira: place, sure: me.finishTime || 0, mod: state.cup ? 'kupa' : 'tek' }); // rapor: tek oyunculu yarış (çok oyunculuyu sunucu zaten görür)
+    if (!state.mp) Kayit.track('yaris', { misafir: Kayit.isGuest(p), parkur: id, sira: place, sure: me.finishTime || 0, mod: state.cup ? 'kupa' : 'tek', etki: etkiVar, kolay: !!state.kolayOn }); // rapor: tek oyunculu yarış (çok oyunculuyu sunucu zaten görür)
     dailyAdd('yaris'); if (place <= 3) dailyAdd('ilk3'); if (place === 1) dailyAdd('birinci'); if (state.mp) dailyAdd('mp'); if (unlockedNew) dailyAdd('yeni');
     const b = p.best[id];
-    if (!b || place < b.place || (place === b.place && me.finishTime && me.finishTime < (b.time || 1e9))) p.best[id] = { place, time: me.finishTime || null };
+    // misketi etkilediysen süre rekorlara girmez (yalnız sıra ve "bitirdi" bilgisi saklanır)
+    const ft = etkiVar ? null : me.finishTime || null;
+    if (!b || place < b.place || (place === b.place && ft && ft < (b.time || 1e9))) p.best[id] = { place, time: ft || (b && b.place === place ? b.time : null) || null };
+    if (me.finished && p.best[id] && !p.best[id].time) p.best[id].bitti = true;
     const notes = [];
     // bahis
     if (state.betActive) {
@@ -553,6 +603,24 @@
     if (levelOf(p.xp) > lvlBefore) notes.push(`⭐ Seviye atladın: ${levelOf(p.xp)}. seviye!`);
     const next = MP.TRACKS.find(t => t.id === id + 1);
     if (unlockedNew && next && !state.cup) notes.push(next.world !== MP.TRACKS[id - 1].world ? `🌍 Yeni dünya açıldı: ${MP.WORLDS[next.world].icon} ${MP.WORLDS[next.world].name}!` : `🔓 Yeni parkur açıldı: ${next.name}`);
+    // yeni yıldız, yeni kartlar, açılan bölümler, günün parkuru, meydan okuma
+    const yzAfter = yildiz(p.best[id]);
+    if (yzAfter > yzBefore && !state.cup) notes.push(`⭐ Yeni yıldız: ${yildizTxt(yzAfter)}`);
+    if (ayar('kolay')) for (const pid in MK.KART_ACILIS) { const n = MK.KART_ACILIS[pid]; if (unlBefore < n && (p.unlocked || 1) >= n) { const P = MG.byId[pid]; notes.push(`🃏 Yeni kart açıldı: ${P.icon} ${P.name} (${P.desc})`); Ses.yeni(); } }
+    acilisNotlari(p, notes);
+    if (!state.mp && !state.cup && id === gunParkur() && me.finished) {
+      const g = today(), s2 = st(p);
+      if (ft && (!s2.gp || s2.gp.gun !== g || ft < s2.gp.sure)) s2.gp = { gun: g, parkur: id, sure: Math.round(ft * 100) / 100 };
+      if (s2.gpOdul !== g) { s2.gpOdul = g; p.points += GP_ODUL; p.earned += GP_ODUL; notes.push(`📅 Günün parkuru ödülü +${GP_ODUL} puan`); }
+    }
+    if (state.meydan && !state.mp) {
+      const M = state.meydan;
+      if (me.finished && me.finishTime < M.hedef) notes.push(`🤝 Meydan okumayı kazandın! ${me.finishTime.toFixed(1)} sn < ${M.hedef.toFixed(1)} sn`);
+      else notes.push(`🤝 Meydan okuma: ${me.finished ? (me.finishTime - M.hedef).toFixed(1) + ' sn geride kaldın' : 'bitiremedin'}, bir daha dene!`);
+    }
+    let kutlama = null;
+    if (unlockedNew && next && next.world !== MP.TRACKS[id - 1].world && !state.cup) kutlama = { ic: MP.WORLDS[next.world].icon, baslik: `Yeni dünya: ${MP.WORLDS[next.world].name}!`, txt: '10 yeni parkur seni bekliyor.' };
+    else if (place === 1 && p.wins === 1) kutlama = { ic: '🏆', baslik: 'İlk zaferin!', txt: 'Harika gidiyorsun. Sıradaki parkur açıldı!' };
     for (const a of checkAch(p)) notes.push(`🏅 Başarım: ${a.name} (+${a.reward})`);
     Kayit.persist();
     if (place === 1) Ses.fanfare(); else if (place <= 3) Ses.cheer(); else Ses.sad();
@@ -562,6 +630,7 @@
     $('resGain').textContent = gain ? `+${gain} puan` : 'Bu yarışta puan yok';
     $('resGain').className = 'gain' + (gain ? ' good' : '');
     $('resNotes').innerHTML = notes.map(n => `<div class="note${n.startsWith('🏅') ? ' ach' : ''}">${esc(n)}</div>`).join('');
+    kutu($('resOzet'), '📋 Yarış özeti', ozetSatirlari(r));
     const dot = i => `<span class="dot sym" style="display:inline-flex;width:18px;height:18px;border-radius:50%;background:${state.colors[i]};margin-right:8px;vertical-align:-3px">${MF.MARBLES[i].sembol}</span>`;
     const sen = i => i === state.pick ? ' <span class="pill" style="padding:1px 8px;font-size:11px">SEN</span>' : '';
     if (state.cup) {
@@ -582,12 +651,19 @@
     nb.classList.toggle('hidden', !hasNext); nb.disabled = !nextOpen;
     nb.textContent = nextOpen ? (id % 10 === 0 ? 'Sonraki Dünya ▶' : 'Sonraki Parkur ▶') : id % 10 === 0 ? '🔒 Sonraki Dünya (parkuru bitir)' : '🔒 Sonraki Parkur (ilk 3 gerekli)';
     $('btnResAgain').classList.toggle('main', !nextOpen);
+    kutu($('resHedef'), '🎯 Sıradaki hedefler', state.mp ? [] : hedefSatirlari(p, id, place, nextOpen));
+    $('btnMeydan').classList.toggle('hidden', !!(state.mp || state.cup || !me.finished || !me.finishTime || etkiVar));
+    if (etkiVar && !state.mp) $('resNote').textContent += ' · Misketi etkilediğin için süre rekorlara girmedi';
     if (state.mp) { nb.classList.add('hidden'); $('btnResAgain').textContent = 'Lobiye Dön 👥'; $('btnResAgain').classList.remove('main'); $('resNote').textContent = `Toplam puanın: ${p.points} · Oda: ${state.mp.kod}`; }
     state.cupDone = cupDone;
     show('scrResult');
     if (state.authLost) setTimeout(authLost, 2500);
     state.phase = 'result';
     renderNext(); // çok oyunculu: sıradaki yarışı kurucu seçer
+    // sırayla: kutlama → ana ekran daveti → otomatik sonraki yarış (geri sayım)
+    const otoBtn = state.mp ? null : state.cup ? (cupDone ? null : $('btnResAgain')) : nextOpen ? nb : $('btnResAgain');
+    const sonra = () => anaEkranSor(() => otoBaslat(otoBtn, notes.length >= 3 ? 8 : 6));
+    if (kutlama && !state.mp) kutla(kutlama, sonra); else sonra();
   }
 
   // ================= DÖNGÜ =================
@@ -629,6 +705,7 @@
   const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch', 'scrMp', 'scrLider', 'scrSifre', 'scrCihaz', 'scrGuc'];
   const NAV_OF = { scrMenu: 'menu', scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach', scrMp: 'mp', scrLider: 'lider', scrSifre: 'menu', scrCihaz: 'menu', scrGuc: 'menu' };
   function show(id) {
+    if (id !== 'scrResult') otoDur();
     SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id)); $('shopHint').classList.toggle('hidden', id !== 'scrShop');
     $('dilSec').classList.toggle('hidden', !id || id === 'loading'); // yarışta ve yükleniyorken gizli
     const navOn = id in NAV_OF && !!state.player;
@@ -887,7 +964,10 @@
     $('ogrBack').classList.toggle('hidden', ogrI === 0); $('ogrSkip').classList.toggle('hidden', ogrI === OGR.length - 1);
     $('ogrNext').textContent = ogrI === OGR.length - 1 ? 'Hadi başla! 🏁' : 'İleri →';
   }
-  function endOgretici() { $('ogretici').classList.add('hidden'); try { localStorage.setItem(OGR_KEY, '1'); } catch (e) { } }
+  function endOgretici() {
+    if (!$('ogretici').classList.contains('hidden')) Kayit.track('ogretici', { adim: ogrI + 1, atlandi: ogrI < OGR.length - 1 });
+    $('ogretici').classList.add('hidden'); try { localStorage.setItem(OGR_KEY, '1'); } catch (e) { }
+  }
   $('ogrNext').onclick = () => { if (ogrI < OGR.length - 1) { ogrI++; renderOgr(); } else endOgretici(); };
   $('ogrBack').onclick = () => { if (ogrI > 0) { ogrI--; renderOgr(); } };
   $('ogrSkip').onclick = endOgretici;
@@ -897,10 +977,16 @@
   let opened = false;
   function selectPlayer(name) {
     state.player = Kayit.use(name); if (!state.player) return showProfiles();
-    if (!opened) { opened = true; const g = Kayit.isGuest(state.player); Kayit.track('acilis', { misafir: g, ad: g ? undefined : state.player.name, mobil: !!window.MOBIL }); if (!ogrSeen()) setTimeout(showOgretici, 400); } // rapor: oyun açıldı; ilk kez gelene rehber
+    let ilk = false;
+    if (!opened) { // rapor: oyun açıldı. İlk kez gelen rehber okumadan doğrudan Parkur 1'e girer (rehber menüde "Nasıl oynanır")
+      opened = true; const g = Kayit.isGuest(state.player); Kayit.track('acilis', { misafir: g, ad: g ? undefined : state.player.name, mobil: !!window.MOBIL });
+      if (!ogrSeen()) { try { localStorage.setItem(OGR_KEY, '1'); } catch (e) { } ilk = (state.player.races || 0) === 0; }
+    }
     if (Ag.connected) Ag.connect(agProfile()); // oyuncu değişti: sunucuya yeni adı bildir
     if (pendingRoom) { const k = pendingRoom; pendingRoom = null; showMp(); joinWhenReady(k); return; }
     showMenu();
+    if (meydanSor()) return; // meydan okuma linkiyle gelindi
+    if (ilk) hizliBasla(1);
   }
 
   function showMenu() {
@@ -912,7 +998,9 @@
     $('mStats').textContent = `${p.races} yarış · ${p.wins} galibiyet · ${p.podiums} kez ilk 3 · toplam ${p.earned} puan kazanıldı`;
     $('btnSound').textContent = Kayit.save.sound === false ? '🔇 Ses: Kapalı' : '🔊 Ses: Açık';
     $('btnGfx').textContent = '🖥️ Grafik: ' + ({ yuksek: 'Yüksek', orta: 'Orta', dusuk: 'Düşük' }[Grafik.quality()]);
-    renderDaily();
+    renderDaily(); renderSeri(p); renderGunParkur(p); kademeliMenu(p);
+    const nx = siradaki(p), T = MP.TRACKS[nx - 1];
+    $('btnOynaSub').textContent = `Parkur ${nx} · ${T.name}${p.best[nx] ? ' · ' + yildizTxt(yildiz(p.best[nx])) : ''}`;
     const guest = Kayit.isGuest(p);
     $('mMisafir').classList.toggle('hidden', !guest); $('mHesapAyar').classList.toggle('hidden', guest);
     if (guest) $('mMisafirTxt').textContent = `Misafirsin (${p.name}). Puanların sadece bu cihazda. Kaybolmasın istersen hesap oluştur.`;
@@ -947,14 +1035,14 @@
     state.world = world;
     $('tlist').innerHTML = MP.WORLDS.map(w => {
       const first = w.id * 10 + 1, open = first <= maxOpen, on = open && w.id === world;
-      const done = MP.TRACKS.filter(t => t.world === w.id && p.best[t.id] && p.best[t.id].place <= 3).length;
-      const head = `<button class="acchead${on ? ' on' : ''}" ${open ? `data-world="${w.id}"` : 'disabled'}><span class="ic">${w.icon}</span><span class="nm"><b style="color:${open ? w.pal[0] : 'inherit'}">${esc(w.name)}</b><small>Parkur ${first}–${first + 9}${open ? '' : ' · 🔒 önceki dünyada ilerle'}</small></span><span class="dn">${open ? `${done}/10 ✓` : '🔒'}</span><span class="ar">${open ? (on ? '▴' : '▾') : ''}</span></button>`;
+      const done = MP.TRACKS.filter(t => t.world === w.id).reduce((a, t) => a + yildiz(p.best[t.id]), 0);
+      const head = `<button class="acchead${on ? ' on' : ''}" ${open ? `data-world="${w.id}"` : 'disabled'}><span class="ic">${w.icon}</span><span class="nm"><b style="color:${open ? w.pal[0] : 'inherit'}">${esc(w.name)}</b><small>Parkur ${first}–${first + 9}${open ? '' : ' · 🔒 önceki dünyada ilerle'}</small></span><span class="dn">${open ? `<span class="yz">★</span> ${done}/30` : '🔒'}</span><span class="ar">${open ? (on ? '▴' : '▾') : ''}</span></button>`;
       if (!on) return `<div class="acc${open ? '' : ' locked'}">${head}</div>`;
       const ts = MP.TRACKS.filter(t => t.world === w.id);
       return `<div class="acc open" id="accOpen">${head}<p class="muted" style="margin:6px 4px;font-size:12px;font-weight:700">Son 3 parkur dünya kupasıdır.</p><div class="tgrid">${ts.map(t => {
         const topen = t.id <= maxOpen, b = p.best[t.id];
         const sub = !topen ? (t.id % 10 === 1 ? '🔒 Önceki dünyanın son parkurunu bitir' : "🔒 Önceki parkurda ilk 3'e gir") : `⏱ ~${t.target} sn · 🥇 ${pointsFor(t.id)} puan`;
-        return `<button class="tcard${topen ? '' : ' locked'}${t.id === state.trackId ? ' last' : ''}" ${topen ? `data-track="${t.id}"` : 'disabled'}><span class="num">PARKUR ${t.id}${t.hand ? ' · ⭐ ÖZEL' : ''}${t.id === state.trackId ? ' · son oynanan' : ''}</span><b>${esc(t.name)}</b><small>${sub}</small>${b ? `<small class="best">En iyi: ${MEDAL[b.place - 1] || b.place + '.'}${b.time ? ' · ' + b.time.toFixed(1) + ' sn' : ''}</small>` : ''}</button>`;
+        return `<button class="tcard${topen ? '' : ' locked'}${t.id === state.trackId ? ' last' : ''}" ${topen ? `data-track="${t.id}"` : 'disabled'}><span class="num">PARKUR ${t.id}${t.hand ? ' · ⭐ ÖZEL' : ''}${t.id === state.trackId ? ' · son oynanan' : ''}</span><b>${esc(t.name)}</b><small>${sub}</small>${b ? `<small class="best">${yildizHTML(yildiz(b))} En iyi: ${MEDAL[b.place - 1] || b.place + '.'}${b.time ? ' · ' + b.time.toFixed(1) + ' sn' : ''}</small>` : ''}</button>`;
       }).join('')}</div></div>`;
     }).join('');
     show('scrTracks');
@@ -1028,7 +1116,7 @@
       return `<button class="mcard${i === state.pick ? ' sel' : ''}" data-pick="${i}"><div class="ball" style="background:radial-gradient(circle at 35% 30%, ${look.color2 || '#ffffff'}, ${look.color} 55%, #000 140%)"></div><b>${m.name}</b>${i === state.pick ? '<small class="muted">kostümün bunda</small>' : ''}</button>`;
     }).join('');
     pickMode.set(state.mode);
-    $('betBox').classList.toggle('hidden', !!state.cup);
+    $('betBox').classList.toggle('hidden', !!state.cup || !acik(state.player, 'bahis'));
     if (!state.cup) setupBet();
     ensureTrack(state.trackId);
     show('scrPick');
@@ -1055,10 +1143,10 @@
   $('btnResAgain').onclick = () => {
     if (state.mp) { disposeRace(); showMp(); return; }
     if (state.cup) { if (state.cupDone) { state.cup = null; showCups(); } else { state.trackId = state.cup.tracks[state.cup.idx]; startRace(); } }
-    else showPick();
+    else hizliBasla(state.trackId, { meydan: state.meydan && state.meydan.parkur === state.trackId ? state.meydan : null }); // tekrar: doğrudan başlar
   };
   $('btnResTracks').onclick = () => { state.cup = null; state.mp = null; showTracks(); }; // çok oyunculuda odada kalır
-  $('btnResNext').onclick = () => { if (state.cup || state.trackId >= MP.TRACKS.length || openUpTo(state.player) < state.trackId + 1) return; state.trackId++; state.world = null; showPick(); };
+  $('btnResNext').onclick = () => { if (state.cup || state.trackId >= MP.TRACKS.length || openUpTo(state.player) < state.trackId + 1) return; hizliBasla(state.trackId + 1); };
   $('btnResMenu').onclick = () => { state.mp = null; showMenu(); };
   function cycleCam() { state.cam = (state.cam + 1) % CAMS.length; $('camName').textContent = CAMS[state.cam]; }
   $('btnCam').onclick = cycleCam;
@@ -1068,6 +1156,7 @@
       Ag.send({ t: 'yaristanCik' }); disposeRace(); state.mp = null; showMp(); return; // odada kalır, istersen yarışa döner
     }
     if (!sure && (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending')) { if (!confirm('Yarıştan çıkılsın mı? (Puan alınmaz' + (state.betActive ? ', bahis iade edilir' : '') + ')')) return; }
+    biraktiKaydet(false);
     if (state.betActive) { state.player.points += state.betActive.amount; state.betActive = null; Kayit.persist(); }
     disposeRace(); state.cup = null; showTracks();
   }
@@ -1090,6 +1179,9 @@
     if (state.phase === 'replay' && (e.key === ' ' || e.key === 'Escape' || e.key === 'Enter')) { endReplay(); return; }
     if (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') {
       if (e.key === 'c' || e.key === 'C') cycleCam();
+      if (e.key === ' ') { e.preventDefault(); ufle(); }
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') yolSec(-1);
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') yolSec(1);
       if (e.key === 'Escape') { if (state.pauseOpen) closePause(); else openPause(); }
       if (bagMode()) { // biriktir: Q·W·E gelen kartı seçer, 1–5 çantadakini kullanır
         const q = OFFER_KEYS.indexOf(e.key.toUpperCase()); if (q >= 0) pickCard(q);
@@ -1271,7 +1363,7 @@
     if (state.introHold) endPowerIntro();
     if (state.phase === 'shop') leaveShop();
     mpCountdown(null);
-    state.mp = { kod: m.kod, racers: m.yarisanlar }; state.cup = null; state.betActive = null;
+    state.mp = { kod: m.kod, racers: m.yarisanlar }; state.cup = null; state.betActive = null; state.meydan = null; state.kolayOn = false;
     state.trackId = m.parkur; ensureTrack(m.parkur); disposeRace();
     const r = state.race = Ag.startRace(state.track, m), p = state.player;
     state.pick = m.benim;
@@ -1291,6 +1383,7 @@
     state.bag = r.powers.bag || []; renderBag();
     buildHud(); updateHud(true);
     lastCount = null;
+    dxReset(); state.etki = null;
     if (m.intro <= 0.3) toast('🔌 Yarışa geri döndün', 'gold');
   }
 
@@ -1388,6 +1481,331 @@
   $('btnAch').onclick = showAch;
   $('btnMp').onclick = showMp;
   $('btnAchBack').onclick = showMenu;
+
+  // ================= OYUNCU DENEYİMİ =================
+  // ---- oyun ayarları (bu cihazda): oynanışı değiştiren özellikler kapatılabilir ----
+  const AYARLAR = [
+    { id: 'etkile', ic: '🫳', ad: 'Misketi etkile', acik: 'Üfle düğmesi ve çatalda yol seçimi. Yalnız tek oyunculuda; kullanılan yarışın süresi rekorlara girmez.' },
+    { id: 'kolay', ic: '🌱', ad: 'Kolay başlangıç', acik: 'İlk 3 parkurda botlar biraz yavaş, güç kartları adım adım açılır.' },
+    { id: 'ipucu', ic: '💡', ad: 'İpuçları', acik: 'Yarışta kısa yardım mesajları.' },
+    { id: 'oto', ic: '⏭', ad: 'Otomatik sonraki yarış', acik: 'Sonuç ekranından birkaç saniye sonra sıradaki yarış başlar.' },
+    { id: 'anlatici', ic: '📣', ad: 'Anlatıcı', acik: 'Yarıştaki önemli anlar, foto finiş ve rakip tanıtımı.' },
+  ];
+  const ayar = k => !(Kayit.save.ayar && Kayit.save.ayar[k] === false);
+  function renderAyar() {
+    $('ayarList').innerHTML = AYARLAR.map(a => `<button class="ayar${ayar(a.id) ? ' on' : ''}" data-ayar="${a.id}" role="switch" aria-checked="${ayar(a.id)}"><span class="aic">${a.ic}</span><span class="atx"><b>${a.ad}</b><small>${a.acik}</small></span><span class="sw"></span></button>`).join('');
+  }
+  function showAyar() { renderAyar(); $('ayarBox').classList.remove('hidden'); }
+  $('ayarList').addEventListener('click', e => {
+    const b = e.target.closest('[data-ayar]'); if (!b) return;
+    const k = b.dataset.ayar, v = !ayar(k);
+    Kayit.save.ayar = Object.assign({}, Kayit.save.ayar, { [k]: v }); Kayit.persist(); renderAyar();
+    Kayit.track('ayar', { ayar: k, acik: v });
+    if (state.race && !state.mp && ['countdown', 'race', 'ending'].includes(state.phase) && (k === 'etkile' || k === 'kolay')) toast('Bu ayar sonraki yarışta geçerli olur', 'gold');
+    if (k === 'ipucu' && !v) hideIpucu();
+    if (k === 'anlatici' && !v) { $('anlatici').classList.add('hidden'); $('rakipler').classList.add('hidden'); }
+    if (k === 'oto' && !v) otoDur();
+  });
+  $('ayarKapat').onclick = () => $('ayarBox').classList.add('hidden');
+  $('btnAyar').onclick = showAyar;
+  $('pauseAyar').onclick = showAyar;
+
+  // ---- kademeli açılış: yeni oyuncuya menü sade başlar ----
+  const ACILIS = { shop: 1, ach: 1, lider: 1, gunluk: 1, gunParkur: 1, cups: 3, bahis: 3 };
+  const acik = (p, k) => (p.races || 0) >= ACILIS[k];
+  function kademeliMenu(p) {
+    const vis = { btnShop: 'shop', btnAch: 'ach', btnLider: 'lider', btnCups: 'cups' };
+    for (const id in vis) $(id).classList.toggle('hidden', !acik(p, vis[id]));
+    for (const k of ['shop', 'ach', 'lider', 'cups']) { const b = document.querySelector(`#topnav [data-nav="${k}"]`); if (b) b.classList.toggle('hidden', !acik(p, k)); }
+    $('mGunluk').classList.toggle('hidden', !acik(p, 'gunluk'));
+  }
+  function acilisNotlari(p, notes) {
+    const n = p.races;
+    if (n === ACILIS.shop) notes.push('🔓 Mağaza, başarımlar, liderlik ve günün parkuru açıldı!');
+    if (n === ACILIS.cups) notes.push('🔓 Kupalar ve bahis açıldı: 3 parkurluk turnuvalar, yarış öncesi tahmin!');
+  }
+
+  // ---- yıldızlar: ★ bitir, ★★ ilk 3, ★★★ kazan ----
+  const yildiz = b => !b ? 0 : b.place === 1 ? 3 : b.place <= 3 ? 2 : (b.time || b.bitti) ? 1 : 0;
+  const yildizTxt = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+  const yildizHTML = n => `<span class="yz">${'★'.repeat(n)}<i>${'☆'.repeat(3 - n)}</i></span>`;
+
+  // ---- hızlı başlat: misket seçimi ve bahis atlanır (son seçilen misketle) ----
+  const siradaki = p => Math.max(1, Math.min(MP.TRACKS.length, p.unlocked || 1));
+  function hizliBasla(id, ops = {}) {
+    otoDur(); state.cup = null; state.world = null; state.trackId = id; state.betSkip = true; state.meydanNext = ops.meydan || null;
+    startRace();
+  }
+  $('btnOyna').onclick = () => hizliBasla(siradaki(state.player));
+
+  // ---- ipuçları: her biri birkaç kez gösterilir (bu cihazda sayılır) ----
+  const IPUCU_MAX = { basla: 3, kart: 2, tuzak: 2, ufle: 2, catal: 2, geride: 2 };
+  let ipucuT = null;
+  function ipucu(k, txt, ms = 5500) {
+    if (!ayar('ipucu')) return false;
+    const say = Kayit.save.ipucu || (Kayit.save.ipucu = {});
+    if ((say[k] || 0) >= (IPUCU_MAX[k] || 1)) return false;
+    say[k] = (say[k] || 0) + 1; Kayit.persist();
+    const el = $('ipucu'); el.textContent = '💡 ' + txt; el.classList.remove('hidden');
+    Ses.ipucu(); clearTimeout(ipucuT); ipucuT = setTimeout(hideIpucu, ms);
+    return true;
+  }
+  function hideIpucu() { clearTimeout(ipucuT); $('ipucu').classList.add('hidden'); }
+
+  // ---- yarış içi geçici durum ----
+  const PERSONA = { saldirgan: ['😈', 'Saldırgan'], temkinli: ['🛡️', 'Temkinli'], dengeli: ['⚖️', 'Dengeli'] };
+  function dxReset() {
+    state.dx = { uses: [], hits: {}, blocks: 0, gecis: 0, rank: null, rankCand: null, rankT: 0, lead: null, leadCand: null, leadT: 0, anlatT: -9, son: false, kiyas: false, foto: null, fotoN: 0, fin: [], kartOgret: false, ilkKart: null, ufleIpucu: false, catalIpucu: false, gerideT: 0 };
+  }
+  dxReset();
+  function hudTemizle() {
+    for (const id of ['anlatici', 'ipucu', 'rakipler', 'finalBadge', 'hedefBox', 'ufle', 'yolSec']) $(id).classList.add('hidden');
+    $('gecis').innerHTML = ''; $('hud').classList.remove('kartvar', 'mesajvar'); clearTimeout(ipucuT);
+  }
+  // yarış öncesi (giriş animasyonu sırasında): rakipler, dünya finali / günün parkuru, meydan okuma hedefi
+  function yarisOncesi() {
+    const r = state.race, p = state.player, id = state.trackId;
+    if (!state.mp && ayar('anlatici')) {
+      $('rakipler').innerHTML = '<h4>Rakiplerin</h4>' + r.marbles.filter(m => m.id !== state.pick).map(m => {
+        const pr = m.persona && PERSONA[m.persona.id];
+        return `<div class="rk"><span class="dot" style="background:${state.colors[m.id]}"></span>${esc(m.info.name)}${pr ? `<small>${pr[0]} ${pr[1]}</small>` : ''}</div>`;
+      }).join('');
+      $('rakipler').classList.remove('hidden');
+    }
+    const fb = $('finalBadge');
+    if (!state.mp && !state.cup && id % 10 === 0) { const w = MP.WORLDS[MP.TRACKS[id - 1].world]; fb.innerHTML = `🏆 DÜNYA FİNALİ<small>${w.icon} ${esc(w.name)}</small>`; fb.classList.remove('hidden'); }
+    else if (!state.mp && !state.cup && id === gunParkur()) { fb.innerHTML = `📅 GÜNÜN PARKURU<small>Parkur ${id} · ${esc(MP.TRACKS[id - 1].name)}</small>`; fb.classList.remove('hidden'); }
+    if (state.meydan) { $('hedefBox').textContent = `🎯 ${state.meydan.kim}: ${state.meydan.hedef.toFixed(1)} sn`; $('hedefBox').classList.remove('hidden'); }
+    if (!state.mp) ipucu('basla', `Senin misketin: ${MF.MARBLES[state.pick].name} ${MF.MARBLES[state.pick].sembol}. Misketler kendi yuvarlanır; sen güç kartlarıyla yardım edersin!`, 6500);
+  }
+  function yarisBasladi() { $('rakipler').classList.add('hidden'); $('finalBadge').classList.add('hidden'); }
+
+  // ---- anlatıcı ----
+  let anlatTimer = null;
+  function anlat(txt, onemli) {
+    const r = state.race; if (!r || !ayar('anlatici')) return;
+    if (!onemli && r.t - state.dx.anlatT < 3.5) return;
+    state.dx.anlatT = r.t;
+    const el = $('anlatici'); el.textContent = txt; el.classList.remove('hidden'); el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    $('hud').classList.add('mesajvar');
+    clearTimeout(anlatTimer); anlatTimer = setTimeout(() => { el.classList.add('hidden'); $('hud').classList.remove('mesajvar'); }, 2600);
+  }
+  // ---- foto finiş: iki misket 0,35 sn'den yakın bitirdi ----
+  function fotoFinis(e) {
+    const dx = state.dx, r = state.race, prev = dx.fin[dx.fin.length - 1];
+    dx.fin.push({ id: e.id, time: e.time });
+    if (!prev || !ayar('anlatici') || dx.fotoN >= 2) return;
+    const fark = e.time - prev.time;
+    if (fark >= 0.35 || !(e.place === 2 || e.id === state.pick || prev.id === state.pick)) return;
+    dx.fotoN++; dx.foto = { a: prev.id, b: e.id, fark };
+    const f = $('flash'); f.classList.remove('hidden'); f.style.animation = 'none'; void f.offsetWidth; f.style.animation = ''; setTimeout(() => f.classList.add('hidden'), 650);
+    Ses.foto(); anlat(`📸 Foto finiş! ${r.marbles[prev.id].info.name} önde, fark ${fark.toFixed(2)} sn`, true);
+  }
+
+  // ---- sıra geçme ve lider değişimi (0,6 sn kararlı kalınca sayılır: yan yana giderken titremesin) ----
+  function siraTakip(r, S) {
+    const dx = state.dx, me = r.marbles[state.pick], idx = S.findIndex(m => m.id === state.pick);
+    if (!r.started || r.done) return;
+    if (idx !== dx.rankCand) { dx.rankCand = idx; dx.rankT = r.t; }
+    if (dx.rank == null) dx.rank = idx;
+    else if (idx !== dx.rank && r.t - dx.rankT > 0.6 && !me.finished && r.t > 3) {
+      const d = dx.rank - idx; dx.rank = idx;
+      if (d > 0) { gecisPop(`+${d} ⬆`, false); Ses.gecti(); dx.gecis += d; } else gecisPop(`−${-d}`, true);
+    }
+    // kullanılan kendine-güç kartlarının 5 sn sonraki sırası
+    for (const u of dx.uses) if (u.r1 == null && r.t >= u.t + 5) u.r1 = idx;
+    // anlatıcı: lider değişti, son düzlük, kıyasıya
+    const L = S[0], fs = r.track.finishS;
+    if (L.id !== dx.leadCand) { dx.leadCand = L.id; dx.leadT = r.t; }
+    if (dx.lead == null) dx.lead = L.id;
+    else if (L.id !== dx.lead && r.t - dx.leadT > 0.8 && !L.finished && r.t > 6) { dx.lead = L.id; anlat(L.id === state.pick ? '🔥 Liderlik sende!' : `🏁 ${L.info.name} öne geçti!`); }
+    if (!dx.son && !L.finished && L.s > fs * 0.88) { dx.son = true; anlat('🏁 Son düzlük!', true); }
+    if (!dx.kiyas && S[1] && !L.finished && !S[1].finished && L.s > fs * 0.7 && L.s - S[1].s < 1.2) { dx.kiyas = true; anlat(`⚔️ ${L.info.name} ile ${S[1].info.name} kıyasıya!`); }
+    // geride kalana moral
+    if (idx === S.length - 1 && !me.finished && r.t > 12) { dx.gerideT += 1; if (dx.gerideT === 12 && !state.mp) ipucu('geride', 'Geride kalana daha güçlü kartlar çıkar. Pes etme!'); } else dx.gerideT = 0;
+  }
+  function gecisPop(txt, kotu) {
+    const el = document.createElement('div'); el.className = 'gec' + (kotu ? ' kotu' : ''); el.textContent = txt;
+    $('gecis').appendChild(el); setTimeout(() => el.remove(), 1150);
+    while ($('gecis').children.length > 3) $('gecis').firstChild.remove();
+  }
+
+  // ---- misketi etkile: Üfle + çatalda yol seçimi (yalnız tek oyunculu) ----
+  function etkiUI() {
+    const c = state.etki, r = state.race, dx = state.dx;
+    const me = r && r.marbles[state.pick], on = !!(c && c.on && r && r.started && me && !me.finished && state.phase === 'race');
+    $('ufle').classList.toggle('hidden', !on);
+    if (on) {
+      const n = c.enerji, max = MK.UFLE.max;
+      $('uflePips').innerHTML = Array.from({ length: max }, (_, k) => `<i class="${k < n ? 'on' : ''}"></i>`).join('');
+      $('ufleDolum').style.height = (n >= max ? 0 : c.dolumOran() * 100) + '%';
+      $('ufle').classList.toggle('bos', n < 1);
+      if (!dx.ufleIpucu && r.t > 6 && n >= 1 && !state.hand) { dx.ufleIpucu = true; ipucu('ufle', "Üfle'ye dokun (ya da Boşluk): misketin kısa bir an ileri atılır. Enerji zamanla dolar."); }
+    }
+    const cat = on && c.catal;
+    $('yolSec').classList.toggle('hidden', !cat);
+    if (cat) {
+      $('yolSol').classList.toggle('on', c.yon === -1); $('yolSag').classList.toggle('on', c.yon === 1);
+      $('yolTxt').textContent = c.yon ? (c.yon < 0 ? 'Soldan!' : 'Sağdan!') : 'Yol ayrılıyor!';
+      if (!dx.catalIpucu) { dx.catalIpucu = true; ipucu('catal', 'Yol ayrılıyor! ⬅ ➡ ile hangi koldan gideceğini seç.'); }
+    }
+  }
+  function ufle() {
+    const c = state.etki; if (!c || state.mp || state.paused || state.phase !== 'race') return;
+    if (c.ufle()) {
+      Ses.ufle(); Grafik.puff(state.race.marbles[state.pick].body.translation());
+      const b = $('ufle'); b.classList.remove('pof'); void b.offsetWidth; b.classList.add('pof');
+    }
+  }
+  function yolSec(d) { const c = state.etki; if (c && !state.paused && c.yol(d)) Ses.click(); }
+  $('ufle').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); ufle(); });
+  $('yolSec').addEventListener('pointerdown', e => { const b = e.target.closest('[data-yol]'); if (b) { e.preventDefault(); yolSec(+b.dataset.yol); } });
+
+  // ---- yarış sonu: ne işe yaradı, yakın hedefler ----
+  function ozetSatirlari(r) {
+    const dx = state.dx, out = [], meIdx = r.marbles[state.pick].place - 1;
+    for (const u of dx.uses) {
+      const P = MG.byId[u.pid]; if (!P) continue;
+      if (P.type === 'attack') out.push({ v: u.n * 2 + 0.5, t: u.n ? `${P.icon} ${P.name}: ${u.n} rakibe işledi` : `${P.icon} ${P.name}: kimseye işlemedi` });
+      else { const r1 = u.r1 != null ? u.r1 : meIdx, d = u.r0 - r1; out.push({ v: d * 2 + 0.2, t: d > 0 ? `${P.icon} ${P.name}: ${d} sıra kazandırdı` : d === 0 ? `${P.icon} ${P.name}: sıranı korudu` : `${P.icon} ${P.name}: bu sefer yetmedi (${-d} sıra geriledin)` }); }
+    }
+    out.sort((a, b) => b.v - a.v);
+    const lines = out.slice(0, 3).map(x => x.t);
+    if (dx.blocks) lines.push(`🛡️ Kalkanın ${dx.blocks} saldırıyı engelledi`);
+    if (dx.gecis) lines.push(`⬆ Yarışta ${dx.gecis} kez rakip geçtin`);
+    const hk = Object.keys(dx.hits).sort((a, b) => dx.hits[b] - dx.hits[a])[0];
+    if (hk != null) lines.push(`🎯 Sana en çok ${r.marbles[hk].info.name} saldırdı (${dx.hits[hk]} kez)`);
+    if (state.etki && state.etki.ufleSayisi) lines.push(`💨 ${state.etki.ufleSayisi} kez üfledin`);
+    if (dx.foto) lines.push(`📸 Foto finiş: ${r.marbles[dx.foto.a].info.name} önde, fark ${dx.foto.fark.toFixed(2)} sn`);
+    if (!dx.uses.length) lines.unshift('⚡ Hiç kart kullanmadın: kartlar sıranı değiştirebilir!');
+    return lines.slice(0, 6);
+  }
+  function hedefSatirlari(p, id, place, nextOpen) {
+    const out = [];
+    if (!state.mp && !state.cup) {
+      const yz = yildiz(p.best[id]);
+      if (yz === 2) out.push(`${yildizTxt(yz)} 3. yıldız için bu parkuru kazan`);
+      else if (yz < 2) out.push(`${yildizTxt(yz)} 2. yıldız için ilk 3'e gir`);
+      if (!nextOpen && place > 3 && id < MP.TRACKS.length && id % 10 !== 0) out.push("🔒 Sonraki parkur için ilk 3 lazım, bir daha dene!");
+    }
+    if (acik(p, 'shop')) {
+      const it = Object.values(Magaza.ITEMS).filter(x => !p.owned.includes(x.id)).sort((a, b) => a.price - b.price)[0];
+      if (it) out.push(p.points >= it.price ? `🛍️ Mağazada "${it.name}" alabilirsin!` : `🛍️ "${it.name}" için ${it.price - p.points} puan kaldı`);
+    }
+    const d = ensureDaily(p), t = d.gorevler.find(x => !x.alindi && x.ilerleme > 0 && x.ilerleme < x.hedef);
+    if (t) out.push(`📅 ${t.ad}: ${t.ilerleme}/${t.hedef}`);
+    else if (d.gorevler.some(x => !x.alindi && x.ilerleme >= x.hedef)) out.push('📅 Günlük görev ödülün hazır: menüden al!');
+    return out.slice(0, 3);
+  }
+  function kutu(el, baslik, lines) {
+    el.innerHTML = lines.length ? `<b>${baslik}</b>` + lines.map(x => `<div>${esc(x)}</div>`).join('') : '';
+    el.classList.toggle('hidden', !lines.length);
+  }
+
+  // ---- sonuç ekranında otomatik geri sayım (ayarlı; dokununca durur) ----
+  let otoT = null, otoBtn = null;
+  function otoBaslat(btn, sn) {
+    otoDur(); if (!btn || !ayar('oto') || state.mp) return;
+    otoBtn = btn; const son = performance.now() + sn * 1000;
+    btn.classList.add('oto'); const bar = document.createElement('span'); bar.className = 'otobar'; btn.appendChild(bar);
+    $('btnOtoDur').classList.remove('hidden');
+    otoT = setInterval(() => {
+      const l = son - performance.now(); bar.style.width = Math.max(0, 100 * (1 - l / (sn * 1000))) + '%';
+      if (l <= 0) { const b = otoBtn; otoDur(); if (state.phase === 'result' && !$('scrResult').classList.contains('hidden') && b && !b.disabled) b.click(); }
+    }, 100);
+  }
+  function otoDur() {
+    clearInterval(otoT); otoT = null;
+    if (otoBtn) { otoBtn.classList.remove('oto'); const bar = otoBtn.querySelector('.otobar'); if (bar) bar.remove(); }
+    otoBtn = null; $('btnOtoDur').classList.add('hidden');
+  }
+  $('btnOtoDur').onclick = otoDur;
+  $('scrResult').addEventListener('pointerdown', e => { if (otoBtn && !e.target.closest('.oto')) otoDur(); });
+
+  // ---- kutlama (yeni dünya, ilk zafer) ----
+  function kutla(k, done) {
+    $('kutlaIc').textContent = k.ic; $('kutlaBaslik').textContent = k.baslik; $('kutlaTxt').textContent = k.txt;
+    const cols = ['#ffd23f', '#ff4d6d', '#45c8ff', '#7bff5a', '#ffffff', '#b07bff'];
+    $('konfeti').innerHTML = Array.from({ length: 70 }, () => `<i style="left:${Math.random() * 100}%;background:${cols[Math.floor(Math.random() * cols.length)]};animation-duration:${2 + Math.random() * 2.5}s;animation-delay:${Math.random() * 0.8}s"></i>`).join('');
+    $('kutlama').classList.remove('hidden'); Ses.yeni();
+    $('kutlaTamam').onclick = () => { $('kutlama').classList.add('hidden'); $('konfeti').innerHTML = ''; done(); };
+  }
+
+  // ---- ana ekrana ekle daveti (2. yarıştan sonra; 7 günde bir, en fazla 3 kez) ----
+  let kurulum = null;
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); kurulum = e; });
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+  function anaEkranSor(done) {
+    const a = Kayit.save.anaEkran || {}, now = Date.now();
+    if (state.mp || state.player.races < 2 || standalone() || location.protocol !== 'https:' || (a.n || 0) >= 3 || now - (a.t || 0) < 7 * 864e5 || !(kurulum || isIOS)) return done();
+    Kayit.save.anaEkran = { n: (a.n || 0) + 1, t: now }; Kayit.persist();
+    $('anaEkranTxt').textContent = kurulum ? 'Misket Yarışı uygulama gibi tam ekran açılsın, tek dokunuşla oyna.' : 'Safari\'de alttaki Paylaş ⬆ düğmesine dokun, sonra "Ana Ekrana Ekle"yi seç.';
+    $('anaEkranEkle').textContent = kurulum ? '📲 Ekle' : 'Anladım';
+    $('anaEkranBox').classList.remove('hidden');
+    const kapat = () => { $('anaEkranBox').classList.add('hidden'); done(); };
+    $('anaEkranSonra').onclick = () => { Kayit.track('anaekran', { kabul: false }); kapat(); };
+    $('anaEkranEkle').onclick = async () => {
+      if (kurulum) { try { kurulum.prompt(); const c = await kurulum.userChoice; Kayit.track('anaekran', { kabul: !!(c && c.outcome === 'accepted') }); } catch (e) { } kurulum = null; }
+      kapat();
+    };
+  }
+
+  // ---- günün parkuru: herkes aynı parkurda (tarihe göre), ilk bitirişe ödül, günlük sıralama ----
+  const GP_ODUL = 50;
+  const gunParkur = (g = today()) => 1 + ([...g].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 11) % 100);
+  function renderGunParkur(p) {
+    const el = $('mGunParkur'); if (!acik(p, 'gunParkur')) { el.classList.add('hidden'); return; }
+    const id = gunParkur(), T = MP.TRACKS[id - 1], gp = st(p).gp, mine = gp && gp.gun === today() ? gp : null, odul = st(p).gpOdul !== today();
+    const alt = (mine && mine.sure ? `Bugünkü en iyin: ${mine.sure.toFixed(1)} sn` : 'Herkes aynı parkurda: en iyi süre listesine gir!') + (odul ? ` · İlk bitirişe +${GP_ODUL} puan` : '');
+    el.innerHTML = `<span class="gic">📅</span><span class="gtx"><b>Günün parkuru: ${id} · ${esc(T.name)}</b><small>${alt}</small></span><button class="sm" data-gp="lider" title="Sıralama">🏅</button><button class="sm main" data-gp="oyna">Yarış ▶</button>`;
+    el.classList.remove('hidden');
+  }
+  $('mGunParkur').addEventListener('click', e => { const b = e.target.closest('[data-gp]'); if (!b) return; if (b.dataset.gp === 'oyna') hizliBasla(gunParkur()); else showLider('gunluk'); });
+
+  // ---- giriş serisi: menü başlığında ----
+  function renderSeri(p) {
+    const d = ensureDaily(p), el = $('mSeri'), yarin = 20 + 5 * Math.min(d.seri, 6);
+    if (!acik(p, 'gunluk')) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden'); el.classList.toggle('al', !d.girisAlindi);
+    el.textContent = d.girisAlindi ? `🔥 ${d.seri}. gün · yarın +${yarin}` : `🎁 Giriş ödülü +${d.girisOdul}`;
+  }
+  $('mSeri').onclick = () => { const b = document.querySelector('#mGunluk [data-dgiris]'); if (b) b.click(); };
+
+  // ---- meydan okuma linki: ?parkur=…&hedef=…&kim=… ----
+  let pendingMeydan = null;
+  try {
+    const q = new URLSearchParams(location.search), id = +q.get('parkur'), h = +q.get('hedef');
+    if (id >= 1 && id <= MP.TRACKS.length && h > 5 && h < 2000) pendingMeydan = { parkur: Math.floor(id), hedef: Math.round(h * 10) / 10, kim: MI.tidy(String(q.get('kim') || '')).slice(0, 16) || 'Bir arkadaşın' };
+    if (q.has('parkur') || q.has('hedef')) { q.delete('parkur'); q.delete('hedef'); q.delete('kim'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); }
+  } catch (e) { }
+  function meydanSor() {
+    const m = pendingMeydan; pendingMeydan = null; if (!m) return false;
+    const T = MP.TRACKS[m.parkur - 1];
+    $('meydanTxt').textContent = `${m.kim}, Parkur ${m.parkur} (${T.name}) yarışını ${m.hedef.toFixed(1)} sn'de bitirdi. Daha hızlı bitirebilir misin?`;
+    $('meydanBox').classList.remove('hidden');
+    $('meydanKabul').onclick = () => { $('meydanBox').classList.add('hidden'); Kayit.track('meydan', { kabul: true }); hizliBasla(m.parkur, { meydan: m }); };
+    $('meydanSonra').onclick = () => { $('meydanBox').classList.add('hidden'); Kayit.track('meydan', { kabul: false }); };
+    return true;
+  }
+  const OYUN_URL = 'https://ysf-creator1.github.io/misket-yarisi/';
+  $('btnMeydan').onclick = () => {
+    otoDur();
+    const r = state.race, me = r && r.marbles[state.pick]; if (!me || !me.finishTime) return;
+    const base = location.protocol === 'https:' ? location.origin + location.pathname : OYUN_URL;
+    const link = `${base}?parkur=${state.trackId}&hedef=${me.finishTime.toFixed(1)}&kim=${encodeURIComponent(state.player.name)}`;
+    const txt = `Misket Yarışı: Parkur ${state.trackId}'i ${me.finishTime.toFixed(1)} sn'de bitirdim. Geçebilir misin?`;
+    if (navigator.share && window.MOBIL) navigator.share({ title: 'Misket Yarışı', text: txt, url: link }).catch(() => { });
+    else if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => toast('🔗 Meydan okuma linki kopyalandı: arkadaşına gönder', 'gold'), () => prompt('Meydan okuma linki:', link));
+    else prompt('Meydan okuma linki:', link);
+  };
+
+  // ---- ölçüm: yarıştan çıkan / sayfayı kapatan ----
+  function biraktiKaydet(kapatti) {
+    const r = state.race; if (!r || state.mp || !['countdown', 'race', 'ending'].includes(state.phase)) return;
+    Kayit.track('birakti', { parkur: state.trackId, sn: Math.round(r.t), ilk: (state.player.races || 0) === 0, kapatti: !!kapatti });
+  }
+  addEventListener('pagehide', () => biraktiKaydet(true));
 
   // test kancası (otomatik ekran testleri için)
   window.__misket = {

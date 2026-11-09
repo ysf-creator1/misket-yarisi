@@ -44,7 +44,7 @@
   const BASE_TIER = { 1: 1, 2: 0.6, 3: 0.22 }, BOOST = { 1: -0.4, 2: 0.5, 3: 3 };
 
   class PowerSystem {
-    // opts: { playerId (-1: hepsi bot) ya da humans: [misket no…] (çok oyunculu), rand, firstAt, gap:[min,max], pickTime }
+    // opts: { playerId (-1: hepsi bot) ya da humans: [misket no…] (çok oyunculu), rand, firstAt, gap:[min,max], pickTime, pool: [güç id…] }
     constructor(race, opts = {}) {
       this.race = race; this.rand = opts.rand || race.rand;
       this.playerId = opts.playerId != null ? opts.playerId : -1;
@@ -58,6 +58,7 @@
       this.stats = { used: 0 };
       // Biriktir modu: seçilen kart çantaya girer (en fazla MG.BAG.size), oyuncu istediği an kullanır
       this.mode = opts.mode === 'biriktir' ? 'biriktir' : 'klasik';
+      this.pool = opts.pool ? MG.POWERS.filter(p => opts.pool.includes(p.id)) : MG.POWERS; // kademeli kartlar: yeni oyuncuya önce temel kartlar
       this.bags = {}; this.lastUse = {}; this.botUseAt = 0;
       race.marbles.forEach((m, i) => {
         m.fx = {}; m.race = race;
@@ -126,7 +127,7 @@
         if (m.finished) return;
         if (this.mode === 'biriktir' && this.bagOf(m.id).length >= MG.BAG.size) return; // çanta dolu: kart gelmez
         const fb = final ? 1.8 : 1; // finalde geride olanın güçlü kart şansı daha da artar
-        const frac = n > 1 ? idx / (n - 1) : 0, pool = MG.POWERS.map(p => ({ p, w: BASE_TIER[p.tier] * Math.max(0.15, 1 + BOOST[p.tier] * frac * fb) }));
+        const frac = n > 1 ? idx / (n - 1) : 0, pool = this.pool.map(p => ({ p, w: BASE_TIER[p.tier] * Math.max(0.15, 1 + BOOST[p.tier] * frac * fb) }));
         const cards = [];
         while (cards.length < 3) {
           const tot = pool.reduce((a, x) => a + x.w, 0); let q = this.rand() * tot;
