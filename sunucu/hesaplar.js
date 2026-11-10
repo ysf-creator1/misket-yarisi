@@ -190,13 +190,14 @@ async function handle(req, res, ip, local) {
       deviceCodes.delete(kod); olay('kodla', { ad: db.players[d.k].profile.name, ip: ipKisa(ip) });
       return loginOk(db.players[d.k], reply);
     }
+    const KART_MOD = m => (m === 'klasik' || m === 'biriktir' ? m : undefined);
     if (route === 'olay' && req.method === 'POST') { // oyundan gelen kullanım bildirimi (kişisel veri yok)
       if (locked('olay:' + ip)) return reply(429, {});
       fail('olay:' + ip, 300, 3600e3, 600e3); // IP başına saatte en fazla 300 bildirim
       const b = await readBody(req), tur = b.tur;
       const cihaz = String(b.cihaz || '').replace(/[^a-f0-9]/gi, '').slice(0, 12);
       if (tur === 'acilis') olay('acilis', { cihaz, misafir: !!b.misafir, ad: b.misafir ? undefined : MI.tidy(b.ad).slice(0, 16), mobil: !!b.mobil, kaynak: ['web', 'mac', 'anaekran', 'dosya'].includes(b.kaynak) ? b.kaynak : 'web', ip: ipKisa(ip) });
-      else if (tur === 'yaris') olay('tek_yaris', { cihaz, misafir: !!b.misafir, parkur: num(b.parkur, 200), sira: num(b.sira, 6), sureSn: num(b.sure, 3600), mod: b.mod === 'kupa' ? 'kupa' : 'tek', etki: !!b.etki, kolay: !!b.kolay });
+      else if (tur === 'yaris') olay('tek_yaris', { cihaz, misafir: !!b.misafir, parkur: num(b.parkur, 200), sira: num(b.sira, 6), sureSn: num(b.sure, 3600), mod: b.mod === 'kupa' ? 'kupa' : 'tek', kart: KART_MOD(b.kart), deneme: !!b.deneme, etki: !!b.etki, kolay: !!b.kolay });
       // oyuncu deneyimi ölçümleri: rehber, yarıştan çıkma, ilk kart, ayarlar, meydan okuma, ana ekran
       else if (tur === 'ogretici') olay('ogretici', { cihaz, adim: num(b.adim, 10), atlandi: !!b.atlandi });
       else if (tur === 'birakti') olay('birakti', { cihaz, parkur: num(b.parkur, 200), sn: num(b.sn, 3600), ilk: !!b.ilk, kapatti: !!b.kapatti });
@@ -204,6 +205,9 @@ async function handle(req, res, ip, local) {
       else if (tur === 'ayar' && ['etkile', 'kolay', 'ipucu', 'oto', 'anlatici'].includes(b.ayar)) olay('ayar', { cihaz, ayar: b.ayar, acik: !!b.acik });
       else if (tur === 'meydan') olay('meydan', { cihaz, kabul: !!b.kabul });
       else if (tur === 'anaekran') olay('anaekran', { cihaz, kabul: !!b.kabul });
+      // kart modu: oyuncunun seçimi (nerede seçti) ve Biriktir deneme bilgi kartı
+      else if (tur === 'mod' && KART_MOD(b.mod)) olay('mod', { cihaz, mod: KART_MOD(b.mod), nerede: ['ilk_secim', 'deneme_sonu', 'sonuc', 'secim'].includes(b.nerede) ? b.nerede : 'diger' });
+      else if (tur === 'mod_bilgi') olay('mod_bilgi', { cihaz, yeni: !!b.yeni });
       return reply(200, { ok: true });
     }
     if (route === 'liderlik' && req.method === 'GET') return reply(200, leaderboard());

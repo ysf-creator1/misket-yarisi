@@ -276,4 +276,15 @@ window.DIL_EN = {
   'Ana ekrana ekle': 'Add to Home Screen', 'Misket Yarışı uygulama gibi tam ekran açılsın, tek dokunuşla oyna.': 'Open Marble Race full screen like an app and play with one tap.',
   'Şimdi değil': 'Not now', 'Ekle': 'Add', 'Anladım': 'Got it', 'Safari\'de alttaki Paylaş ⬆ düğmesine dokun, sonra "Ana Ekrana Ekle"yi seç.': 'In Safari, tap the Share ⬆ button below, then choose "Add to Home Screen".',
   '🔒 {0#}. parkuru açınca': '🔒 unlocks at track {0}',
+  // kart modları akışı, Üfle, çanta
+  "Üfle = misketini ileri it. Yavaşladığında ya da rakibi geçerken dokun (ya da Boşluk). 2 hakkın var, 12 sn'de bir yenisi dolar.": 'Blow = push your marble forward. Tap it (or Space) when you slow down or to pass a rival. You have 2 charges, a new one fills every 12 s.',
+  'İleri!': 'Go!', 'Kart çantana girdi! Alttaki çantadan dokunarak istediğin an kullan (1–5 tuşları).': 'The card went into your bag! Tap it in the bag below to use it whenever you want (keys 1–5).',
+  'Hangi türde oynamak istersin?': 'Which mode do you want to play?', 'İki modu da denedin. Seçimini sonra yarış sonunda ya da misket seçiminde değiştirebilirsin.': 'You tried both modes. You can change your choice later on the result screen or when picking your marble.',
+  'Bu yarış Biriktir modunda!': 'This race is in Stockpile mode!', 'YENİ: Biriktir modu geldi!': 'NEW: Stockpile mode is here!',
+  'Bu sefer kartlar hemen etki etmez: gelen karttan birini çantana al (en fazla 5), istediğin an kullan.': "This time cards don't work right away: put one of the offered cards in your bag (up to 5) and use it whenever you want.",
+  'Kartları biriktir, en doğru anda kullan! Bu yarış Biriktir modunda, sonra hangi modu istediğini seçersin.': 'Save up cards and use them at the perfect moment! This race is in Stockpile mode, then you choose the mode you like.',
+  'Kart gelince birine dokun, çantana girer': 'When cards come, tap one: it goes into your bag', 'Çantada en fazla 5 kart saklarsın': 'Your bag holds up to 5 cards',
+  'Alttaki çantadan dokun, kart o an etki eder': 'Tap a card in the bag below: it works right then', 'Anladım, başla ▶': 'Got it, start ▶',
+  'Biriktir modu': 'Stockpile mode', 'Biriktir modu YENİ': 'Stockpile mode NEW', 'YENİ': 'NEW', 'Kartları çantada sakla, en doğru anda kullan': 'Keep cards in your bag, use them at the perfect moment', 'Dene ▶': 'Try ▶',
+  'Biriktir modunu denedin! Sıradaki yarış hangi modda olsun?': 'You tried Stockpile mode! Which mode for the next race?', 'Sıradaki yarışın modu': 'Mode for the next race',
 };

@@ -13,17 +13,18 @@ Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam
 - **Mağaza:** renk, desen, forma, gözlük, şapka ve iz (144 ürün). **Kupalar**, **bahis**, **başarımlar**, **seviye**.
 
 ## 🎯 Yeni oyuncu ve tekrar oynama
-- **İlk açılış:** rehber sayfaları yerine doğrudan Parkur 1 başlar; yardım yarışın içinde kısa ipuçlarıyla gelir (ilk kartta oyun ağır çekime geçer, kartlar parlar). "Nasıl oynanır" menüde durur.
+- **İlk açılış:** rehber sayfaları yerine doğrudan Parkur 1 başlar; yardım yarışın içinde kısa ipuçlarıyla gelir (ilk kartlarda kartlar parlar; ağır çekim yok, yavaşlatıcı kart sanılıyordu). "Nasıl oynanır" menüde durur.
 - **▶ Oyna:** menüdeki büyük düğme, misket seçimini atlayıp kaldığın parkuru başlatır. Menü sade başlar: mağaza/başarımlar/liderlik/günün parkuru 1 yarıştan, kupalar ve bahis 3 yarıştan sonra açılır.
 - **Kolay başlangıç:** Parkur 1–3'te botlar biraz yavaş (ilk yarış kazanılabilsin); güç kartları 5 temel kartla başlar, ilerledikçe açılır (Bomba 3, Duvar 4, Demir 5, Küçült 6, Hayalet 7, Mıknatıs 8, Ters Rüzgâr 9, Işınlanma 10, Yer Değiştir 11. parkurda).
-- **Misketi etkile (tek oyunculu):** 💨 Üfle (Boşluk; enerji 12 sn'de dolar, en fazla 2) ve çatalda ⬅ ➡ yol seçimi (oklar ya da A/D). Kullanılan yarışın süresi rekorlara girmez. Çok oyunculuda yok.
-- **Sonuç ekranı:** yarış özeti (hangi kart kaç sıra kazandırdı, kalkan, en çok saldıran), sıradaki hedefler (yıldız, mağaza, günlük görev), büyük Sonraki/Tekrar (doğrudan başlar) ve birkaç saniyelik otomatik geri sayım ("⏸ Bekle" ile durur).
+- **Kart modları:** yeni oyuncu 1. yarışı ⚡ Klasik, 2. yarışı 🎒 Biriktir (önce bilgi kartı) oynar; 3. yarıştan önce iki mod kart olarak sorulur. Biriktir'i denememiş eski oyuncu menüde "YENİ" şeridini görür, ilk yarışı Biriktir'dir, sonunda iki kartla seçer. Tercih profilde (`stats.kartMod`) saklanır; her yarış sonunda iki küçük kartla değişir.
+- **Misketi etkile (tek oyunculu):** 💨 Üfle = misketi 0,6 sn ileri iter (Boşluk; enerji 12 sn'de dolar, en fazla 2) ve çatalda ⬅ ➡ yol seçimi (oklar ya da A/D). Kullanılan yarışın süresi rekorlara girmez. Çok oyunculuda yok.
+- **Sonuç ekranı:** kısa yarış özeti (en fazla 3 satır) ve sıradaki hedefler (en fazla 2), sıradaki yarışın modu, büyük Sonraki/Tekrar (doğrudan başlar) ve 9–11 sn'lik otomatik geri sayım ("⏸ Bekle" ile durur).
 - **Yıldızlar:** her parkurda ★ bitir · ★★ ilk 3 · ★★★ kazan. **Günün parkuru:** herkes aynı parkurda, ilk bitirişe +50 puan, liderlikte günlük sıralama (`/api/gunluk`).
 - **Anlatıcı:** rakip tanıtımı (😈 Saldırgan, 🛡️ Temkinli, ⚖️ Dengeli), lider değişimi, son düzlük, foto finiş, sıra geçince "+1 ⬆". Dünya finali rozeti, yeni dünya ve ilk zafer kutlaması.
 - **Meydan okuma:** sonuçta "🤝 Arkadaşına meydan oku" linki (`?parkur=5&hedef=70.5&kim=Ad`); açan, o süreyi geçmeye çalışır.
 - **Ana ekrana ekle** daveti 2. yarıştan sonra (7 günde bir, en fazla 3 kez).
 - **⚙️ Oyun ayarları** (menü ve duraklatma): Misketi etkile, Kolay başlangıç, İpuçları, Otomatik sonraki yarış, Anlatıcı — hepsi kapatılabilir, cihazda hatırlanır.
-- Rapor sayfasında "Yeni gelenler" (ilk yarışı bitiren, ertesi gün / 7 gün içinde dönen) ve "Oyun içi davranış" (yarıda bırakma, ilk kart, ayar kapatma, meydan okuma) bölümleri var.
+- Rapor sayfasında "Yeni gelenler" (ilk yarışı bitiren, ertesi gün / 7 gün içinde dönen) ve "Oyun içi davranış" (yarıda bırakma, ilk kart, ayar kapatma, meydan okuma) bölümleri var. "Kart modları" ve "Mod seçimleri": tek/kupa/çok oyunculu yarışların hangi modda oynandığı, oyuncuların tercihi ve nerede seçtiği (olaylar: `tek_yaris.kart`, `mod`, `mod_bilgi`; çok oyunculu `cok_basla.mod`).
 
 ## ☁️ Oyuncu hesapları (bulut)
 - **Hesap zorunlu değil:** ilk açılışta bu cihaza özel bir misafir oyuncu (ör. Misafir123) verilir, puanları sadece bu cihazda durur. İsterse menüden hesap oluşturur; misafir ilerlemesi yeni hesaba taşınır. Çok oyunculuda misafir bu adla görünür ve şifresiz adını değiştirebilir (kayıtlı bir oyuncunun adını alamaz; "Misafir…" adları hesap için ayrılmıştır).

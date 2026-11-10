@@ -219,6 +219,28 @@ function range(d) {
 }
 const pick = (a, b) => M.E.filter(e => e.gun >= a && e.gun <= b && !(state.testGizle && e.k && M.test.has(e.k)));
 
+// ---------- kart modları: Klasik / Biriktir (hangi modda oynanıyor, oyuncular ne seçiyor) ----------
+function kartModlari(S, T) {
+  const MOD = [['klasik', '⚡ Klasik'], ['biriktir', '🎒 Biriktir']];
+  const tek = S.tek.filter(e => e.mod !== 'kupa'), kup = S.tek.filter(e => e.mod === 'kupa');
+  const say = (A, m, f = 'kart') => A.filter(e => e[f] === m).length;
+  const cihaz = m => new Set(S.tek.filter(e => e.kart === m && e.k).map(e => e.k)).size;
+  const secim = T('mod'), sonSecim = new Map(); for (const e of secim) if (e.k) sonSecim.set(e.k, e.mod);
+  const tercih = m => [...sonSecim.values()].filter(x => x === m).length;
+  const eski = S.tek.filter(e => !e.kart).length;
+  const NER = { ilk_secim: 'Yeni oyuncu, 3. yarıştan önce', deneme_sonu: 'Eski oyuncu, deneme yarışı sonunda', sonuc: 'Yarış sonunda değiştirdi', secim: 'Misket seçiminde değiştirdi', diger: 'Diğer' };
+  const ner = Object.keys(NER).map(n => { const A = secim.filter(e => e.nerede === n); return A.length ? [esc(NER[n]), num(say(A, 'klasik', 'mod')), num(say(A, 'biriktir', 'mod'))] : null; }).filter(Boolean);
+  const bilgi = T('mod_bilgi'), den = S.tek.filter(e => e.deneme);
+  return `<section class="grid g2">
+    <div class="card"><h2>Kart modları</h2><p class="sub">Yarışlar hangi modda oynandı${eski ? ` · ${num(eski)} tek oyunculu yarışta mod kaydı yok (eski sürüm)` : ''}</p>
+      ${table([['Mod'], ['Tek oyunculu', 'n'], ['Kupa', 'n'], ['Çok oyunculu', 'n'], ['Oynayan cihaz', 'n'], ['Tercih eden', 'n']],
+        MOD.map(([m, ad]) => [ad, num(say(tek, m)), num(say(kup, m)), num(say(S.cok, m, 'mod')), num(cihaz(m)), num(tercih(m))]))}
+      <p class="sub" style="margin-top:8px">"Tercih eden": modu kendisi seçen cihazların son seçimi. Çok oyunculuda modu oda kurucusu seçer.</p></div>
+    <div class="card"><h2>Mod seçimleri</h2><p class="sub">Biriktir denemesi: bilgi kartını ${num(bilgi.length)} cihaz gördü (yeni ${num(bilgi.filter(e => e.yeni).length)} · eski ${num(bilgi.filter(e => !e.yeni).length)}), ${num(den.length)} deneme yarışı bitti</p>
+      ${ner.length ? table([['Nerede seçti'], ['⚡ Klasik', 'n'], ['🎒 Biriktir', 'n']], ner) : '<p class="empty">Bu dönemde mod seçimi yok.</p>'}</div>
+  </section>`;
+}
+
 // ---------- hesaplar ----------
 function stats(E) {
   const T = t => E.filter(e => e.tur === t);
@@ -499,7 +521,8 @@ function render() {
         ['Ana ekrana ekledi', `${num(ae.filter(e => e.kabul).length)} / ${num(ae.length)}`],
         ...Object.keys(ayN).map(k => [`Kapattı: ${esc(AYAD[k] || k)}`, num(ayN[k])]),
       ])}</div>
-  </section>`;
+  </section>
+  ${kartModlari(S, T)}`;
   })()}
 
   <section class="card wide"><h2>Hesaplar</h2><p class="sub">Toplam ${acc.length} hesap · puana göre</p>

@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>
   // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
-  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=25" as="fetch" crossorigin="anonymous">');
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=26" as="fetch" crossorigin="anonymous">');
 </script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
@@ -443,6 +443,19 @@
   .pill.seri{background:rgba(255,110,60,.16);border-color:rgba(255,120,60,.5);color:#ffb38a}
   .pill.seri.al{cursor:pointer;animation:oynaNabiz 1.6s infinite}
   .gparkur{display:flex;align-items:center;gap:10px;margin:8px 0 0;padding:10px 12px;border:1px solid rgba(69,200,255,.35);border-radius:14px;background:rgba(69,200,255,.08)}
+  .gparkur.yenimod{border-color:rgba(255,194,61,.55);background:rgba(255,194,61,.1)}
+  .yeniEt{font-style:normal;font-size:10px;font-weight:900;letter-spacing:.5px;padding:1px 6px;border-radius:8px;background:#ff4d6d;color:#fff;vertical-align:2px}
+  .modkartlar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .modkart{display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 10px;border-radius:16px;border:2px solid var(--line);background:rgba(255,255,255,.05);text-align:center}
+  .modkart .mki{font-size:40px;line-height:1} .modkart b{font-size:18px} .modkart small{color:var(--muted);font-weight:700;font-size:12px;line-height:1.3}
+  .modkart:hover{border-color:rgba(255,194,61,.7)} .modkart.on{border-color:var(--accent);background:rgba(255,194,61,.14);box-shadow:0 0 0 2px rgba(255,194,61,.25)}
+  .modkartlar.kucuk{gap:8px;margin-top:4px} .modkartlar.kucuk .modkart{flex-direction:row;padding:6px 10px;gap:8px;border-radius:12px} .modkartlar.kucuk .mki{font-size:22px} .modkartlar.kucuk b{font-size:15px} .modkartlar.kucuk small{display:none}
+  .resmod{margin:8px 0;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.04)}
+  .resmod>b{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .resmod.sor{border:2px solid var(--accent);background:rgba(255,194,61,.1);animation:pop .5s ease-out} .resmod.sor>b{color:#ffd77a;font-size:14px;text-transform:none;letter-spacing:0}
+  .resmod.sor .modkartlar.kucuk .modkart{flex-direction:column;padding:12px 8px} .resmod.sor .modkartlar.kucuk small{display:block} .resmod.sor .modkartlar.kucuk .mki{font-size:32px}
+  .mbadim{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px;text-align:left;font-weight:700}
+  .mbadim div{display:flex;align-items:center;gap:10px} .mbadim span{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#1a1300;display:flex;align-items:center;justify-content:center;font-weight:900}
   .gparkur .gic{font-size:28px} .gparkur .gtx{flex:1;display:flex;flex-direction:column;min-width:0} .gparkur small{color:var(--muted);font-weight:700;font-size:12px}
   .ayarlist{display:flex;flex-direction:column;gap:8px}
   .ayar{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04);text-align:left;width:100%}
@@ -576,6 +589,7 @@
   <div class="row"><span class="lvl">Seviye <span id="mLevel">1</span> <span class="lvlbar"><i id="mLevelBar" style="width:0"></i></span></span></div>
   <button class="main oyna" id="btnOyna"><span class="oic">▶</span><span class="otx"><b>Oyna</b><small id="btnOynaSub"></small></span></button>
   <div class="gparkur hidden" id="mGunParkur"></div>
+  <div class="gparkur yenimod hidden" id="mYeniMod"></div>
   <div class="menu">
     <button id="btnRace"><span>🏁</span>Yarış<small>Parkur seç ve yarış</small></button>
     <button id="btnCups"><span>🏆</span>Kupalar<small>3 parkurluk turnuva</small></button>
@@ -689,6 +703,19 @@
   <p class="sub" id="meydanTxt"></p>
   <div class="row"><button id="meydanSonra">Sonra</button><button class="main" id="meydanKabul">Kabul et ▶</button></div>
 </div></div>
+<!-- Biriktir deneme yarışı bilgi kartı -->
+<div id="modBilgiBox" class="overlay hidden"><div class="panel" style="width:min(460px,94vw);text-align:center">
+  <h2 id="modBilgiBaslik">🎒 Biriktir modu</h2>
+  <p class="sub" id="modBilgiTxt"></p>
+  <div class="mbadim"><div><span>1</span>Kart gelince birine dokun, çantana girer</div><div><span>2</span>Çantada en fazla 5 kart saklarsın</div><div><span>3</span>Alttaki çantadan dokun, kart o an etki eder</div></div>
+  <div class="row"><button class="main" id="modBilgiTamam">Anladım, başla ▶</button></div>
+</div></div>
+<!-- kart modu seçimi (iki kart) -->
+<div id="modSecBox" class="overlay hidden"><div class="panel" style="width:min(520px,94vw);text-align:center">
+  <h2 id="modSecBaslik">Hangi türde oynamak istersin?</h2>
+  <p class="sub" id="modSecTxt"></p>
+  <div class="modkartlar" id="modSecKartlar"></div>
+</div></div>
 <!-- ana ekrana ekle daveti -->
 <div id="anaEkranBox" class="overlay hidden"><div class="panel" style="width:min(420px,94vw);text-align:center">
   <div style="font-size:54px">📲</div>
@@ -713,6 +740,7 @@
   <h2 id="resTitle">Yarış Bitti</h2>
   <div class="gain" id="resGain"></div>
   <div class="notes" id="resNotes"></div>
+  <div class="resmod hidden" id="resMod"><b id="resModBaslik">Sıradaki yarışın modu</b><div class="modkartlar kucuk" id="resModKartlar"></div></div>
   <div class="ozet hidden" id="resOzet"></div>
   <div class="hedefler hidden" id="resHedef"></div>
   <table class="rtable" id="resTable"></table>
@@ -829,32 +857,32 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=25"></script>
-<script src="js/dil-en.js?v=25"></script>
-<script src="js/dil.js?v=25"></script>
+<script src="js/surum.js?v=26"></script>
+<script src="js/dil-en.js?v=26"></script>
+<script src="js/dil.js?v=26"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=25"></script>
-<script src="varliklar/qrcode.js?v=25"></script>
-<script src="three.min.js?v=25"></script>
-<script src="varliklar/RGBELoader.js?v=25"></script>
+<script src="js/isim.js?v=26"></script>
+<script src="varliklar/qrcode.js?v=26"></script>
+<script src="three.min.js?v=26"></script>
+<script src="varliklar/RGBELoader.js?v=26"></script>
 <script>
   // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
-  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=25"><\/script>');
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=26"><\/script>');
 </script>
-<script src="rapier.js?v=25"></script>
-<script src="js/parcalar.js?v=25"></script>
-<script src="js/parkurlar.js?v=25"></script>
-<script src="js/dunyalar.js?v=25"></script>
-<script src="js/fizik.js?v=25"></script>
-<script src="js/guclar.js?v=25"></script>
-<script src="js/kolay.js?v=25"></script>
-<script src="js/kayit-sistemi.js?v=25"></script>
-<script src="js/magaza.js?v=25"></script>
-<script src="js/ses.js?v=25"></script>
-<script src="js/cevre.js?v=25"></script>
-<script src="js/grafik.js?v=25"></script>
-<script src="js/ag.js?v=25"></script>
-<script src="js/oyun.js?v=25"></script>
+<script src="rapier.js?v=26"></script>
+<script src="js/parcalar.js?v=26"></script>
+<script src="js/parkurlar.js?v=26"></script>
+<script src="js/dunyalar.js?v=26"></script>
+<script src="js/fizik.js?v=26"></script>
+<script src="js/guclar.js?v=26"></script>
+<script src="js/kolay.js?v=26"></script>
+<script src="js/kayit-sistemi.js?v=26"></script>
+<script src="js/magaza.js?v=26"></script>
+<script src="js/ses.js?v=26"></script>
+<script src="js/cevre.js?v=26"></script>
+<script src="js/grafik.js?v=26"></script>
+<script src="js/ag.js?v=26"></script>
+<script src="js/oyun.js?v=26"></script>
 <script>
   // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
   if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
