@@ -43,6 +43,9 @@
         case 'bilgi': emit('bilgi', m); break;
         case 'hizliSec': emit('hizliSec', m); break; // açık hızlı oda yok: parkuru sen seç
         case 'surumEski': emit('surumEski', m); break; // sunucu daha yeni: sayfa yenilenmeli
+        case 'sayi': Ag.sayi = m.n; emit('sayi', m); break; // çevrimiçi oyuncu sayısı (ben dahil)
+        case 'cevrimici': emit('cevrimici', m); break; // davet edilebilecek oyuncular
+        case 'davetGeldi': emit('davetGeldi', m); break; // biri seni yarışa çağırıyor
       }
     };
     ws.onclose = () => {

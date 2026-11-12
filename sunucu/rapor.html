@@ -228,7 +228,7 @@ function kartModlari(S, T) {
   const secim = T('mod'), sonSecim = new Map(); for (const e of secim) if (e.k) sonSecim.set(e.k, e.mod);
   const tercih = m => [...sonSecim.values()].filter(x => x === m).length;
   const eski = S.tek.filter(e => !e.kart).length;
-  const NER = { ilk_secim: 'Yeni oyuncu, 3. yarıştan önce', deneme_sonu: 'Eski oyuncu, deneme yarışı sonunda', sonuc: 'Yarış sonunda değiştirdi', secim: 'Misket seçiminde değiştirdi', diger: 'Diğer' };
+  const NER = { ilk_secim: 'Yeni oyuncu, 3. yarıştan önce', deneme_sonu: 'Eski oyuncu, deneme yarışı sonunda', sonuc: 'Yarış sonunda değiştirdi', secim: 'Misket seçiminde değiştirdi', ayar: 'Ayarlar\'dan değiştirdi', diger: 'Diğer' };
   const ner = Object.keys(NER).map(n => { const A = secim.filter(e => e.nerede === n); return A.length ? [esc(NER[n]), num(say(A, 'klasik', 'mod')), num(say(A, 'biriktir', 'mod'))] : null; }).filter(Boolean);
   const bilgi = T('mod_bilgi'), den = S.tek.filter(e => e.deneme);
   return `<section class="grid g2">
@@ -491,7 +491,7 @@ function render() {
     <div class="card"><h2>Tek oyunculu</h2><p class="sub">En çok oynanan parkurlar · ${S.tek.filter(e => e.mod === 'kupa').length} kupa yarışı</p>
       ${hbars([...pk.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([p, v]) => ({ l: 'Parkur ' + p, v })))}
       <div class="sub" style="margin:16px 0 6px">Bitiş sırası dağılımı</div><div id="c-sira"></div></div>
-    <div class="card"><h2>Çok oyunculu</h2><p class="sub">${S.oda.length} oda (özel ${S.oda.filter(e => !e.hizli).length} · hızlı ${S.oda.filter(e => e.hizli).length}) · ${S.cok.length} yarış başladı, ${S.cokBitti.length} bitti · ${new Set(S.baglan.map(e => e.c)).size} oyuncu bağlandı</p>
+    <div class="card"><h2>Çok oyunculu</h2><p class="sub">${S.oda.length} oda (özel ${S.oda.filter(e => !e.hizli).length} · hızlı ${S.oda.filter(e => e.hizli).length}) · ${S.cok.length} yarış başladı, ${S.cokBitti.length} bitti · ${new Set(S.baglan.map(e => e.c)).size} bağlantı (sürüm 31'den beri oyunu açan herkes çevrimiçi görünür)</p>
       ${S.cok.length ? `<div class="sub" style="margin:0 0 6px">Yarıştaki gerçek oyuncu sayısı (kalan koltuklarda bot)</div><div id="c-ins"></div>` : '<p class="empty">Bu dönemde çok oyunculu yarış yok.</p>'}</div>
   </section>
 
@@ -519,6 +519,8 @@ function render() {
         ['Misketi etkileyen yarış', `${num(et.filter(e => e.etki).length)} / ${num(et.length)} · ${pct(et.filter(e => e.etki).length, et.length)}`],
         ['Meydan okuma kabul', `${num(my.filter(e => e.kabul).length)} / ${num(my.length)}`],
         ['Ana ekrana ekledi', `${num(ae.filter(e => e.kabul).length)} / ${num(ae.length)}`],
+        ['Yarış daveti gönderildi (kişi)', `${num(T('davet').length)} davet · ${num(T('davet').reduce((a, e) => a + (e.kisi || 0), 0))} kişiye`],
+        ['Davet kabul / ret', `${num(T('davet_yanit').filter(e => e.kabul).length)} / ${num(T('davet_yanit').filter(e => !e.kabul).length)}`],
         ...Object.keys(ayN).map(k => [`Kapattı: ${esc(AYAD[k] || k)}`, num(ayN[k])]),
       ])}</div>
   </section>

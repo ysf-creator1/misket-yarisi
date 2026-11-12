@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>
   // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
-  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=30" as="fetch" crossorigin="anonymous">');
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=31" as="fetch" crossorigin="anonymous">');
 </script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
@@ -672,6 +672,75 @@
   .gk-tabs button.inroom,.gk-card.inroom{position:relative} .gk-tabs button.inroom::after,.gk-card.inroom::after{content:"";position:absolute;top:6px;right:22%;width:9px;height:9px;border-radius:50%;background:#2fbf64;box-shadow:0 0 0 2px #fff}
   .gk-card.inroom::after{right:10px;top:10px}
   #loading .panel h1{font-size:44px}
+
+  /* ===== Yarış ekranı: Gökyüzü teması (beyaz cam kutular, mavi/yeşil vurgular) ===== */
+  #hud{--text:#1b2a47;--muted:#566683;--line:rgba(27,42,71,.12);color:#1b2a47}
+  #hud .box{background:rgba(255,255,255,.88);border:none;box-shadow:0 6px 18px -8px rgba(15,35,70,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  #hud .srow .rk{color:#566683} #hud .srow.me{background:rgba(42,111,219,.13)} #hud .srow .tag{background:#2a6fdb;color:#fff} #hud .srow .tm{color:#1f9a4d}
+  #prog .bar{background:#d8e2f0} #prog .pd{border-color:rgba(255,255,255,.95)} #prog .pd.me{border-color:#1b2a47}
+  #timer{font-family:"Fredoka","Trebuchet MS",sans-serif;font-weight:600;font-size:17px}
+  #topright button{background:rgba(255,255,255,.88);color:#1b2a47;border:none;box-shadow:0 6px 18px -8px rgba(15,35,70,.5)}
+  #topright .pausebtn{background:linear-gradient(180deg,#4ad97f,#2fbf64);color:#05301a}
+  #count{font-family:"Fredoka","Trebuchet MS",sans-serif;font-weight:700;color:#fff;text-shadow:0 7px 0 #2a6fdb,0 14px 30px rgba(0,0,0,.35)}
+  .toast{background:rgba(255,255,255,.95);color:#1b2a47;border:none;box-shadow:0 6px 18px -8px rgba(15,35,70,.5)}
+  .toast.gold{color:#8a5200;box-shadow:inset 0 0 0 2px #f5a500,0 6px 18px -8px rgba(15,35,70,.5)} .toast.bad{color:#b4233c;box-shadow:inset 0 0 0 2px #ff5c7a,0 6px 18px -8px rgba(15,35,70,.5)}
+  /* güç kartları: beyaz, renkli kenar; eskisinden küçük */
+  @media (min-width:761px){#cards{width:196px;gap:7px}}
+  .card{background:rgba(255,255,255,.96);color:#1b2a47;border:2px solid transparent;box-shadow:0 8px 20px -10px rgba(15,35,70,.55);padding:7px 10px 9px;gap:8px;border-radius:14px}
+  .card.self{border-color:#2fbf64} .card.attack{border-color:#ff5c7a}
+  .card .ic{font-size:24px;width:30px} .card b{font-size:13.5px} .card small{font-size:10.5px;color:#566683}
+  .card.self .typ{color:#1f9a4d} .card.attack .typ{color:#d6334f} .card .typ{font-size:9px}
+  .card .key{background:#2a6fdb;color:#fff}
+  #cardTime{background:rgba(255,255,255,.6)} #cardTime i{background:#2a6fdb}
+  #cardsHead{align-self:center;padding:3px 12px;border-radius:999px;background:rgba(255,255,255,.92);color:#1b2a47;text-shadow:none;box-shadow:0 4px 12px -6px rgba(15,35,70,.5);font-size:12px}
+  #cards.ogret{box-shadow:0 0 0 4px #2fbf64,0 0 26px #2fbf64}
+  @keyframes ogretNabiz{50%{box-shadow:0 0 0 7px #2fbf64,0 0 36px #2fbf64}}
+  /* çanta (Biriktir) */
+  .bslot{height:54px;background:rgba(255,255,255,.95);color:#1b2a47;border:2px solid transparent;box-shadow:0 6px 16px -8px rgba(15,35,70,.55)}
+  .bslot.empty{background:rgba(255,255,255,.35);border:2px dashed rgba(255,255,255,.9);box-shadow:none}
+  .bslot.self{border-color:#2fbf64} .bslot.attack{border-color:#ff5c7a} .bslot .ic{font-size:22px} .bslot .key{background:#2a6fdb;color:#fff}
+  /* bilgi kutuları */
+  #ipucu{background:rgba(255,255,255,.97);color:#1b2a47;border:2px solid #2a6fdb;box-shadow:0 10px 26px -12px rgba(15,35,70,.6)}
+  #anlatici{background:rgba(255,255,255,.93);color:#1b2a47;box-shadow:0 6px 16px -8px rgba(15,35,70,.5)}
+  #rakipler{background:rgba(255,255,255,.93);color:#1b2a47;border:none;box-shadow:0 10px 26px -12px rgba(15,35,70,.6)}
+  #hedefBox{color:#8a5200} #hedefBox.gecti{color:#c23a3a}
+  #finalBadge{font-family:"Fredoka","Trebuchet MS",sans-serif;font-weight:700;color:#fff;text-shadow:0 5px 0 #2a6fdb,0 10px 24px rgba(0,0,0,.4)}
+  #yolSec button{background:rgba(255,255,255,.93);color:#1b2a47;border:3px solid #fff;box-shadow:0 8px 20px -10px rgba(15,35,70,.6)} #yolSec button.on{background:#2a6fdb;color:#fff;border-color:#fff}
+  .hitb{background:rgba(255,255,255,.97);color:#1b2a47;border:2px solid #ff4d6d;box-shadow:0 10px 26px -12px rgba(15,35,70,.6)} .hitb small{color:#566683}
+  .hitb.ok{background:rgba(255,255,255,.97);border-color:#2fbf64} .hitb.ok small{color:#566683}
+  .pwt{background:rgba(255,255,255,.95);color:#1b2a47;border:none;border-left:5px solid #45a3ff;box-shadow:0 8px 20px -10px rgba(15,35,70,.55)}
+  .pwt.self{border-left-color:#2fbf64} .pwt.atk{border-left-color:#ff8a5b} .pwt.mine{border-left-color:#2a6fdb;background:rgba(235,243,255,.97)} .pwt.hit{border-left-color:#ff4d6d;background:rgba(255,236,240,.97)}
+  .pwt small{color:#566683} .ptag.self{background:rgba(47,191,100,.16);color:#1f7a42} .ptag.attack{background:rgba(255,138,91,.18);color:#b4492a}
+  #mpGeri>div{background:rgba(255,255,255,.97);border-color:#2a6fdb;color:#1b2a47} #mpGeri b{font-family:"Fredoka","Trebuchet MS",sans-serif;color:#2a6fdb;text-shadow:none} #mpGeri small{color:#566683}
+  #replayBar{background:rgba(255,255,255,.93);color:#1b2a47;border:none}
+  @media (max-width:760px){
+    .card{padding:6px 4px 8px;gap:2px} .card .ic{font-size:24px} .card b{font-size:12.5px} .card .typ{display:none} /* tür kenar renginden belli */
+    .card small{font-size:9.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .bslot{height:48px} .bslot .ic{font-size:20px}
+    #hud.biriktir #cards{bottom:calc(64px + env(safe-area-inset-bottom))}
+  }
+  @media (max-height:500px) and (orientation:landscape){ #cards{width:170px} .card .ic{font-size:20px} .bslot{height:40px} }
+  /* telefonda yarış listesi: yalnız sıra, renk + sembol (isimler uzun) */
+  .mobil #hud .srow .nm{display:none}
+  .mobil #stand{width:auto;min-width:0}
+  .mobil #hud .srow{gap:5px}
+  @media (max-width:760px){ .mobil #hitBanner,.mobil #toasts{width:max(160px,calc(100vw - 140px))} .mobil #gecis{left:120px} }
+
+  /* Arkadaşlarla: çevrimiçi oyuncu listesi ve davet */
+  #btnMp.online #mOnline{color:#1f7a42;font-weight:800} #btnMp.online #mOnline::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#2fbf64;margin-right:6px;vertical-align:1px;box-shadow:0 0 0 3px rgba(47,191,100,.2)}
+  .cv-list{display:flex;flex-direction:column;background:#fff;border-radius:18px;box-shadow:var(--gk-shadow);overflow:auto;max-height:44vh}
+  .cv-oy{display:flex;align-items:center;gap:12px;padding:10px 14px!important;border:none!important;border-bottom:1px solid rgba(27,42,71,.07)!important;border-radius:0!important;background:#fff!important;text-align:left;min-height:0}
+  .cv-oy:last-child{border-bottom:none!important} .cv-oy:disabled{opacity:.5}
+  .cv-av{width:36px;height:36px;border-radius:50%;background:#e3ebf6;color:#2a6fdb;display:grid;place-items:center;font-family:var(--gk-disp);font-weight:600;font-size:16px;flex:none}
+  .cv-oy.on .cv-av{background:#2a6fdb;color:#fff}
+  .cv-tx{flex:1;min-width:0;display:flex;flex-direction:column} .cv-tx b{font-size:15px} .cv-tx small{font-size:12px;color:var(--muted);font-weight:700}
+  .cv-ck{width:26px;height:26px;border-radius:8px;border:2px solid #c9d4e4;display:grid;place-items:center;font-weight:900;color:#fff;flex:none}
+  .cv-oy.on .cv-ck{background:#2fbf64;border-color:#2fbf64}
+  .cv-bos{margin:0;padding:18px;text-align:center;color:var(--muted);font-weight:700}
+  .cv-btns{display:flex;gap:8px;flex-wrap:wrap} .cv-btns button{flex:1;min-width:150px}
+  .cv-not{margin:0;font-size:12.5px;color:var(--muted);font-weight:700;text-align:center}
+  .cv-diger{align-self:center;background:none!important;border:none!important;color:#2a6fdb!important;font-weight:800;font-size:13px;text-decoration:underline;min-height:0}
+  .davet .dv-ic{font-size:52px;line-height:1}
 </style>
 </head>
 <body>
@@ -751,7 +820,7 @@
     <button class="gk-oyna" id="btnOyna"><span class="pi"><svg class="gi" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M8 5l11 7-11 7z"/></svg></span><span class="otx"><b>Oyna</b><small id="btnOynaSub"></small></span><span class="gk-yz" id="btnOynaYz"></span></button>
     <div class="gk-duo">
       <div class="gk-card hidden" id="mGunParkur" data-gp="oyna" role="button" tabindex="0"></div>
-      <button class="gk-card" id="btnMp"><span class="h"><svg class="gi" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 5 5"/></svg>Arkadaşlarla</span><b>Oda kur ya da katıl</b><small>Kodla ya da davet linkiyle</small></button>
+      <button class="gk-card" id="btnMp"><span class="h"><svg class="gi" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 5 5"/></svg>Arkadaşlarla</span><b>Birlikte yarışın</b><small id="mOnline">Arkadaşlarını davet et</small></button>
     </div>
     <div class="gk-row hidden" id="mYeniMod"></div>
     <button class="gk-row hidden" id="mBugun"></button>
@@ -776,6 +845,22 @@
     <div class="gk-setrow"><button class="sm" id="btnGfx">Grafik: Yüksek</button><span class="gk-dil" id="mDil"><button data-dil="tr">TR</button><button data-dil="en">EN</button></span></div>
     <div class="gk-setrow"><button class="sm" id="btnSwitch"><svg class="gi" viewBox="0 0 24 24"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg>Oyuncu değiştir</button><span id="mHesapAyar" style="display:contents"><button class="sm" id="btnPin">Şifre değiştir</button><button class="sm" id="btnCihaz">Yeni cihaz ekle</button></span></div>
   </div>
+</div></div>
+<!-- Arkadaşlarla: çevrimiçi oyuncuları gör, toplu davet et (oda kodu yok) -->
+<div id="cvBox" class="overlay sheet gok hidden"><div class="gk-sheet">
+  <div class="gk-sh-head"><span class="gk-ic"><svg class="gi" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 5 5"/></svg></span><span class="gk-who"><b>Arkadaşlarla yarış</b><small id="cvAlt">Çevrimiçi oyunculara davet gönder</small></span><button class="gk-x" id="cvKapat" title="Kapat"><svg class="gi" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="cv-list" id="cvList"></div>
+  <div class="cv-btns"><button class="main" id="cvHepsi">Herkesi davet et</button><button id="cvSecili">Seçilileri davet et</button></div>
+  <p class="cv-not">Kabul edenlerle birlikte yarışırsın; boş yerlerde bot oynar. En fazla 6 kişi. Yarış bitince sıradaki kendiliğinden başlar.</p>
+  <button class="cv-diger" id="cvDiger">Hızlı oyun ya da oda koduyla katıl</button>
+</div></div>
+<!-- gelen davet -->
+<div id="davetBox" class="overlay hidden"><div class="panel davet" style="width:min(420px,94vw);text-align:center">
+  <div class="dv-ic">🏁</div>
+  <h2 id="davetBaslik">Yarışa davet!</h2>
+  <p class="sub" id="davetTxt"></p>
+  <div class="ibar"><i id="davetBar"></i></div>
+  <div class="row"><button id="davetRet">Şimdi değil</button><button class="main" id="davetKabul">Katıl ▶</button></div>
 </div></div>
 <!-- Bugün: giriş ödülü ve günlük görevler -->
 <div id="gorevBox" class="overlay sheet gok hidden"><div class="gk-sheet">
@@ -857,6 +942,7 @@
 <div id="ayarBox" class="overlay hidden"><div class="panel" style="width:min(480px,94vw)">
   <h2>⚙️ Oyun ayarları</h2>
   <p class="sub">İstemediğini kapat. Bu cihazda hatırlanır.</p>
+  <div class="resmod"><b>Kart modu</b><div class="modkartlar kucuk" id="ayarMod"></div></div>
   <div id="ayarList" class="ayarlist"></div>
   <div class="row" style="margin-top:12px"><button class="main" id="ayarKapat">Tamam</button></div>
 </div></div>
@@ -1021,32 +1107,32 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=30"></script>
-<script src="js/dil-en.js?v=30"></script>
-<script src="js/dil.js?v=30"></script>
+<script src="js/surum.js?v=31"></script>
+<script src="js/dil-en.js?v=31"></script>
+<script src="js/dil.js?v=31"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=30"></script>
-<script src="varliklar/qrcode.js?v=30"></script>
-<script src="three.min.js?v=30"></script>
-<script src="varliklar/RGBELoader.js?v=30"></script>
+<script src="js/isim.js?v=31"></script>
+<script src="varliklar/qrcode.js?v=31"></script>
+<script src="three.min.js?v=31"></script>
+<script src="varliklar/RGBELoader.js?v=31"></script>
 <script>
   // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
-  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=30"><\/script>');
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=31"><\/script>');
 </script>
-<script src="rapier.js?v=30"></script>
-<script src="js/parcalar.js?v=30"></script>
-<script src="js/parkurlar.js?v=30"></script>
-<script src="js/dunyalar.js?v=30"></script>
-<script src="js/fizik.js?v=30"></script>
-<script src="js/guclar.js?v=30"></script>
-<script src="js/kolay.js?v=30"></script>
-<script src="js/kayit-sistemi.js?v=30"></script>
-<script src="js/magaza.js?v=30"></script>
-<script src="js/ses.js?v=30"></script>
-<script src="js/cevre.js?v=30"></script>
-<script src="js/grafik.js?v=30"></script>
-<script src="js/ag.js?v=30"></script>
-<script src="js/oyun.js?v=30"></script>
+<script src="rapier.js?v=31"></script>
+<script src="js/parcalar.js?v=31"></script>
+<script src="js/parkurlar.js?v=31"></script>
+<script src="js/dunyalar.js?v=31"></script>
+<script src="js/fizik.js?v=31"></script>
+<script src="js/guclar.js?v=31"></script>
+<script src="js/kolay.js?v=31"></script>
+<script src="js/kayit-sistemi.js?v=31"></script>
+<script src="js/magaza.js?v=31"></script>
+<script src="js/ses.js?v=31"></script>
+<script src="js/cevre.js?v=31"></script>
+<script src="js/grafik.js?v=31"></script>
+<script src="js/ag.js?v=31"></script>
+<script src="js/oyun.js?v=31"></script>
 <script>
   // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
   if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

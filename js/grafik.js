@@ -660,16 +660,16 @@
       let fs = 52; g.font = `800 ${fs}px Nunito, Segoe UI, Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
       while (g.measureText(text).width > w - 64 && fs > 28) { fs -= 2; g.font = `800 ${fs}px Nunito, Segoe UI, Arial`; } // uzun ad sığsın
       const tw = Math.min(w - 8, g.measureText(text).width + 52);
-      g.fillStyle = me ? 'rgba(255,194,61,0.96)' : 'rgba(10,16,36,0.78)';
+      g.fillStyle = me ? 'rgba(42,111,219,0.96)' : 'rgba(10,16,36,0.72)';
       const x = (w - tw) / 2, r = 30; g.beginPath(); g.moveTo(x + r, 10); g.arcTo(x + tw, 10, x + tw, h - 10, r); g.arcTo(x + tw, h - 10, x, h - 10, r); g.arcTo(x, h - 10, x, 10, r); g.arcTo(x, 10, x + tw, 10, r); g.fill();
-      g.fillStyle = me ? '#2b1700' : color; g.fillText(text, w / 2, h / 2 + 2);
+      g.fillStyle = me ? '#ffffff' : color; g.fillText(text, w / 2, h / 2 + 2);
     });
   }
   // misket görüntüsü: küre + etiket + aksesuar grubu (dönmez, gidiş yönüne bakar) + efektler
   Grafik.makeMarble = function (info, look, me, r) {
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), Grafik.marbleMaterial(look));
     mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex((info.sembol ? info.sembol + ' ' : '') + (me ? Dil.t('SEN') + ' · ' + Dil.t(info.name) : Dil.t(info.name)), info.color, me), depthTest: false, transparent: true }));
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex((info.sembol ? info.sembol + ' ' : '') + (me ? Dil.t('SEN') + (MOBIL ? '' : ' · ' + Dil.t(info.name)) : MOBIL ? '' : Dil.t(info.name)), info.color, me), depthTest: false, transparent: true }));
     label.scale.set(me ? 1.9 : 1.35, me ? 0.42 : 0.3, 1); label.material.opacity = me ? 0.85 : 0.6; label.renderOrder = 5; scene.add(label); // küçük ve yarı saydam: yolu kapatmasın
     const acc = new THREE.Group(); scene.add(acc);
     if (window.Magaza) { if (look.sapka) Magaza.buildHat(acc, look.sapka, r, look.color); if (look.gozluk) Magaza.buildGlasses(acc, look.gozluk, r); }

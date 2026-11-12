@@ -322,6 +322,7 @@
   $('gucIntroGo').onclick = endPowerIntro;
   function startRace() {
     if (modKapisi()) return; // önce bilgi kartı ya da mod seçimi
+    agDurum('tek');
     const skipBet = state.betSkip; state.betSkip = false; const meydan = state.meydanNext || null; state.meydanNext = null;
     // çok oyunculu odadayken tek başına yarış: odadan ancak oyuncu "evet" derse çıkılır
     if (window.Ag && Ag.room && !confirm(`Çok oyunculu odadasın (${Ag.room.kod}). Tek başına yarışmak için odadan çıkılsın mı?`)) return;
@@ -719,6 +720,7 @@
     $('dilSec').classList.toggle('hidden', id !== 'scrProfile'); // dil seçimi: giriş ekranında; sonra "Daha" panelinde
     if (id !== curScreen) { $('dahaBox').classList.add('hidden'); $('gorevBox').classList.add('hidden'); } // ekran değişince paneller kapanır
     curScreen = id;
+    if (id && id !== 'loading') agDurum('menu');
     const tabOn = id in TAB_OF && !!state.player;
     $('topnav').classList.add('hidden'); document.body.classList.remove('navon');
     $('mTabs').classList.toggle('hidden', !tabOn); document.body.classList.toggle('tabon', tabOn);
@@ -1003,7 +1005,7 @@
       opened = true; const g = Kayit.isGuest(state.player); Kayit.track('acilis', { misafir: g, ad: g ? undefined : state.player.name, mobil: !!window.MOBIL });
       if (!ogrSeen()) { try { localStorage.setItem(OGR_KEY, '1'); } catch (e) { } ilk = (state.player.races || 0) === 0; }
     }
-    if (Ag.connected) Ag.connect(agProfile()); // oyuncu değişti: sunucuya yeni adı bildir
+    Ag.connect(agProfile()); // çevrimiçi görün ve davet alabil (oyuncu değiştiyse yeni ad bildirilir)
     if (pendingRoom) { const k = pendingRoom; pendingRoom = null; showMp(); joinWhenReady(k); return; }
     showMenu();
     if (meydanSor()) return; // meydan okuma linkiyle gelindi
@@ -1020,7 +1022,7 @@
     $('mStats').textContent = `${p.races} yarış · ${p.wins} galibiyet · ${p.podiums} kez ilk 3 · toplam ${p.earned} puan kazanıldı`;
     $('btnSound').textContent = Kayit.save.sound === false ? 'Ses: Kapalı' : 'Ses: Açık';
     $('btnGfx').textContent = 'Grafik: ' + ({ yuksek: 'Yüksek', orta: 'Orta', dusuk: 'Düşük' }[Grafik.quality()]);
-    renderDaily(); renderBugun(p); renderGunParkur(p); kademeliMenu(p); renderYeniMod(p);
+    renderDaily(); renderBugun(p); renderGunParkur(p); kademeliMenu(p); renderYeniMod(p); renderOnline();
     const nx = siradaki(p), T = MP.TRACKS[nx - 1];
     $('btnOynaSub').textContent = `Parkur ${nx} · ${T.name} · ${MODES[kartTercih(p)].name}`;
     $('btnOynaYz').textContent = p.best[nx] ? yildizTxt(yildiz(p.best[nx])) : '';
@@ -1229,21 +1231,23 @@
   function leaveMp() { if (Ag.room) Ag.send({ t: 'ayril' }); Ag.room = null; state.mp = null; rememberRoom(null); mpCountdown(null); navRoomDot(); }
   function joinWhenReady(k) { if (Ag.connected && Ag.pid) Ag.send({ t: 'katil', kod: k }); else { joinAfter = k; Ag.connect(agProfile()); } }
   function mpMsg(t) { const el = $('mpMsg'); el.textContent = t || ''; el.classList.toggle('hidden', !t); clearTimeout(mpMsgTimer); if (t) mpMsgTimer = setTimeout(() => el.classList.add('hidden'), 5000); }
-  Ag.on('durum', d => { if (d.bagli && joinAfter) { Ag.send({ t: 'katil', kod: joinAfter }); joinAfter = null; } renderMp(); });
+  // bağlantı durumu (Ag.on her olay için tek dinleyici tutar: hepsi burada)
+  Ag.on('durum', d => { if (d.bagli && joinAfter) { Ag.send({ t: 'katil', kod: joinAfter }); joinAfter = null; } renderMp(); agBaglandi(d); });
   Ag.on('oda', room => { rememberRoom(room && room.kod); renderMp(); renderNext(); mpCountdown(room); navRoomDot(); });
   // ---- yarış sonrası: sıradakini kurucu seçer; diğerleri bekler (mağazaya bakabilir, başlarken her ekranda 3-2-1 çıkar) ----
   function nextHTML(room, onResult) {
     if (!room || !room.sonParkur || room.durum !== 'lobi') return '';
     const T = id => MP.TRACKS[id - 1];
     if (room.basliyor != null) return `<div class="vote"><p class="vstat">▶ Yarış başlıyor: <b>Parkur ${room.parkur} · ${esc(T(room.parkur).name)}</b></p></div>`;
+    const oto = room.davet && room.bekleme != null ? `<p class="sub" style="margin:4px 0 0">⏭ ${room.bekleme} sn sonra sonraki parkur kendiliğinden başlar</p>` : '';
     if (room.kurucu !== Ag.pid) {
       const h = room.oyuncular.find(o => o.pid === room.kurucu);
-      return `<div class="vote"><p class="vstat">👑 <b>${esc(h ? h.ad : '')}</b> sıradaki yarışı seçiyor…</p><p class="sub" style="margin:0">Bu arada mağazaya bakabilirsin. Yarış başlarken ekranda 3-2-1 çıkar.</p></div>`;
+      return `<div class="vote"><p class="vstat">👑 <b>${esc(h ? h.ad : '')}</b> sıradaki yarışı seçiyor…</p>${oto || '<p class="sub" style="margin:0">Bu arada mağazaya bakabilirsin. Yarış başlarken ekranda 3-2-1 çıkar.</p>'}</div>`;
     }
     if (!onResult) return ''; // lobide kurucu parkur seçiciyi ve "Yarışı Başlat"ı kullanır
     const last = room.sonParkur, nextId = Math.min(MP.TRACKS.length, last + 1);
     const opt = (c, icon, title, id, dis) => `<button class="voteopt" data-sira="${c}" data-id="${id}" ${dis ? 'disabled' : ''}><span class="vic">${icon}</span><b>${title}</b><small>Parkur ${id} · ${esc(T(id).name)}</small></button>`;
-    return `<div class="vote"><p class="vstat">👑 Sıradaki yarışı sen seç</p><div class="vopts">${opt('ayni', '🔁', 'Aynı parkur ▶', last)}${opt('sonraki', '⏭', 'Sonraki parkur ▶', nextId, last >= MP.TRACKS.length)}</div><p class="sub" style="margin:0;font-size:13px">Başka parkur için: Lobiye Dön → Parkuru değiştir</p></div>`;
+    return `<div class="vote"><p class="vstat">👑 Sıradaki yarışı sen seç</p><div class="vopts">${opt('ayni', '🔁', 'Aynı parkur ▶', last)}${opt('sonraki', '⏭', 'Sonraki parkur ▶', nextId, last >= MP.TRACKS.length)}</div>${oto}<p class="sub" style="margin:0;font-size:13px">Başka parkur için: Lobiye Dön → Parkuru değiştir</p></div>`;
   }
   function renderNext() {
     const room = Ag.room, onRes = !!(state.mp && state.phase === 'result' && room);
@@ -1277,7 +1281,8 @@
   Ag.on('hata', m => { mpMsg('⚠️ ' + m.mesaj); if (state.mp && state.race) toast('⚠️ ' + m.mesaj, 'bad'); if (/bulunamadı/.test(m.mesaj)) rememberRoom(null); });
   Ag.on('basla', m => startNetRace(m));
   let surumSoruldu = false;
-  Ag.on('surumEski', () => { if (surumSoruldu) return; surumSoruldu = true; if (confirm('Oyunun yeni sürümü var. Çok oyunculu için sayfa şimdi yenilensin mi?')) location.reload(); else mpMsg('⚠️ Oyunun eski sürümünü kullanıyorsun, sayfayı yenile.'); });
+  let surumEski = false;
+  Ag.on('surumEski', () => { surumEski = true; if (!state.mp && curScreen !== 'scrMp') return; if (surumSoruldu) return; surumSoruldu = true; if (confirm('Oyunun yeni sürümü var. Çok oyunculu için sayfa şimdi yenilensin mi?')) location.reload(); else mpMsg('⚠️ Oyunun eski sürümünü kullanıyorsun, sayfayı yenile.'); });
   // parkur seçici (çok oyunculu): önce dünya, sonra o dünyanın 10 parkuru; 🎲 rastgele. Tüm parkurlar açık.
   function trackPicker(el, onPick) {
     let sel = 1, world = 0;
@@ -1330,8 +1335,9 @@
     for (const id of ['mpQuick', 'mpCreate', 'mpJoin']) $(id).disabled = !ready;
     if (!room) return;
     const host = room.kurucu === me, mine = room.oyuncular.find(q => q.pid === me), T = MP.TRACKS[room.parkur - 1];
-    $('mpRoomCode').textContent = room.kod; $('mpCopy').classList.toggle('hidden', room.hizli);
-    $('mpTitle').textContent = room.hizli ? '⚡ Hızlı oyun' : '🏠 Özel oda';
+    $('mpRoomCode').textContent = room.kod; $('mpCopy').classList.toggle('hidden', room.hizli || !!room.davet);
+    $('mpRoomCode').parentElement.classList.toggle('hidden', !!room.davet); // davetli yarışta oda kodu yok
+    $('mpTitle').textContent = room.hizli ? '⚡ Hızlı oyun' : room.davet ? '🏁 Davetli yarış' : '🏠 Özel oda';
     // kurucu parkuru seçer (özel oda; hızlı odada onu kuran seçtiyse); çok oyunculuda tüm parkurlar açık
     const canPick = host && (!room.hizli || room.secildi) && room.durum === 'lobi' && room.basliyor == null;
     $('mpTrackBtn').classList.toggle('hidden', !canPick); if (!canPick) { $('mpTrackPick').classList.add('hidden'); $('mpTrackBtn').textContent = '🔄 Parkuru değiştir'; }
@@ -1340,6 +1346,10 @@
     const back = room.durum === 'yaris' && !state.race && !!(mine && mine.izleyici); // yarışı bırakmıştı
     $('mpQuickInfo').textContent = room.hizli && room.durum === 'lobi' && room.basliyor == null ? `Oyuncular bekleniyor… ${room.bekleme} sn (eksiklere bot)` : back ? '🏁 Bu odada yarış sürüyor. İstersen yarışa dönebilirsin.' : room.durum === 'yaris' && !state.race ? '🏁 Bu odada yarış sürüyor, bitince katılabilirsin.' : '';
     $('mpBackToRace').classList.toggle('hidden', !back);
+    if (room.davet && room.durum === 'lobi' && room.basliyor == null && room.davet.liste.length) {
+      const ic = { bekliyor: '⏳', katildi: '✅', ret: '✖', dolu: '🚫' };
+      $('mpQuickInfo').textContent = `Davet: ${room.davet.liste.map(d => `${ic[d.durum] || ''} ${d.ad}`).join(' · ')}${room.bekleme != null ? ` — ${room.bekleme} sn içinde başlar (eksiklere bot)` : ''}`;
+    }
     $('mpSlots').innerHTML = MF.MARBLES.map((info, i) => {
       const q = room.oyuncular.find(x => x.misket === i), isMe = q && q.pid === me, lk = q ? Magaza.lookFor(info, q.eq || {}) : info; // kostüm rengi
       const who = q ? `<b>${esc(q.ad)}${isMe ? ' (sen)' : ''}${q.misafir ? ' 👤' : ''}${q.pid === room.kurucu && !room.hizli ? ' 👑' : ''}</b><small>${!q.bagli ? '📴 bağlantı koptu' : q.hazir ? '✅ hazır' : '⏳ hazırlanıyor'}</small>` : `<b>🤖 Bot</b><small>${room.durum === 'lobi' ? 'seçmek için dokun' : ''}</small>`;
@@ -1498,7 +1508,7 @@
     show('scrAch');
   }
   $('btnAch').onclick = () => navTo('ach');
-  $('btnMp').onclick = () => navTo('mp');
+  $('btnMp').onclick = () => cvAc();
   $('btnAchBack').onclick = showMenu;
 
   // ================= OYUNCU DENEYİMİ =================
@@ -1512,9 +1522,18 @@
   ];
   const ayar = k => !(Kayit.save.ayar && Kayit.save.ayar[k] === false);
   function renderAyar() {
+    renderAyarMod();
     $('ayarList').innerHTML = AYARLAR.map(a => `<button class="ayar${ayar(a.id) ? ' on' : ''}" data-ayar="${a.id}" role="switch" aria-checked="${ayar(a.id)}"><span class="aic">${a.ic}</span><span class="atx"><b>${a.ad}</b><small>${a.acik}</small></span><span class="sw"></span></button>`).join('');
   }
   function showAyar() { renderAyar(); $('ayarBox').classList.remove('hidden'); }
+  function renderAyarMod() {
+    if (!state.player) return;
+    modKartlari($('ayarMod'), kartTercih(state.player), m => {
+      modKaydet(m, 'ayar'); renderAyarMod();
+      if (state.race && !state.mp && ['countdown', 'race', 'ending'].includes(state.phase)) toast('Kart modu sonraki yarışta geçerli olur', 'gold');
+      if (curScreen === 'scrMenu') showMenu();
+    });
+  }
   $('ayarList').addEventListener('click', e => {
     const b = e.target.closest('[data-ayar]'); if (!b) return;
     const k = b.dataset.ayar, v = !ayar(k);
@@ -1558,7 +1577,7 @@
   $('btnOyna').onclick = () => hizliBasla(siradaki(state.player));
 
   // ---- ipuçları: her biri birkaç kez gösterilir (bu cihazda sayılır) ----
-  const IPUCU_MAX = { basla: 3, kart: 2, tuzak: 2, catal: 2, geride: 2, canta: 2 };
+  const IPUCU_MAX = { bvarsay: 1, basla: 3, kart: 2, tuzak: 2, catal: 2, geride: 2, canta: 2 };
   let ipucuT = null;
   function ipucu(k, txt, ms = 5500) {
     if (!ayar('ipucu')) return false;
@@ -1595,7 +1614,9 @@
     if (!state.mp && !state.cup && id % 10 === 0) { const w = MP.WORLDS[MP.TRACKS[id - 1].world]; fb.innerHTML = `🏆 DÜNYA FİNALİ<small>${w.icon} ${esc(w.name)}</small>`; fb.classList.remove('hidden'); }
     else if (!state.mp && !state.cup && id === gunParkur()) { fb.innerHTML = `📅 GÜNÜN PARKURU<small>Parkur ${id} · ${esc(MP.TRACKS[id - 1].name)}</small>`; fb.classList.remove('hidden'); }
     if (state.meydan) { $('hedefBox').textContent = `🎯 ${state.meydan.kim}: ${state.meydan.hedef.toFixed(1)} sn`; $('hedefBox').classList.remove('hidden'); }
-    if (!state.mp) ipucu('basla', `Senin misketin: ${MF.MARBLES[state.pick].name} ${MF.MARBLES[state.pick].sembol}. Misketler kendi yuvarlanır; sen güç kartlarıyla yardım edersin!`, 6500);
+    const baslaIpucu = () => ipucu('basla', `Senin misketin: ${MF.MARBLES[state.pick].name} ${MF.MARBLES[state.pick].sembol}. Misketler kendi yuvarlanır; sen güç kartlarıyla yardım edersin!`, 6500);
+    if (!state.mp && varsayilanBiriktir(p) && r.powers.mode === 'biriktir' && ipucu('bvarsay', "🎒 Bu hafta oyunlar Biriktir modunda. Klasik'e Ayarlar'dan geçebilirsin.", 4500)) setTimeout(() => { if (state.race === r && !state.mp) baslaIpucu(); }, 4700);
+    else if (!state.mp) baslaIpucu();
   }
   function yarisBasladi() { $('rakipler').classList.add('hidden'); $('finalBadge').classList.add('hidden'); }
 
@@ -1823,10 +1844,14 @@
   // Yeni oyuncu: 1. yarış Klasik, 2. yarış Biriktir (bilgi kartıyla), 3. yarıştan önce iki mod kart olarak sorulur.
   // Eski oyuncu (modu Biriktir değilse): menüde "YENİ" şeridi, ilk yarışı Biriktir, yarış sonunda iki kartla seçim.
   // Tercih oyuncu profilinde (stats) durur, buluta gider; yarış sonunda her zaman iki küçük kartla değiştirilebilir.
-  const kartTercih = p => (st(p).kartMod === 'biriktir' ? 'biriktir' : 'klasik');
+  // 20 Kasım 2026'ya kadar (1 hafta) modu kendisi seçmemiş herkes için varsayılan Biriktir
+  const BIRIKTIR_HAFTASI_SON = Date.parse('2026-11-20T00:00:00+03:00');
+  const biriktirHaftasi = () => Date.now() < BIRIKTIR_HAFTASI_SON;
+  const kartTercih = p => { const s = st(p); if (s.modSecti && s.kartMod) return s.kartMod === 'biriktir' ? 'biriktir' : 'klasik'; if (biriktirHaftasi()) return 'biriktir'; return s.kartMod === 'biriktir' ? 'biriktir' : 'klasik'; };
+  const varsayilanBiriktir = p => biriktirHaftasi() && !st(p).modSecti;
   const tekYaris = () => !state.mp && !state.cup;
   const denemeGerek = p => tekYaris() && (p.races || 0) >= 1 && !st(p).bDeneme && kartTercih(p) !== 'biriktir';
-  const yeniSecimGerek = p => tekYaris() && st(p).yeniAkis && st(p).bDeneme && !st(p).modSecti;
+  const yeniSecimGerek = p => tekYaris() && !biriktirHaftasi() && st(p).yeniAkis && st(p).bDeneme && !st(p).modSecti;
   function modKaydet(m, nerede) {
     const p = state.player; if (!p || !MODES[m]) return;
     const s = st(p), degisti = s.kartMod !== m || !s.modSecti;
@@ -1864,6 +1889,7 @@
     if (!tekYaris()) return false;
     const s = st(p);
     if (p.races === 1 && !s.bDeneme && !s.modSecti) s.yeniAkis = true; // bu sürümle gelen yeni oyuncu
+    if (state.race && state.race.powers && state.race.powers.mode === 'biriktir' && !state.deneme) { s.bDeneme = true; return false; } // Biriktir'i zaten oynadı (varsayılan hafta)
     if (!state.deneme) return false;
     s.bDeneme = true;
     return !s.yeniAkis && !s.modSecti; // eski oyuncuya hemen sor; yeniye 3. yarıştan önce sorulur
@@ -1896,6 +1922,79 @@
     if (on && !var_) lab.insertAdjacentHTML('beforeend', ' <em class="yeniEt">YENİ</em>'); else if (!on && var_) var_.remove();
   }
 
+  // ---- Arkadaşlarla: çevrimiçi oyuncular, toplu davet, gelen davet (oda kodu yok) ----
+  let agSonDurum = null;
+  function agDurum(d) { if (d === agSonDurum || !window.Ag || !Ag.connected) return; agSonDurum = d; Ag.send({ t: 'durum', d }); }
+  function renderOnline() {
+    const n = Math.max(0, (Ag.sayi || 0) - (Ag.connected ? 1 : 0));
+    $('mOnline').textContent = n > 0 ? `${n} kişi online` : 'Arkadaşlarını davet et';
+    $('btnMp').classList.toggle('online', n > 0);
+  }
+  Ag.on('sayi', renderOnline);
+  let cvListe = [], cvSecim = new Set();
+  function cvAc() {
+    if (state.phase === 'shop') leaveShop();
+    if (surumEski && !surumSoruldu) { surumSoruldu = true; if (confirm('Oyunun yeni sürümü var. Çok oyunculu için sayfa şimdi yenilensin mi?')) return location.reload(); }
+    if (Ag.room) { navTo('mp'); return; } // zaten bir odadasın: lobiye
+    $('cvList').innerHTML = '<p class="cv-bos">⏳ Çevrimiçi oyuncular yükleniyor…</p>';
+    $('cvBox').classList.remove('hidden');
+    if (Ag.connected && Ag.pid) Ag.send({ t: 'cevrimici' }); else { Ag.connect(agProfile()); cvBekle = true; }
+  }
+  let cvBekle = false;
+  function agBaglandi(d) {
+    if (!d.bagli) return;
+    agSonDurum = null; agDurum(state.race && !state.mp && ['countdown', 'race', 'ending'].includes(state.phase) ? 'tek' : 'menu');
+    if (cvBekle) { cvBekle = false; Ag.send({ t: 'cevrimici' }); }
+  }
+  const CV_DURUM = { menu: 'Menüde', tek: 'Tek başına yarışıyor', oda: 'Başka bir yarışta' };
+  Ag.on('cevrimici', m => {
+    cvListe = m.oyuncular || []; cvSecim = new Set(cvListe.filter(o => o.durum !== 'oda').map(o => o.pid));
+    renderCv();
+  });
+  function renderCv() {
+    const davetEdilir = cvListe.filter(o => o.durum !== 'oda');
+    $('cvAlt').textContent = davetEdilir.length ? `${davetEdilir.length} kişiye davet gönderebilirsin` : 'Çevrimiçi oyunculara davet gönder';
+    $('cvList').innerHTML = cvListe.length ? cvListe.map(o => {
+      const off = o.durum === 'oda', on = cvSecim.has(o.pid);
+      return `<button class="cv-oy${on ? ' on' : ''}" data-cv="${o.pid}" ${off ? 'disabled' : ''}><span class="cv-av">${esc(o.ad.charAt(0).toLocaleUpperCase('tr'))}</span><span class="cv-tx"><b>${esc(o.ad)}</b><small>${CV_DURUM[o.durum] || ''}</small></span><span class="cv-ck">${off ? '' : on ? '✓' : ''}</span></button>`;
+    }).join('') : '<p class="cv-bos">Şu an başka çevrimiçi oyuncu yok. Hızlı oyunda gelenlerle ve botlarla yarışabilirsin.</p>';
+    $('cvHepsi').disabled = !davetEdilir.length; $('cvSecili').disabled = !cvSecim.size || cvSecim.size === davetEdilir.length;
+    $('cvHepsi').textContent = davetEdilir.length ? `Herkesi davet et (${davetEdilir.length})` : 'Herkesi davet et';
+  }
+  $('cvList').addEventListener('click', e => { const b = e.target.closest('[data-cv]'); if (!b || b.disabled) return; const id = b.dataset.cv; if (cvSecim.has(id)) cvSecim.delete(id); else cvSecim.add(id); renderCv(); });
+  function davetGonder(hepsi) {
+    Ag.send({ t: 'davet', hepsi, kime: hepsi ? undefined : [...cvSecim], parkur: siradaki(state.player), mod: state.mode });
+    Kayit.track('davet', { kisi: hepsi ? cvListe.filter(o => o.durum !== 'oda').length : cvSecim.size, hepsi });
+    $('cvBox').classList.add('hidden'); navTo('mp'); mpMsg('📨 Davet gönderildi. Kabul edenler odaya gelir; süre dolunca yarış başlar.');
+  }
+  $('cvHepsi').onclick = () => davetGonder(true);
+  $('cvSecili').onclick = () => davetGonder(false);
+  $('cvKapat').onclick = () => $('cvBox').classList.add('hidden');
+  $('cvBox').addEventListener('click', e => { if (e.target === $('cvBox')) $('cvBox').classList.add('hidden'); });
+  $('cvDiger').onclick = () => { $('cvBox').classList.add('hidden'); navTo('mp'); };
+  // gelen davet: kart, süre çubuğu; kabul edersen (tek başına yarıştaysan o yarış bırakılır) odaya girersin
+  let davetT = null, davetKod = null;
+  Ag.on('davetGeldi', m => {
+    if (state.mp || Ag.room) return; // zaten çok oyunculu yarıştasın
+    davetKod = m.kod; const T = MP.TRACKS[(m.parkur || 1) - 1];
+    $('davetBaslik').textContent = `${m.kim} seni yarışa çağırıyor!`;
+    $('davetTxt').textContent = `Parkur ${T.id} · ${T.name} · ${MODES[m.mod] ? MODES[m.mod].name : 'Klasik'}. Boş yerlerde bot oynar.` + (state.race && !state.mp && ['countdown', 'race', 'ending'].includes(state.phase) ? ' Katılırsan bu yarış biter.' : '');
+    $('davetBox').classList.remove('hidden'); Ses.yeni();
+    const son = performance.now() + (m.sure || 25) * 1000, top = (m.sure || 25) * 1000;
+    clearInterval(davetT);
+    davetT = setInterval(() => { const l = son - performance.now(); $('davetBar').style.width = Math.max(0, 100 * l / top) + '%'; if (l <= 0) davetKapat(false, true); }, 100);
+  });
+  function davetKapat(kabul, sessiz) {
+    clearInterval(davetT); davetT = null; $('davetBox').classList.add('hidden');
+    const kod = davetKod; davetKod = null; if (!kod) return;
+    if (!sessiz || kabul) Ag.send({ t: 'davetYanit', kod, kabul: !!kabul });
+    if (!kabul) return;
+    if (state.race && !state.mp && ['countdown', 'race', 'ending'].includes(state.phase)) { biraktiKaydet(false); disposeRace(); }
+    navTo('mp');
+  }
+  $('davetKabul').onclick = () => davetKapat(true);
+  $('davetRet').onclick = () => davetKapat(false);
+
   // test kancası (otomatik ekran testleri için)
   window.__misket = {
     state, ACH,
@@ -1904,6 +2003,7 @@
     goster(id) { disposeRace(); ensureTrack(id); show(null); state.phase = 'menu'; state.trackId = id; },
   };
 
+  document.documentElement.classList.toggle('mobil', !!window.MOBIL); // telefonda yarış listesinde yalnız renk + sembol
   // ================= BAŞLAT =================
   Ses.on = Kayit.save.sound !== false;
   // ses seviyesi (menü + duraklatma menüsü; cihazda hatırlanır)
