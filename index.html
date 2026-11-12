@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>
   // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
-  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=29" as="fetch" crossorigin="anonymous">');
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=30" as="fetch" crossorigin="anonymous">');
 </script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
@@ -611,12 +611,73 @@
   .gok .savestatus{margin:0}
   .gok .savestatus.s-err,.gok .savestatus.s-off{color:#b26b00}
   @media (max-height:640px){.gk-logo{font-size:30px;margin-top:2px}.gk{gap:9px}.gk-oyna{padding:12px 14px!important}.gk-oyna b{font-size:25px}}
+
+  /* ===== Gökyüzü teması: tüm menü ekranları ve pencereler (yarış göstergeleri koyu kalır: sahnenin üstünde okunur) ===== */
+  :root{--gold:#ffd77a} .rpts{text-align:right}
+  :is(.screen,.overlay){--text:#1b2a47;--muted:#566683;--line:rgba(27,42,71,.13);--panel:rgba(255,255,255,.97);--panel2:#f1f5fb;--accent:#2a6fdb;--accent2:#2a6fdb;
+    --good:#1f9a4d;--bad:#c23a3a;--gold:#a86400;--gk-blue:#2a6fdb;--gk-green:#2fbf64;--gk-green2:#4ad97f;--gk-green-d:#1f9a4d;--gk-green-ink:#05301a;--gk-track:#e3ebf6;
+    --gk-shadow:0 4px 14px -6px rgba(27,60,110,.35);--gk-disp:"Fredoka","Trebuchet MS",system-ui,sans-serif;color:var(--text)}
+  .screen{background:linear-gradient(180deg,rgba(143,203,255,.55),rgba(233,246,255,.35))}
+  .screen.clear{background:rgba(233,246,255,.25)}
+  .screen.sky{background:linear-gradient(180deg,#8fcbff 0%,#c7e6ff 48%,#e9f6ff 100%)}
+  .screen.sky>.panel{position:relative;z-index:2}
+  .overlay{background:rgba(27,42,71,.38)}
+  :is(.screen,.overlay) .panel{background:var(--panel);border:none;box-shadow:0 18px 44px -18px rgba(27,60,110,.45)}
+  :is(.screen,.overlay) :is(h1,h2,h3){font-family:var(--gk-disp);font-weight:600;color:var(--text)}
+  :is(.screen,.overlay) h1{background:none;-webkit-background-clip:border-box;background-clip:border-box;-webkit-text-fill-color:currentColor;color:#1b2a47;font-weight:700;letter-spacing:.3px}
+  :is(.screen,.overlay) button{background:#fff;border:1px solid var(--line);color:var(--text)}
+  :is(.screen,.overlay) button:hover{background:#f1f5fb;border-color:rgba(27,42,71,.25)}
+  :is(.screen,.overlay) button.main{background:linear-gradient(180deg,var(--gk-green2),var(--gk-green));color:var(--gk-green-ink);border:none;box-shadow:0 4px 0 var(--gk-green-d)}
+  :is(.screen,.overlay) button.main:active{transform:translateY(2px);box-shadow:0 2px 0 var(--gk-green-d)}
+  :is(.screen,.overlay) button.main:disabled{background:#dfe6f0;color:#7d8aa3;box-shadow:none}
+  :is(.screen,.overlay) button.danger{border-color:rgba(194,58,58,.45);color:#c23a3a}
+  :is(.screen,.overlay) :is(.seg button.on,.tabs button.on,.ogrdots i.on){background:var(--gk-blue);color:#fff;border-color:var(--gk-blue)}
+  :is(.screen,.overlay) .mbadim span{background:var(--gk-blue);color:#fff}
+  :is(.screen,.overlay) input,:is(.screen,.overlay) select{background:#fff;color:var(--text);border-color:var(--line)}
+  /* iç yüzeyler: beyaz panelin üstünde açık mavi-gri */
+  :is(.screen,.overlay) :is(.acc,.bet,.note,.gcard,.item,.ach,.lrow,.gunluk,.modkart,.resmod,.ayar,.ozet,.hedefler,.tcard,.mcard,.mptrk .cur){background:var(--panel2)}
+  :is(.screen,.overlay) :is(.item,.tcard,.mcard,.modkart,.ach,.gcard):hover{border-color:rgba(42,111,219,.45)}
+  /* sarı yazılar beyazda okunmuyordu: koyu kehribar */
+  :is(.screen,.overlay) :is(.pill,.tcard .best,.gain.good,.note.ach,.dhead small,.dodul,.lrow .lv,.mpcode,.item .pr,.ach .rw,.bigcode,.gkl,.rpts){color:var(--gold)}
+  :is(.screen,.overlay) .pill{background:rgba(245,165,0,.12);border-color:rgba(245,165,0,.4)}
+  :is(.screen,.overlay) .lrow.me{background:rgba(42,111,219,.1);box-shadow:0 0 0 1px rgba(42,111,219,.4) inset}
+  :is(.screen,.overlay) .resmod.sor{border-color:var(--gk-blue);background:rgba(42,111,219,.08)} :is(.screen,.overlay) .resmod.sor>b{color:var(--gk-blue)}
+  :is(.screen,.overlay) .modkart.on{border-color:var(--gk-blue);background:rgba(42,111,219,.1);box-shadow:0 0 0 2px rgba(42,111,219,.2)}
+  :is(.screen,.overlay) .item .pr.no{color:#c23a3a}
+  :is(.screen,.overlay) :is(.gcard small,.ogrslide p){color:#3d4c69}
+  :is(.screen,.overlay) :is(.namemsg.bad,.autherr){color:#c23a3a}
+  :is(.screen,.overlay) .misafir{background:#fff7e6;border-color:#f3d9a4} :is(.screen,.overlay) .misafir p{color:#7a4b00}
+  :is(.screen,.overlay) :is(.lvlbar,.dbar,.ibar,#cardTime){background:var(--gk-track)}
+  :is(.screen,.overlay) .lvlbar i{background:var(--gk-blue)}
+  :is(.screen,.overlay) .ogrdots i{background:rgba(27,42,71,.18)}
+  :is(.screen,.overlay) .ayar .sw{background:#d3dceb} :is(.screen,.overlay) .ayar.on .sw{background:var(--gk-green)}
+  :is(.screen,.overlay) .modsw .tg{background:#c9d4e4} :is(.screen,.overlay) .modsw.right .tg{background:#34c759}
+  :is(.screen,.overlay) .modsw .ml{color:rgba(27,42,71,.35)} :is(.screen,.overlay) .modsw .ml.on{color:var(--text)}
+  :is(.screen,.overlay) :is(.tcard .yz,.acchead .yz,.yz){color:#e59a00} :is(.screen,.overlay) .yz i{color:rgba(27,42,71,.2)}
+  :is(.screen,.overlay) .spinner{border-color:rgba(27,42,71,.14);border-top-color:var(--gk-blue)}
+  :is(.screen,.overlay) .savestatus.s-err,:is(.screen,.overlay) .savestatus.s-off{color:var(--gold)}
+  #resButtons{background:#fff}
+  #scrShop{background:linear-gradient(90deg,rgba(233,246,255,0) 0%,rgba(233,246,255,0) 38%,rgba(199,230,255,.5) 55%)}
+  @media (max-width:760px){#scrShop{background:linear-gradient(180deg,rgba(233,246,255,0) 0%,rgba(233,246,255,0) 40%,rgba(199,230,255,.55) 60%)}}
+  .kutla{background:#fff;border-color:var(--gk-green);color:#1b2a47}
+  #dilSec{background:#fff;border-color:rgba(27,42,71,.15);box-shadow:0 4px 14px -6px rgba(27,60,110,.35)} #dilSec button{color:#1b2a47} #dilSec button.on{background:#2a6fdb;color:#fff}
+  /* alt sekmeler ve puan rozeti (tüm menü ekranları) */
+  #mTabs{position:fixed;left:0;right:0;bottom:0;z-index:30}
+  @media (min-width:600px){#mTabs{left:50%;right:auto;transform:translateX(-50%);width:min(520px,100%)}}
+  body.tabon .screen{padding-bottom:calc(86px + env(safe-area-inset-bottom))}
+  body.tabon #scrMenu.gok{padding-bottom:0} body.tabon #scrMenu .gk{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+  body.tabon #scrShop .panel{max-height:calc(100vh - 120px)}
+  body.ptson .screen{padding-top:calc(60px + env(safe-area-inset-top))}
+  #ptsPill{position:fixed;top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:31}
+  .gk-tabs button.inroom,.gk-card.inroom{position:relative} .gk-tabs button.inroom::after,.gk-card.inroom::after{content:"";position:absolute;top:6px;right:22%;width:9px;height:9px;border-radius:50%;background:#2fbf64;box-shadow:0 0 0 2px #fff}
+  .gk-card.inroom::after{right:10px;top:10px}
+  #loading .panel h1{font-size:44px}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 
-<div id="loading" class="screen"><div class="panel"><h1>Misket Yarışı</h1><div class="spinner"></div><p class="sub" id="loadMsg">Yükleniyor…</p><p class="sub" style="font-size:12px">İlk açılış biraz sürebilir (gökyüzü ve dokular yükleniyor)</p></div></div>
+<div id="loading" class="screen sky"><div class="gk-scene" aria-hidden="true"><i class="gk-m m1"></i><i class="gk-m m2"></i><i class="gk-m m3"></i></div><div class="panel"><h1>Misket Yarışı</h1><div class="spinner"></div><p class="sub" id="loadMsg">Yükleniyor…</p><p class="sub" style="font-size:12px">İlk açılış biraz sürebilir (gökyüzü ve dokular yükleniyor)</p></div></div>
 
 <!-- dil seçimi: sağ üst köşe (yarışta gizli) -->
 <div id="dilSec" class="hidden"><button data-dil="tr">TR</button><button data-dil="en">EN</button></div>
@@ -633,11 +694,21 @@
   <span class="navpts pill">⭐ <span id="navPoints">0</span></span>
 </nav>
 
+<!-- Alt sekmeler: tüm menü ekranlarında ortak (eski üst çubuğun yerine) -->
+<nav class="gk-tabs gok hidden" id="mTabs">
+    <button data-tab="ana" id="tabAna"><svg class="gi" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Ana</span></button>
+    <button id="btnRace" data-tab="parkur"><svg class="gi" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Parkurlar</span></button>
+    <button id="btnShop" data-tab="magaza"><svg class="gi" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8zM9 8a3 3 0 0 1 6 0"/></svg><span>Mağaza</span></button>
+    <button id="btnLider" data-tab="lider"><svg class="gi" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-7"/></svg><span>Sıralama</span></button>
+    <button id="btnDaha" data-tab="daha"><svg class="gi" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Daha</span></button>
+  </nav>
+<span class="gk-pill gok hidden" id="ptsPill" title="Puanın"><svg class="gi" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 3l2.8 6 6.2.6-4.8 4.2 1.4 6.2L12 16.8 6.4 20l1.4-6.2L3 9.6 9.2 9z"/></svg><span id="navPoints2">0</span></span>
+
 <!-- çok oyunculu geri sayım (her ekranda görünür) -->
 <div id="mpGeri" class="hidden"><div><span class="gb">🏁 Yarış başlıyor</span><b id="mpGeriN">3</b><small id="mpGeriT"></small></div></div>
 
 <!-- Profil / giriş -->
-<div id="scrProfile" class="screen hidden"><div class="panel" style="width:min(600px,96vw)">
+<div id="scrProfile" class="screen sky hidden"><div class="gk-scene" aria-hidden="true"><i class="gk-m m1"></i><i class="gk-m m2"></i><i class="gk-m m3"></i></div><div class="panel" style="width:min(600px,96vw)">
   <h1>Misket Yarışı</h1>
   <p class="sub">Kim oynuyor?</p>
   <div class="plist" id="plist"></div>
@@ -685,13 +756,6 @@
     <div class="gk-row hidden" id="mYeniMod"></div>
     <button class="gk-row hidden" id="mBugun"></button>
   </div>
-  <nav class="gk-tabs" id="mTabs">
-    <button class="on" data-tab="ana"><svg class="gi" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Ana</span></button>
-    <button id="btnRace" data-tab="parkur"><svg class="gi" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Parkurlar</span></button>
-    <button id="btnShop" data-tab="magaza"><svg class="gi" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8zM9 8a3 3 0 0 1 6 0"/></svg><span>Mağaza</span></button>
-    <button id="btnLider" data-tab="lider"><svg class="gi" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-7"/></svg><span>Sıralama</span></button>
-    <button id="btnDaha" data-tab="daha"><svg class="gi" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Daha</span></button>
-  </nav>
 </div>
 <!-- Daha: profil, hesap, kupalar, başarımlar, güç kartları, ayarlar, ses, dil -->
 <div id="dahaBox" class="overlay sheet gok hidden"><div class="gk-sheet">
@@ -957,32 +1021,32 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=29"></script>
-<script src="js/dil-en.js?v=29"></script>
-<script src="js/dil.js?v=29"></script>
+<script src="js/surum.js?v=30"></script>
+<script src="js/dil-en.js?v=30"></script>
+<script src="js/dil.js?v=30"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=29"></script>
-<script src="varliklar/qrcode.js?v=29"></script>
-<script src="three.min.js?v=29"></script>
-<script src="varliklar/RGBELoader.js?v=29"></script>
+<script src="js/isim.js?v=30"></script>
+<script src="varliklar/qrcode.js?v=30"></script>
+<script src="three.min.js?v=30"></script>
+<script src="varliklar/RGBELoader.js?v=30"></script>
 <script>
   // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
-  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=29"><\/script>');
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=30"><\/script>');
 </script>
-<script src="rapier.js?v=29"></script>
-<script src="js/parcalar.js?v=29"></script>
-<script src="js/parkurlar.js?v=29"></script>
-<script src="js/dunyalar.js?v=29"></script>
-<script src="js/fizik.js?v=29"></script>
-<script src="js/guclar.js?v=29"></script>
-<script src="js/kolay.js?v=29"></script>
-<script src="js/kayit-sistemi.js?v=29"></script>
-<script src="js/magaza.js?v=29"></script>
-<script src="js/ses.js?v=29"></script>
-<script src="js/cevre.js?v=29"></script>
-<script src="js/grafik.js?v=29"></script>
-<script src="js/ag.js?v=29"></script>
-<script src="js/oyun.js?v=29"></script>
+<script src="rapier.js?v=30"></script>
+<script src="js/parcalar.js?v=30"></script>
+<script src="js/parkurlar.js?v=30"></script>
+<script src="js/dunyalar.js?v=30"></script>
+<script src="js/fizik.js?v=30"></script>
+<script src="js/guclar.js?v=30"></script>
+<script src="js/kolay.js?v=30"></script>
+<script src="js/kayit-sistemi.js?v=30"></script>
+<script src="js/magaza.js?v=30"></script>
+<script src="js/ses.js?v=30"></script>
+<script src="js/cevre.js?v=30"></script>
+<script src="js/grafik.js?v=30"></script>
+<script src="js/ag.js?v=30"></script>
+<script src="js/oyun.js?v=30"></script>
 <script>
   // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
   if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

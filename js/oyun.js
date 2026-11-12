@@ -638,13 +638,13 @@
     const sen = i => i === state.pick ? ' <span class="pill" style="padding:1px 8px;font-size:11px">SEN</span>' : '';
     if (state.cup) {
       const c = state.cup, order = cupDone ? c.final : [0, 1, 2, 3, 4, 5].sort((a, b2) => c.pts[b2] - c.pts[a]);
-      $('resTable').innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center">${MP.CUPS[c.id].icon} Kupa puan durumu (${Math.min(c.idx, 3)}/3 yarış)</td></tr>` + order.map((i, k) => `<tr class="${i === state.pick ? 'me' : ''}"><td class="medal">${MEDAL[k] || k + 1}</td><td>${dot(i)}${r.marbles[i].info.name}${sen(i)}</td><td class="muted">bu yarış: ${r.marbles[i].place}.</td><td style="text-align:right;color:#ffd77a">${c.pts[i]} kp</td></tr>`).join('');
+      $('resTable').innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center">${MP.CUPS[c.id].icon} Kupa puan durumu (${Math.min(c.idx, 3)}/3 yarış)</td></tr>` + order.map((i, k) => `<tr class="${i === state.pick ? 'me' : ''}"><td class="medal">${MEDAL[k] || k + 1}</td><td>${dot(i)}${r.marbles[i].info.name}${sen(i)}</td><td class="muted">bu yarış: ${r.marbles[i].place}.</td><td class="rpts">${c.pts[i]} kp</td></tr>`).join('');
       $('resNote').textContent = cupDone ? `Kupa bitti! Toplam puanın: ${p.points}` : `Sıradaki parkur: ${MP.TRACKS.find(t => t.id === c.tracks[c.idx]).name}`;
       $('btnResAgain').textContent = cupDone ? 'Kupalar' : 'Sonraki Yarış ▶';
     } else {
       $('resTable').innerHTML = r.finishOrder.map((m, k) => {
         const pts = prizeFor(id, k + 1);
-        return `<tr class="${m.id === state.pick ? 'me' : ''}"><td class="medal">${MEDAL[k] || (k + 1)}</td><td>${dot(m.id)}${esc(m.info.name)}${sen(m.id)}</td><td class="muted">${m.finishTime ? m.finishTime.toFixed(1) + ' sn' : 'bitiremedi'}</td><td style="text-align:right;color:#ffd77a">${pts ? '+' + pts : ''}</td></tr>`;
+        return `<tr class="${m.id === state.pick ? 'me' : ''}"><td class="medal">${MEDAL[k] || (k + 1)}</td><td>${dot(m.id)}${esc(m.info.name)}${sen(m.id)}</td><td class="muted">${m.finishTime ? m.finishTime.toFixed(1) + ' sn' : 'bitiremedi'}</td><td class="rpts">${pts ? '+' + pts : ''}</td></tr>`;
       }).join('');
       $('resNote').textContent = `Toplam puanın: ${p.points}`;
       $('btnResAgain').textContent = 'Tekrar Yarış ↻';
@@ -710,20 +710,25 @@
 
   // ================= EKRANLAR =================
   const SCREENS = ['loading', 'scrProfile', 'scrMenu', 'scrTracks', 'scrCups', 'scrPick', 'scrResult', 'scrShop', 'scrAch', 'scrMp', 'scrLider', 'scrSifre', 'scrCihaz', 'scrGuc'];
-  const NAV_OF = { scrTracks: 'tracks', scrCups: 'cups', scrPick: 'tracks', scrResult: '', scrShop: 'shop', scrAch: 'ach', scrMp: 'mp', scrLider: 'lider', scrSifre: 'menu', scrCihaz: 'menu', scrGuc: 'menu' };
+  // alt sekmeler: hangi ekranda hangi sekme yanar (sonuç ekranında sekme çubuğu yok: kendi düğmeleri var)
+  const TAB_OF = { scrMenu: 'ana', scrMp: 'ana', scrTracks: 'parkur', scrPick: 'parkur', scrShop: 'magaza', scrLider: 'lider', scrCups: 'daha', scrAch: 'daha', scrGuc: 'daha', scrSifre: 'daha', scrCihaz: 'daha' };
+  let curScreen = null;
   function show(id) {
     if (id !== 'scrResult') otoDur();
     SCREENS.forEach(s => $(s).classList.toggle('hidden', s !== id)); $('shopHint').classList.toggle('hidden', id !== 'scrShop');
-    $('dilSec').classList.toggle('hidden', !id || id === 'loading' || id === 'scrMenu'); // yarışta, yüklenirken ve ana menüde (orada "Daha" içinde) gizli
-    if (id !== 'scrMenu') { $('dahaBox').classList.add('hidden'); $('gorevBox').classList.add('hidden'); }
-    const navOn = id in NAV_OF && !!state.player;
-    $('topnav').classList.toggle('hidden', !navOn); document.body.classList.toggle('navon', navOn);
-    if (navOn) { document.querySelectorAll('#topnav [data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === NAV_OF[id])); $('navPoints').textContent = state.player.points; }
+    $('dilSec').classList.toggle('hidden', id !== 'scrProfile'); // dil seçimi: giriş ekranında; sonra "Daha" panelinde
+    if (id !== curScreen) { $('dahaBox').classList.add('hidden'); $('gorevBox').classList.add('hidden'); } // ekran değişince paneller kapanır
+    curScreen = id;
+    const tabOn = id in TAB_OF && !!state.player;
+    $('topnav').classList.add('hidden'); document.body.classList.remove('navon');
+    $('mTabs').classList.toggle('hidden', !tabOn); document.body.classList.toggle('tabon', tabOn);
+    if (tabOn) document.querySelectorAll('#mTabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === TAB_OF[id]));
+    const ptsOn = tabOn && id !== 'scrMenu' && id !== 'scrShop'; // menü ve mağaza puanı zaten gösterir
+    $('ptsPill').classList.toggle('hidden', !ptsOn); document.body.classList.toggle('ptson', ptsOn);
+    if (tabOn) $('navPoints2').textContent = state.player.points;
   }
-  // üst menü: her ekrandan doğrudan geçiş
-  $('topnav').addEventListener('click', e => {
-    const b = e.target.closest('[data-nav]'); if (!b) return;
-    const to = b.dataset.nav;
+  // ekranlar arası geçiş (alt sekmeler ve kısayollar)
+  function navTo(to) {
     if (state.phase === 'shop' && to !== 'shop') leaveShop();
     if (to !== 'mp' && state.phase === 'result') state.mp = null; // odada kalır; yarış başlarken her ekranda geri sayım çıkar
     if (to === 'menu') showMenu();
@@ -733,6 +738,13 @@
     else if (to === 'ach') { state.cup = null; toMenuScene(); showAch(); }
     else if (to === 'mp') { state.cup = null; showMp(); }
     else if (to === 'lider') { state.cup = null; showLider(); }
+  }
+  $('topnav').addEventListener('click', e => { const b = e.target.closest('[data-nav]'); if (b) navTo(b.dataset.nav); });
+  $('mTabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-tab]'); if (!b) return;
+    const t = b.dataset.tab;
+    if (t === 'daha') { Kayit.onStatus(); $('dahaBox').classList.remove('hidden'); return; }
+    navTo({ ana: 'menu', parkur: 'tracks', magaza: 'shop', lider: 'lider' }[t]);
   });
   document.addEventListener('click', e => { if (e.target.closest('button')) Ses.click(); });
 
@@ -1021,15 +1033,13 @@
   $('btnSwitch').onclick = () => showProfiles();
   // dil: sağ üstte TR | EN (sayfa yenilenir; yarışta görünmez)
   document.querySelectorAll('#dilSec [data-dil], #mDil [data-dil]').forEach(b => { b.classList.toggle('on', b.dataset.dil === Dil.lang); b.onclick = () => { if (b.dataset.dil !== Dil.lang) Dil.set(b.dataset.dil); }; });
-  $('btnLider').onclick = () => showLider();
-  $('btnGuc').onclick = showGucler;
+  $('btnGuc').onclick = () => { if (state.phase === 'shop') leaveShop(); state.cup = null; showGucler(); };
   $('gucBack').onclick = showMenu;
   $('btnPin').onclick = showSifre;
   $('btnCihaz').onclick = showCihaz;
   $('mHesap').onclick = () => showProfiles('yeni');
   $('mGiris').onclick = () => showProfiles('giris');
   $('mAdDegis').onclick = () => renameGuest(() => showMenu());
-  $('btnRace').onclick = () => { state.cup = null; state.world = null; showTracks(); };
   $('btnSound').onclick = () => { Kayit.save.sound = Kayit.save.sound === false; Ses.on = Kayit.save.sound !== false; Kayit.persist(); showMenu(); };
   $('btnGfx').onclick = () => {
     const L = Grafik.QUALITIES, cur = Grafik.quality(); Kayit.save.gfx = L[(L.indexOf(cur) + 1) % L.length]; Kayit.persist(); Grafik.setQuality(Kayit.save.gfx);
@@ -1077,7 +1087,7 @@
     }).join('');
     show('scrCups');
   }
-  $('btnCups').onclick = showCups;
+  $('btnCups').onclick = () => navTo('cups');
   $('btnCupsBack').onclick = showMenu;
   $('clist').addEventListener('click', e => {
     const b = e.target.closest('[data-cup]'); if (!b) return;
@@ -1263,7 +1273,7 @@
     $('mpGeri').classList.remove('hidden'); tick(); geriT = setInterval(tick, 100);
   }
   // üst menüde "Çok Oyunculu" düğmesinde yeşil nokta: hâlâ odadasın
-  function navRoomDot() { const b = document.querySelector('#topnav [data-nav="mp"]'); if (b) b.classList.toggle('inroom', !!Ag.room); }
+  function navRoomDot() { for (const b of [document.querySelector('#topnav [data-nav="mp"]'), $('btnMp'), $('tabAna')]) if (b) b.classList.toggle('inroom', !!Ag.room); }
   Ag.on('hata', m => { mpMsg('⚠️ ' + m.mesaj); if (state.mp && state.race) toast('⚠️ ' + m.mesaj, 'bad'); if (/bulunamadı/.test(m.mesaj)) rememberRoom(null); });
   Ag.on('basla', m => startNetRace(m));
   let surumSoruldu = false;
@@ -1449,7 +1459,7 @@
   }
   function renderShop() {
     const p = state.player, S = state.shop;
-    $('shopPoints').textContent = p.points; $('navPoints').textContent = p.points;
+    $('shopPoints').textContent = p.points; $('navPoints').textContent = p.points; $('navPoints2').textContent = p.points;
     $('shopTabs').innerHTML = Magaza.CATS.map(c => `<button data-cat="${c.id}" class="${c.id === S.cat ? 'on' : ''}">${c.icon} ${c.name}</button>`).join('');
     const cat = Magaza.CATS.find(c => c.id === S.cat), eqId = p.eq[S.cat];
     const tryId = S.tryItem && S.tryItem.cat === S.cat ? (S.tryItem.item || '') : null;
@@ -1478,7 +1488,6 @@
     const card = e.target.closest('[data-item]'); if (!card) return;
     S.tryItem = { cat: S.cat, item: card.dataset.item }; rebuildPreview(); renderShop();
   });
-  $('btnShop').onclick = showShop;
   $('btnShopBack').onclick = closeShop;
 
   // ================= BAŞARIMLAR =================
@@ -1488,8 +1497,8 @@
     $('alist').innerHTML = ACH.map(a => `<div class="ach${p.ach[a.id] ? ' done' : ''}"><span class="ic">${a.icon}</span><span><b>${a.name}</b><small>${a.desc}</small></span><span class="rw">${p.ach[a.id] ? '✓' : '+' + a.reward}</span></div>`).join('');
     show('scrAch');
   }
-  $('btnAch').onclick = showAch;
-  $('btnMp').onclick = showMp;
+  $('btnAch').onclick = () => navTo('ach');
+  $('btnMp').onclick = () => navTo('mp');
   $('btnAchBack').onclick = showMenu;
 
   // ================= OYUNCU DENEYİMİ =================
@@ -1770,7 +1779,7 @@
   });
   // ---- "Daha" paneli ve alt sekmeler ----
   const dahaAc = () => { Kayit.onStatus(); $('dahaBox').classList.remove('hidden'); };
-  $('btnDaha').onclick = dahaAc; $('mProfil').onclick = dahaAc;
+  $('mProfil').onclick = dahaAc;
   $('dahaKapat').onclick = () => $('dahaBox').classList.add('hidden');
   $('gorevKapat').onclick = () => $('gorevBox').classList.add('hidden');
   for (const id of ['dahaBox', 'gorevBox']) $(id).addEventListener('click', e => { if (e.target === $(id)) $(id).classList.add('hidden'); }); // boşluğa dokununca kapanır
