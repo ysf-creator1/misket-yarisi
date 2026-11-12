@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>
   // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
-  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=27" as="fetch" crossorigin="anonymous">');
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=28" as="fetch" crossorigin="anonymous">');
 </script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
@@ -465,7 +465,7 @@
   .ayar.on .sw{background:var(--good)} .ayar.on .sw::after{transform:translateX(22px)}
   .tcard .yz,.acchead .yz{color:#ffd23f;letter-spacing:1px;font-size:13px} .yz i{color:rgba(255,255,255,.22);font-style:normal}
   .gcard.kilit{opacity:.45} .gcard .gkl{display:block;font-size:11px;color:#ffd77a;font-weight:800}
-  /* yarışta: ipucu, anlatıcı, rakipler, Üfle, yol seçimi, sıra geçme */
+  /* yarışta: ipucu, anlatıcı, rakipler, yol seçimi, sıra geçme */
   #ipucu{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);max-width:min(520px,86vw);padding:10px 16px;border-radius:16px;background:rgba(20,40,90,.92);border:2px solid #45c8ff;font-weight:800;font-size:15px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.45);animation:tin .3s ease-out;z-index:3}
   #anlatici{position:absolute;left:50%;top:64px;transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(0,0,0,.55);font-weight:900;font-size:15px;color:#fff;white-space:nowrap;animation:tin .25s ease-out;text-shadow:0 1px 4px #000}
   #hud.mesajvar #toasts{top:104px}
@@ -475,15 +475,9 @@
   #finalBadge{position:absolute;left:50%;top:30%;transform:translateX(-50%);font-size:34px;font-weight:900;color:#ffd23f;text-shadow:0 4px 18px rgba(0,0,0,.7);text-align:center;animation:pop 1.2s ease-out}
   #finalBadge small{display:block;font-size:18px;color:#fff}
   #hedefBox{position:absolute;right:14px;top:62px;padding:6px 12px;font-weight:900;color:#ffe199}
-  #ufle{position:absolute;left:16px;bottom:24px;width:96px;height:96px;border-radius:50%;pointer-events:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;background:radial-gradient(circle at 40% 35%,rgba(90,200,255,.95),rgba(20,90,180,.95));border:3px solid rgba(255,255,255,.7);overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.45)}
-  #ufle .uic{font-size:34px;line-height:1;z-index:1} #ufle b{font-size:13px;z-index:1} .upips{display:flex;gap:3px;margin-top:2px;z-index:1} .upips i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.25)} .upips i.on{background:#fff}
-  #ufleDolum{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(255,255,255,.18)}
-  #ufle.bos{filter:grayscale(.8) brightness(.7)} #ufle.pof{animation:pof .35s ease-out}
-  @keyframes pof{0%{transform:scale(1)}40%{transform:scale(1.15)}100%{transform:scale(1)}}
-  #hud.kartvar #ufle{bottom:auto;top:50%;transform:translateY(-50%)}
-  #hud.biriktir #ufle{bottom:90px}
-  #yolSec{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:14px;pointer-events:auto;animation:tin .25s ease-out}
-  #yolSec button{width:84px;height:84px;border-radius:50%;font-size:38px;padding:0;background:rgba(10,16,36,.75);border:3px solid rgba(255,255,255,.6)}
+  /* ortalama transform'suz: tin animasyonu transform'u ezip çubuğu sağa kaydırıyordu */
+  #yolSec{position:absolute;left:0;right:0;top:58%;margin-top:-42px;display:flex;justify-content:center;align-items:center;gap:14px;pointer-events:none;animation:tin .25s ease-out}
+  #yolSec button{pointer-events:auto;width:84px;height:84px;border-radius:50%;font-size:38px;padding:0;background:rgba(10,16,36,.75);border:3px solid rgba(255,255,255,.6)}
   #yolSec button.on{background:var(--accent);color:#2b1700;border-color:#fff}
   #yolSec span{font-weight:900;font-size:16px;text-shadow:0 2px 8px #000;white-space:nowrap}
   #gecis{position:absolute;left:272px;top:70px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
@@ -511,9 +505,6 @@
   @keyframes dus{to{transform:translateY(110vh) rotate(720deg)}}
   @media (max-width:760px){
     button.main.oyna{padding:12px 16px} .oyna b{font-size:20px} .oyna .oic{font-size:28px}
-    #ufle{width:78px;height:78px;left:10px;bottom:calc(16px + env(safe-area-inset-bottom))} #ufle .uic{font-size:26px} #ufle b{font-size:11px}
-    #hud.kartvar #ufle{top:auto;transform:none;bottom:calc(196px + env(safe-area-inset-bottom))}
-    #hud.biriktir #ufle{bottom:calc(76px + env(safe-area-inset-bottom))}
     #ipucu{bottom:auto;top:calc(236px + env(safe-area-inset-top));font-size:13px;padding:8px 12px}
     #anlatici{top:calc(52px + env(safe-area-inset-top));font-size:12px;max-width:90vw;white-space:normal;text-align:center}
     #gecis{left:212px;top:calc(60px + env(safe-area-inset-top))}
@@ -523,8 +514,6 @@
     #finalBadge{font-size:24px} #finalBadge small{font-size:14px}
   }
   @media (max-height:500px) and (orientation:landscape){
-    #ufle{width:70px;height:70px;bottom:10px} #ufle .uic{font-size:24px}
-    #hud.kartvar #ufle{top:auto;transform:none;bottom:10px}
     #ipucu{bottom:60px;font-size:13px} #gecis{left:190px;top:56px} #yolSec button{width:62px;height:62px}
   }
 </style>
@@ -670,7 +659,6 @@
   <div id="rakipler" class="hidden"></div>
   <div id="finalBadge" class="hidden"></div>
   <div id="hedefBox" class="box hidden"></div>
-  <button id="ufle" class="hidden" title="Üfle (Boşluk)"><span class="uic">💨</span><b>Üfle</b><span class="upips" id="uflePips"></span><i id="ufleDolum"></i></button>
   <div id="yolSec" class="hidden"><button id="yolSol" data-yol="-1">⬅</button><span id="yolTxt">Yol ayrılıyor!</span><button id="yolSag" data-yol="1">➡</button></div>
   <div id="gecis"></div>
 </div>
@@ -857,32 +845,32 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=27"></script>
-<script src="js/dil-en.js?v=27"></script>
-<script src="js/dil.js?v=27"></script>
+<script src="js/surum.js?v=28"></script>
+<script src="js/dil-en.js?v=28"></script>
+<script src="js/dil.js?v=28"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=27"></script>
-<script src="varliklar/qrcode.js?v=27"></script>
-<script src="three.min.js?v=27"></script>
-<script src="varliklar/RGBELoader.js?v=27"></script>
+<script src="js/isim.js?v=28"></script>
+<script src="varliklar/qrcode.js?v=28"></script>
+<script src="three.min.js?v=28"></script>
+<script src="varliklar/RGBELoader.js?v=28"></script>
 <script>
   // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
-  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=27"><\/script>');
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=28"><\/script>');
 </script>
-<script src="rapier.js?v=27"></script>
-<script src="js/parcalar.js?v=27"></script>
-<script src="js/parkurlar.js?v=27"></script>
-<script src="js/dunyalar.js?v=27"></script>
-<script src="js/fizik.js?v=27"></script>
-<script src="js/guclar.js?v=27"></script>
-<script src="js/kolay.js?v=27"></script>
-<script src="js/kayit-sistemi.js?v=27"></script>
-<script src="js/magaza.js?v=27"></script>
-<script src="js/ses.js?v=27"></script>
-<script src="js/cevre.js?v=27"></script>
-<script src="js/grafik.js?v=27"></script>
-<script src="js/ag.js?v=27"></script>
-<script src="js/oyun.js?v=27"></script>
+<script src="rapier.js?v=28"></script>
+<script src="js/parcalar.js?v=28"></script>
+<script src="js/parkurlar.js?v=28"></script>
+<script src="js/dunyalar.js?v=28"></script>
+<script src="js/fizik.js?v=28"></script>
+<script src="js/guclar.js?v=28"></script>
+<script src="js/kolay.js?v=28"></script>
+<script src="js/kayit-sistemi.js?v=28"></script>
+<script src="js/magaza.js?v=28"></script>
+<script src="js/ses.js?v=28"></script>
+<script src="js/cevre.js?v=28"></script>
+<script src="js/grafik.js?v=28"></script>
+<script src="js/ag.js?v=28"></script>
+<script src="js/oyun.js?v=28"></script>
 <script>
   // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
   if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

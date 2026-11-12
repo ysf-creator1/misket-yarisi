@@ -1187,7 +1187,6 @@
     if (state.phase === 'replay' && (e.key === ' ' || e.key === 'Escape' || e.key === 'Enter')) { endReplay(); return; }
     if (state.phase === 'race' || state.phase === 'countdown' || state.phase === 'ending') {
       if (e.key === 'c' || e.key === 'C') cycleCam();
-      if (e.key === ' ') { e.preventDefault(); ufle(); }
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') yolSec(-1);
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') yolSec(1);
       if (e.key === 'Escape') { if (state.pauseOpen) closePause(); else openPause(); }
@@ -1493,7 +1492,7 @@
   // ================= OYUNCU DENEYİMİ =================
   // ---- oyun ayarları (bu cihazda): oynanışı değiştiren özellikler kapatılabilir ----
   const AYARLAR = [
-    { id: 'etkile', ic: '🫳', ad: 'Misketi etkile', acik: 'Üfle düğmesi ve çatalda yol seçimi. Yalnız tek oyunculuda; kullanılan yarışın süresi rekorlara girmez.' },
+    { id: 'etkile', ic: '🫳', ad: 'Misketi etkile', acik: 'Yol ayrılan yerlerde ⬅ ➡ ile hangi koldan gideceğini seçersin. Yalnız tek oyunculuda; seçim yaptığın yarışın süresi rekorlara girmez.' },
     { id: 'kolay', ic: '🌱', ad: 'Kolay başlangıç', acik: 'İlk 3 parkurda botlar biraz yavaş, güç kartları adım adım açılır.' },
     { id: 'ipucu', ic: '💡', ad: 'İpuçları', acik: 'Yarışta kısa yardım mesajları.' },
     { id: 'oto', ic: '⏭', ad: 'Otomatik sonraki yarış', acik: 'Sonuç ekranından birkaç saniye sonra sıradaki yarış başlar.' },
@@ -1547,7 +1546,7 @@
   $('btnOyna').onclick = () => hizliBasla(siradaki(state.player));
 
   // ---- ipuçları: her biri birkaç kez gösterilir (bu cihazda sayılır) ----
-  const IPUCU_MAX = { basla: 3, kart: 2, tuzak: 2, ufle2: 3, catal: 2, geride: 2, canta: 2 };
+  const IPUCU_MAX = { basla: 3, kart: 2, tuzak: 2, catal: 2, geride: 2, canta: 2 };
   let ipucuT = null;
   function ipucu(k, txt, ms = 5500) {
     if (!ayar('ipucu')) return false;
@@ -1563,11 +1562,11 @@
   // ---- yarış içi geçici durum ----
   const PERSONA = { saldirgan: ['😈', 'Saldırgan'], temkinli: ['🛡️', 'Temkinli'], dengeli: ['⚖️', 'Dengeli'] };
   function dxReset() {
-    state.dx = { uses: [], hits: {}, blocks: 0, gecis: 0, rank: null, rankCand: null, rankT: 0, lead: null, leadCand: null, leadT: 0, anlatT: -9, son: false, kiyas: false, foto: null, fotoN: 0, fin: [], kartOgret: false, ilkKart: null, ufleIpucu: false, catalIpucu: false, gerideT: 0 };
+    state.dx = { uses: [], hits: {}, blocks: 0, gecis: 0, rank: null, rankCand: null, rankT: 0, lead: null, leadCand: null, leadT: 0, anlatT: -9, son: false, kiyas: false, foto: null, fotoN: 0, fin: [], kartOgret: false, ilkKart: null, catalIpucu: false, gerideT: 0 };
   }
   dxReset();
   function hudTemizle() {
-    for (const id of ['anlatici', 'ipucu', 'rakipler', 'finalBadge', 'hedefBox', 'ufle', 'yolSec']) $(id).classList.add('hidden');
+    for (const id of ['anlatici', 'ipucu', 'rakipler', 'finalBadge', 'hedefBox', 'yolSec']) $(id).classList.add('hidden');
     $('gecis').innerHTML = ''; $('hud').classList.remove('kartvar', 'mesajvar'); clearTimeout(ipucuT);
   }
   // yarış öncesi (giriş animasyonu sırasında): rakipler, dünya finali / günün parkuru, meydan okuma hedefi
@@ -1638,18 +1637,10 @@
     while ($('gecis').children.length > 3) $('gecis').firstChild.remove();
   }
 
-  // ---- misketi etkile: Üfle + çatalda yol seçimi (yalnız tek oyunculu) ----
+  // ---- misketi etkile: çatalda yol seçimi (yalnız tek oyunculu) ----
   function etkiUI() {
     const c = state.etki, r = state.race, dx = state.dx;
     const me = r && r.marbles[state.pick], on = !!(c && c.on && r && r.started && me && !me.finished && state.phase === 'race');
-    $('ufle').classList.toggle('hidden', !on);
-    if (on) {
-      const n = c.enerji, max = MK.UFLE.max;
-      $('uflePips').innerHTML = Array.from({ length: max }, (_, k) => `<i class="${k < n ? 'on' : ''}"></i>`).join('');
-      $('ufleDolum').style.height = (n >= max ? 0 : c.dolumOran() * 100) + '%';
-      $('ufle').classList.toggle('bos', n < 1);
-      if (!dx.ufleIpucu && r.t > 4 && n >= 1 && !state.hand && $('ipucu').classList.contains('hidden')) { /* başka ipucunun üstüne yazmasın */ dx.ufleIpucu = true; ipucu('ufle2', "💨 Üfle = misketini ileri it. Yavaşladığında ya da rakibi geçerken dokun (ya da Boşluk). 2 hakkın var, 12 sn'de bir yenisi dolar.", 8000); }
-    }
     const cat = on && c.catal;
     $('yolSec').classList.toggle('hidden', !cat);
     if (cat) {
@@ -1658,15 +1649,7 @@
       if (!dx.catalIpucu) { dx.catalIpucu = true; ipucu('catal', 'Yol ayrılıyor! ⬅ ➡ ile hangi koldan gideceğini seç.'); }
     }
   }
-  function ufle() {
-    const c = state.etki; if (!c || state.mp || state.paused || state.phase !== 'race') return;
-    if (c.ufle()) {
-      Ses.ufle(); Grafik.puff(state.race.marbles[state.pick].body.translation()); gecisPop('💨 İleri!', false);
-      const b = $('ufle'); b.classList.remove('pof'); void b.offsetWidth; b.classList.add('pof');
-    }
-  }
   function yolSec(d) { const c = state.etki; if (c && !state.paused && c.yol(d)) Ses.click(); }
-  $('ufle').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); ufle(); });
   $('yolSec').addEventListener('pointerdown', e => { const b = e.target.closest('[data-yol]'); if (b) { e.preventDefault(); yolSec(+b.dataset.yol); } });
 
   // ---- yarış sonu: ne işe yaradı, yakın hedefler ----
@@ -1683,7 +1666,6 @@
     if (dx.gecis) lines.push(`⬆ Yarışta ${dx.gecis} kez rakip geçtin`);
     const hk = Object.keys(dx.hits).sort((a, b) => dx.hits[b] - dx.hits[a])[0];
     if (hk != null) lines.push(`🎯 Sana en çok ${r.marbles[hk].info.name} saldırdı (${dx.hits[hk]} kez)`);
-    if (state.etki && state.etki.ufleSayisi) lines.push(`💨 ${state.etki.ufleSayisi} kez üfledin`);
     if (dx.foto) lines.push(`📸 Foto finiş: ${r.marbles[dx.foto.a].info.name} önde, fark ${dx.foto.fark.toFixed(2)} sn`);
     if (!dx.uses.length) lines.unshift('⚡ Hiç kart kullanmadın: kartlar sıranı değiştirebilir!');
     return lines.slice(0, 3);

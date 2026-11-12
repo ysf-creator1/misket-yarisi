@@ -98,7 +98,6 @@
   Ses.atis = mine => { const v = mine ? 1 : 0.45; noise(0.45, 0.16 * v, 900, 2400, 1.4); tone(500, 0.4, 'sine', 0.05 * v, 0, 1.8); }; // fırlatma (vuuş)
   Ses.blocked = () => { tone(1500, 0.12, 'square', 0.08); tone(1000, 0.15, 'square', 0.06, 0.08); };
   Ses.gecti = () => { tone(880, 0.09, 'triangle', 0.1); tone(1175, 0.14, 'triangle', 0.1, 0.07); }; // rakibi geçtin
-  Ses.ufle = () => { noise(0.5, 0.2, 600, 2200, 1.0); tone(300, 0.35, 'sine', 0.06, 0, 2); }; // üfle: kısa hava sesi
   Ses.foto = () => { noise(0.05, 0.3, 3000, 3000, 1.5, 0, 'highpass'); noise(0.08, 0.2, 2000, 1500, 1.2, 0.09, 'highpass'); }; // deklanşör
   Ses.yeni = () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.22, 'sine', 0.1, i * 0.09)); }; // yeni kart / dünya
   Ses.ipucu = () => { tone(660, 0.08, 'sine', 0.07); tone(990, 0.1, 'sine', 0.06, 0.06); };

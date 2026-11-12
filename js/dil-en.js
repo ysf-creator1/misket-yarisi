@@ -235,7 +235,7 @@ window.DIL_EN = {
   'Galaksi Tozu': 'Galaxy Dust', 'Kraliyet İzi': 'Royal Trail',
 // ===== oyuncu deneyimi: Oyna, ayarlar, ipuçları, anlatıcı, özet, hedefler, günün parkuru, meydan okuma =====
   'Oyna': 'Play', 'Oyun ayarları': 'Game settings', 'İstemediğini kapat. Bu cihazda hatırlanır.': "Turn off what you don't want. Remembered on this device.", 'Tamam': 'OK', 'Ayarlar': 'Settings',
-  'Misketi etkile': 'Influence your marble', 'Üfle düğmesi ve çatalda yol seçimi. Yalnız tek oyunculuda; kullanılan yarışın süresi rekorlara girmez.': "Blow button and picking a path at forks. Single player only; times from those races don't count as records.",
+  'Misketi etkile': 'Influence your marble', 'Yol ayrılan yerlerde ⬅ ➡ ile hangi koldan gideceğini seçersin. Yalnız tek oyunculuda; seçim yaptığın yarışın süresi rekorlara girmez.': "Where the road splits, pick a path with ⬅ ➡. Single player only; times from races where you picked don't count as records.",
   'Kolay başlangıç': 'Easy start', 'İlk 3 parkurda botlar biraz yavaş, güç kartları adım adım açılır.': 'Bots are a little slower on the first 3 tracks, power cards unlock step by step.',
   'İpuçları': 'Hints', 'Yarışta kısa yardım mesajları.': 'Short help messages during races.',
   'Otomatik sonraki yarış': 'Auto next race', 'Sonuç ekranından birkaç saniye sonra sıradaki yarış başlar.': 'The next race starts a few seconds after the results screen.',
