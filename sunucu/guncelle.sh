@@ -2,11 +2,11 @@
 # Misket Yarışı — sunucudaki oyunu GitHub'daki son sürüme günceller
 # Kullanım (bilgisayardan): bash sunucu/guncelle.sh
 set -euo pipefail
-HOST="${HOST:-misket@misket-yarisi.swedencentral.cloudapp.azure.com}"
-KEY="${KEY:-$HOME/.ssh/misket_azure}"
+HOST="${HOST:-ubuntu@130.61.214.155}"  # Oracle (Frankfurt); alan adı misket.gulyabanikoyu.duckdns.org
+KEY="${KEY:-$HOME/.ssh/oracle_cloud}"
 # yarış süren oda varsa (oyuncular kopmasın) en fazla 10 dk bitmesini bekle
 for i in $(seq 1 60); do
-  N=$(curl -s -m 5 https://misket-yarisi.swedencentral.cloudapp.azure.com/durum | python3 -c 'import json,sys; print(json.load(sys.stdin).get("yarisan",0))' 2>/dev/null || echo 0)
+  N=$(curl -s -m 5 https://misket.gulyabanikoyu.duckdns.org/durum | python3 -c 'import json,sys; print(json.load(sys.stdin).get("yarisan",0))' 2>/dev/null || echo 0)
   [ "$N" = "0" ] && break
   echo "⏳ $N odada yarış sürüyor, bitmesi bekleniyor…"; sleep 10
 done

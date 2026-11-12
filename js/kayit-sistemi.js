@@ -8,7 +8,7 @@
   const STORE = 'misket-bulut-v1', AYAR = 'misket-ayar', OLD_KEY = 'misket-yarisi-v1', MOVED = 'misket-eski-tasindi', CIHAZ = 'misket-cihaz';
   const MI = G.MI;
   // sunucu adresi: js/ag.js ile aynı kural (?sunucu=ws://… yerel test)
-  let api = 'https://misket-yarisi.swedencentral.cloudapp.azure.com/api/';
+  let api = 'https://misket.gulyabanikoyu.duckdns.org/api/';
   try {
     const q = new URLSearchParams(location.search).get('sunucu') || sessionStorage.getItem('misket-sunucu');
     if (q && /^wss?:\/\//.test(q)) api = q.replace(/^ws/, 'http').replace(/\/ws\/?$/, '') + '/api/';

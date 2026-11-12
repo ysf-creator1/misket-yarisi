@@ -39,7 +39,7 @@ Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam
 ## 📊 Kullanım raporu
 Sunucu oyun olaylarını (açılış, tek/çok oyunculu yarış, oda, bağlantı, hesap açma/giriş) `/opt/misket/veri/olaylar/` altına günlük dosyalara yazar (400 gün).
 Tam IP saklanmaz (yalnız ağ kısmı → yaklaşık şehir/ülke, DB-IP Lite). Rapor: `bash sunucu/rapor.sh 7` (ya da `30`, `bugun`, `dun`, `tumu`, `2026-10-20..2026-10-25`).
-**Canlı rapor sayfası:** `https://misket-yarisi.swedencentral.cloudapp.azure.com/api/rapor#k=ANAHTAR` — her açılışta kayıtları o an okur (dönem seçimi, saatler, oyuncular, konum, grafikler). Anahtar sunucuda `/opt/misket/veri/rapor-anahtar.txt` (ilk açılışta oluşur; görmek için `ssh … sudo cat` ile oku, silinirse yenisi üretilir). Sayfa `sunucu/rapor.html`, veri `sunucu/panel.js`.
+**Canlı rapor sayfası:** `https://misket.gulyabanikoyu.duckdns.org/api/rapor#k=ANAHTAR` — her açılışta kayıtları o an okur (dönem seçimi, saatler, oyuncular, konum, grafikler). Anahtar sunucuda `/opt/misket/veri/rapor-anahtar.txt` (ilk açılışta oluşur; görmek için `ssh … sudo cat` ile oku, silinirse yenisi üretilir). Sayfa `sunucu/rapor.html`, veri `sunucu/panel.js`.
 
 ## 👥 Çok oyunculu
 Menüdeki **Çok Oyunculu** düğmesinden:
@@ -53,12 +53,12 @@ Menüdeki **Çok Oyunculu** düğmesinden:
 - Puanlar ve başarımlar normal yarış gibi profiline eklenir (kupa ve bahis tek oyunculu modda).
 
 Fizik sunucuda çalışır (`sunucu/oyun-sunucusu.js`, Node.js + ws); telefonlar sadece görüntüyü çizer.
-Sunucu: Azure (İsveç), `wss://misket-yarisi.swedencentral.cloudapp.azure.com/ws`.
+Sunucu: Oracle Cloud (Frankfurt, `130.61.214.155`, Gulyabani ile aynı makine), `wss://misket.gulyabanikoyu.duckdns.org/ws`. 12 Kasım 2026'ya kadar Azure'daydı; eski Azure adresi bir süre Oracle'a aktarır (eski sayfası açık kalan oyuncular kopmasın).
 
 ### Sunucu yönetimi
 ```
 bash sunucu/guncelle.sh                       # GitHub'daki son sürümü sunucuya kur ve yeniden başlat
-curl https://misket-yarisi.swedencentral.cloudapp.azure.com/durum   # oda/oyuncu sayısı, bellek
+curl https://misket.gulyabanikoyu.duckdns.org/durum   # oda/oyuncu sayısı, bellek
 node test/cok-oyunculu-testi.js               # yerel sunucu + sahte oyuncularla test
 node test/yuk-testi.js 20 90                  # yük testi (sunucunun içinde çalıştırılır)
 ```

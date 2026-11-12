@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const VARSAYILAN = 'wss://misket-yarisi.swedencentral.cloudapp.azure.com/ws';
+  const VARSAYILAN = 'wss://misket.gulyabanikoyu.duckdns.org/ws';
   const KEY = 'misket-ag-anahtar';
   const DELAY = 0.12;                // oynatma gecikmesi (sn): iki anlık görüntü arasında yumuşak geçiş
   let sunucu = VARSAYILAN;

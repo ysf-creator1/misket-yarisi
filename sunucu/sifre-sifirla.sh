@@ -3,8 +3,8 @@
 # Kullanım: bash sunucu/sifre-sifirla.sh "Oyuncu Adı"
 set -euo pipefail
 [ $# -ge 1 ] || { echo 'Kullanım: bash sunucu/sifre-sifirla.sh "Oyuncu Adı"'; exit 1; }
-HOST="${HOST:-misket@misket-yarisi.swedencentral.cloudapp.azure.com}"
-KEY="${KEY:-$HOME/.ssh/misket_azure}"
+HOST="${HOST:-ubuntu@130.61.214.155}"  # Oracle (Frankfurt); alan adı misket.gulyabanikoyu.duckdns.org
+KEY="${KEY:-$HOME/.ssh/oracle_cloud}"
 BODY=$(python3 -c 'import json,sys; print(json.dumps({"ad": sys.argv[1]}))' "$1")
 ssh -i "$KEY" "$HOST" "curl -s -X POST http://127.0.0.1:8790/api/yonetici/sifirla -H 'Content-Type: application/json' --data-binary @-" <<< "$BODY" > /tmp/misket-sifirla.$$
 python3 - /tmp/misket-sifirla.$$ <<'PY'

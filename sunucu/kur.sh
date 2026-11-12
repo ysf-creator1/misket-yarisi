@@ -2,7 +2,7 @@
 # Misket Yarışı — çok oyunculu sunucu kurulumu (Ubuntu 24.04, bir kez çalıştırılır)
 # Kullanım (sunucuda): sudo bash kur.sh
 set -euo pipefail
-ALAN="${ALAN:-misket-yarisi.swedencentral.cloudapp.azure.com}"
+ALAN="${ALAN:-misket.gulyabanikoyu.duckdns.org}"
 DEPO="${DEPO:-https://github.com/ysf-creator1/misket-yarisi.git}"
 export DEBIAN_FRONTEND=noninteractive
 
@@ -31,7 +31,9 @@ if ! command -v caddy >/dev/null; then
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
   apt-get update -q && apt-get install -y -q caddy
 fi
-cat > /etc/caddy/Caddyfile <<EOF
+# Caddyfile ezilmez: sunucuda başka siteler (ör. Gulyabani) olabilir, Misket bölümü yoksa sona eklenir
+grep -q "^$ALAN {" /etc/caddy/Caddyfile 2>/dev/null || cat >> /etc/caddy/Caddyfile <<EOF
+
 $ALAN {
 	encode gzip
 	@ws path /ws*
@@ -66,7 +68,7 @@ After=network-online.target
 User=oyun
 WorkingDirectory=/opt/misket/kod
 Environment=NODE_ENV=production PORT=8790 VERI=/opt/misket/veri
-ExecStart=/usr/bin/node --max-old-space-size=600 sunucu/oyun-sunucusu.js
+ExecStart=NODE_YOLU --max-old-space-size=1024 sunucu/oyun-sunucusu.js
 Restart=always
 RestartSec=3
 NoNewPrivileges=true
@@ -78,6 +80,7 @@ ReadWritePaths=/opt/misket
 [Install]
 WantedBy=multi-user.target
 EOF
+sed -i "s|NODE_YOLU|$(command -v node)|" /etc/systemd/system/misket.service
 systemctl daemon-reload
 if [ -f /opt/misket/kod/sunucu/oyun-sunucusu.js ]; then
   (cd /opt/misket/kod/sunucu && sudo -u oyun npm ci --omit=dev --no-audit --no-fund)
