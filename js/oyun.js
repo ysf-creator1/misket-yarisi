@@ -194,7 +194,9 @@
     } else {
       want.copy(P).addScaledVector(fwdS, -7.2).add(new THREE.Vector3(0, 3.9, 0)); look.copy(P).addScaledVector(fwdS, 3);
     }
-    Grafik.fadeTrack(state.view, sideView && !tgt.inZone ? P : null, dt); // yan bakışta yakındaki duvarlar saydamlaşır
+    // yan bakışta yakındaki duvarlar; her zaman: kamerayla misket(ler) arasına giren parçalar (huninin üstündeki yol vb.) saydamlaşır
+    const hedef = state.phase === 'countdown' ? null : tgt.inZone ? [P, ...r.marbles.filter(m => m !== tgt && m.inZone === tgt.inZone).slice(0, 3).map(m => m.body.translation())] : [P];
+    Grafik.fadeTrack(state.view, sideView && !tgt.inZone ? P : null, dt, hedef);
     if (!camInit) { camPos.copy(want); camLook.copy(look); camInit = true; }
     else { camPos.lerp(want, 1 - Math.exp(-3.5 * dt)); camLook.lerp(look, 1 - Math.exp(-6 * dt)); }
     camera.position.copy(camPos); camera.lookAt(camLook);

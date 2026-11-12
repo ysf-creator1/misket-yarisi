@@ -602,13 +602,29 @@
       if (g.userData.frame && !g.userData.frame.parent) g.parent.add(g.userData.frame);
     }
   };
-  // yan kamerada misketin 5 m yakınındaki parkur parçaları (oluk, duvar, cam kenar) saydamlaşır; P yoksa eski hâline döner
-  Grafik.fadeTrack = function (v, P, dt) {
+  // Parkur parçalarını saydamlaştırma:
+  //  - yan kamerada misketin 5 m yakınındaki parçalar (oluk, duvar, cam kenar)
+  //  - kameradan hedef misketlere bakışı kesen parçalar (ör. huninin üstünden geçen yol): görüş çizgisi birkaç karede bir denetlenir
+  // P ve hedef yoksa parçalar eski hâline döner.
+  const occRay = new THREE.Raycaster(), occDir = new THREE.Vector3(), occFrom = new THREE.Vector3();
+  let occN = 0, occSet = new Set();
+  Grafik.fadeTrack = function (v, P, dt, targets) {
     if (!v || !v.parts) return;
+    if (targets && targets.length) {
+      if (++occN % 4 === 0) { // her 4 karede bir (telefonu yormasın)
+        occSet = new Set(); const meshes = v.partMeshes || (v.partMeshes = v.parts.map(e => e.mesh));
+        occFrom.copy(camera.position);
+        for (const t of targets) {
+          occDir.set(t.x - occFrom.x, t.y - occFrom.y, t.z - occFrom.z); const d = occDir.length(); if (d < 2) continue;
+          occRay.set(occFrom, occDir.multiplyScalar(1 / d)); occRay.near = 0.3; occRay.far = d - 1.0; // misketin hemen çevresi (bulunduğu oluk) sayılmaz
+          for (const h of occRay.intersectObjects(meshes, false)) occSet.add(h.object);
+        }
+      }
+    } else if (occSet.size) occSet = new Set();
     const k = 1 - Math.exp(-9 * dt), D2 = 5 * 5;
     for (const e of v.parts) {
-      let want = 0;
-      if (P) { const a = e.pts; for (let q = 0; q < a.length; q += 3) { const dx = a[q] - P.x, dy = a[q + 1] - P.y, dz = a[q + 2] - P.z; if (dx * dx + dy * dy + dz * dz < D2) { want = 1; break; } } }
+      let want = occSet.has(e.mesh) ? 1 : 0;
+      if (!want && P) { const a = e.pts; for (let q = 0; q < a.length; q += 3) { const dx = a[q] - P.x, dy = a[q + 1] - P.y, dz = a[q + 2] - P.z; if (dx * dx + dy * dy + dz * dz < D2) { want = 1; break; } } }
       if (!want && e.f === 0) continue;
       e.f += (want - e.f) * k;
       if (!want && e.f < 0.02) { e.f = 0; e.mesh.material = e.base; continue; }
