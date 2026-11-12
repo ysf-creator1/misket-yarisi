@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>
   // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
-  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=28" as="fetch" crossorigin="anonymous">');
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=29" as="fetch" crossorigin="anonymous">');
 </script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
@@ -516,6 +516,101 @@
   @media (max-height:500px) and (orientation:landscape){
     #ipucu{bottom:60px;font-size:13px} #gecis{left:190px;top:56px} #yolSec button{width:62px;height:62px}
   }
+
+  /* ===== Ana menü: A · Sade düzen, Gökyüzü paleti (yalnız #scrMenu ve onun panelleri) ===== */
+  @font-face{font-family:"Fredoka";font-style:normal;font-weight:500 700;font-display:swap;src:url(varliklar/font/fredoka-latin.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+  @font-face{font-family:"Fredoka";font-style:normal;font-weight:500 700;font-display:swap;src:url(varliklar/font/fredoka-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+  .gok{--text:#1b2a47;--muted:#566683;--line:rgba(27,42,71,.12);--panel:#ffffff;--panel2:#f1f5fb;--accent:#2a6fdb;--accent2:#2a6fdb;
+    --gk-blue:#2a6fdb;--gk-green:#2fbf64;--gk-green2:#4ad97f;--gk-green-d:#1f9a4d;--gk-green-ink:#05301a;--gk-star:#f5a500;--gk-track:#e3ebf6;
+    --gk-shadow:0 4px 14px -6px rgba(27,60,110,.35);--gk-disp:"Fredoka","Trebuchet MS",system-ui,sans-serif;color:var(--text)}
+  .gok .gi{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  #scrMenu.gok{padding:0;display:flex;flex-direction:column;align-items:stretch;background:linear-gradient(180deg,#8fcbff 0%,#c7e6ff 48%,#e9f6ff 100%);overflow:hidden}
+  #scrMenu.hidden{display:none}
+  .gk-scene{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .gk-scene::before{content:"";position:absolute;left:-20%;right:-20%;bottom:-10%;height:46%;border-radius:50% 50% 0 0;background:#a3d98f}
+  .gk-scene::after{content:"";position:absolute;left:-35%;right:15%;bottom:-16%;height:36%;border-radius:50% 50% 0 0;background:#79c27a}
+  .gk-m{position:absolute;border-radius:50%;z-index:1;bottom:16%}
+  .gk-m.m1{width:34px;height:34px;left:14%;background:radial-gradient(circle at 35% 30%,#fff,#e8463b 60%,#7a1610)}
+  .gk-m.m2{width:26px;height:26px;left:27%;bottom:13%;background:radial-gradient(circle at 35% 30%,#fff,#3b82e8 60%,#123a7a)}
+  .gk-m.m3{width:22px;height:22px;right:18%;bottom:19%;background:radial-gradient(circle at 35% 30%,#fff,#f5c33b 60%,#7a5a10)}
+  .gk{position:relative;z-index:2;flex:1;min-height:0;overflow:auto;width:100%;max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:12px;
+    padding:calc(16px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 16px max(16px,env(safe-area-inset-left))}
+  .gok button{color:var(--text);border:1px solid var(--line);background:#fff;font-family:inherit}
+  .gk-top{display:flex;align-items:center;gap:10px}
+  .gk-av{width:42px;height:42px;border-radius:50%;padding:0;border:none!important;background:var(--gk-blue)!important;color:#fff!important;display:grid;place-items:center;font-family:var(--gk-disp);font-weight:600;font-size:19px;flex:none;box-shadow:var(--gk-shadow)}
+  .gk-av.big{width:52px;height:52px;font-size:23px}
+  .gk-who{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+  .gk-who b{font-size:15px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gk-who small{font-size:12px;color:var(--muted);font-weight:700;text-align:left;margin:0}
+  .gk-lv{height:6px;border-radius:9px;background:rgba(255,255,255,.7);overflow:hidden;max-width:180px}
+  .gk-lv i{display:block;height:100%;background:var(--gk-blue);border-radius:9px}
+  .gk-pill{display:flex;align-items:center;gap:5px;font-weight:800;font-size:15px;padding:7px 12px;border-radius:999px;background:#fff;box-shadow:var(--gk-shadow);font-variant-numeric:tabular-nums}
+  .gk-pill .gi{width:16px;height:16px;color:var(--gk-star)}
+  .gk-logo{font-family:var(--gk-disp);font-weight:700;font-size:40px;line-height:1;text-align:center;color:#1b2a47;margin:10px 0 2px;letter-spacing:.3px;background:none;-webkit-text-fill-color:currentColor;-webkit-background-clip:border-box;background-clip:border-box}
+  .gk-oyna{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px!important;border-radius:22px!important;border:none!important;text-align:left;cursor:pointer;
+    background:linear-gradient(180deg,var(--gk-green2),var(--gk-green))!important;color:var(--gk-green-ink)!important;box-shadow:0 6px 0 var(--gk-green-d),0 12px 22px -10px rgba(20,90,50,.55);transition:transform .08s,box-shadow .08s}
+  .gk-oyna:active{transform:translateY(4px);box-shadow:0 2px 0 var(--gk-green-d),0 6px 14px -8px rgba(20,90,50,.5)}
+  .gk-oyna .pi{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.4);display:grid;place-items:center;flex:none}
+  .gk-oyna .pi .gi{width:24px;height:24px}
+  .gk-oyna .otx{display:flex;flex-direction:column;min-width:0}
+  .gk-oyna b{font-family:var(--gk-disp);font-weight:700;font-size:30px;line-height:1}
+  .gk-oyna small{font-size:13px;font-weight:800;opacity:.85;margin-top:3px}
+  .gk-yz{margin-left:auto;font-size:16px;letter-spacing:1px;font-weight:800}
+  .gk-duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .gk-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px!important;border-radius:18px!important;background:#fff!important;box-shadow:var(--gk-shadow);border:1px solid rgba(27,42,71,.06)!important;text-align:left;cursor:pointer;min-width:0}
+  .gk-card .h{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  .gk-card .h .gi{width:16px;height:16px;color:var(--gk-blue)}
+  .gk-card b{font-size:15px;line-height:1.2}
+  .gk-card small{font-size:12px;color:var(--muted);font-weight:700}
+  .gk-mini{position:absolute;bottom:8px;right:8px;width:30px;height:30px;padding:0!important;border-radius:50%!important;display:grid;place-items:center;background:var(--panel2)!important;border:none!important;color:var(--gk-blue)!important;min-height:0}
+  .gk-mini .gi{width:16px;height:16px}
+  .gk-row{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px!important;border-radius:16px!important;background:#fff!important;box-shadow:var(--gk-shadow);border:1px solid rgba(27,42,71,.06)!important;font-size:14px;font-weight:700;text-align:left;cursor:pointer}
+  .gk-row>.gi{color:var(--gk-blue)}
+  .gk-row .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+  .gk-row .bar{height:6px;border-radius:9px;background:var(--gk-track);overflow:hidden}
+  .gk-row .bar i{display:block;height:100%;background:var(--gk-green);border-radius:9px}
+  .gk-btn{font-size:12px;font-weight:800;padding:6px 11px;border-radius:999px;background:var(--gk-blue);color:#fff;white-space:nowrap}
+  .gk-seri{font-size:12px;font-weight:800;color:var(--muted);white-space:nowrap}
+  #mYeniMod .gic{font-size:22px} #mYeniMod .gtx{flex:1;min-width:0;display:flex;flex-direction:column} #mYeniMod small{color:var(--muted);font-weight:700;font-size:12px}
+  #mYeniMod button{background:var(--gk-blue)!important;color:#fff!important;border:none!important;padding:6px 12px;font-size:13px}
+  .gk-tabs{position:relative;z-index:3;display:flex;width:100%;max-width:460px;margin:0 auto;background:#fff;border-top:1px solid rgba(27,42,71,.08);
+    padding:6px max(6px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));box-shadow:0 -6px 18px -12px rgba(27,60,110,.35)}
+  @media (min-width:600px){.gk-tabs{border-radius:20px 20px 0 0}}
+  .gk-tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px!important;border:none!important;background:none!important;color:var(--muted)!important;font-size:11px;font-weight:800;min-height:0;border-radius:12px}
+  .gk-tabs button.on{color:var(--gk-blue)!important}
+  .gk-tabs button.hidden{display:none}
+  .gk-tabs .gi{width:22px;height:22px}
+  /* paneller (Daha, Bugün): alttan açılan beyaz sayfa */
+  .overlay.sheet{align-items:flex-end;padding:0;background:rgba(27,42,71,.35)}
+  .gk-sheet{width:min(460px,100%);max-height:88vh;overflow:auto;background:#f6f9fd;border-radius:24px 24px 0 0;display:flex;flex-direction:column;gap:12px;
+    padding:16px max(16px,env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));box-shadow:0 -10px 30px -10px rgba(27,42,71,.4);animation:shUp .22s ease-out}
+  @keyframes shUp{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+  .gk-sh-head{display:flex;align-items:center;gap:12px}
+  .gk-ic{width:44px;height:44px;border-radius:50%;background:#fff;color:var(--gk-blue);display:grid;place-items:center;box-shadow:var(--gk-shadow);flex:none}
+  .gk-x{width:38px;height:38px;padding:0!important;border-radius:50%!important;display:grid;place-items:center;background:#fff!important;min-height:0;flex:none}
+  .gk-list{display:flex;flex-direction:column;background:#fff;border-radius:18px;box-shadow:var(--gk-shadow);overflow:hidden}
+  .gk-list button{display:flex;align-items:center;gap:12px;padding:12px 14px!important;border:none!important;border-bottom:1px solid rgba(27,42,71,.07)!important;border-radius:0!important;background:#fff!important;text-align:left;min-height:0}
+  .gk-list button:last-child{border-bottom:none!important}
+  .gk-list button.hidden{display:none}
+  .gk-list .gi{color:var(--gk-blue);width:22px;height:22px}
+  .gk-list span{display:flex;flex-direction:column} .gk-list b{font-size:15px} .gk-list small{font-size:12px;color:var(--muted);font-weight:700}
+  .gk-set{display:flex;flex-direction:column;gap:8px}
+  .gk-setrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .gk-setrow button{display:inline-flex;align-items:center;gap:6px}
+  .gk-setrow .gi{width:16px;height:16px}
+  .gok .volrow input{accent-color:var(--gk-blue)}
+  .gk-dil{display:inline-flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-left:auto}
+  .gk-dil button{border:none!important;border-radius:0!important;padding:6px 12px;font-size:13px;font-weight:800;min-height:0}
+  .gk-dil button.on{background:var(--gk-blue)!important;color:#fff!important}
+  .gok .misafir{background:#fff7e6;border:1px solid #f3d9a4;margin:0}
+  .gok .misafir p{color:#7a4b00}
+  .gok button.main{background:var(--gk-blue)!important;color:#fff!important;border:none!important}
+  .gok .gunluk{background:#fff;border:none;box-shadow:var(--gk-shadow);margin:0}
+  .gok .dhead small,.gok .dodul{color:#b26b00}
+  .gok .dbar{background:var(--gk-track)}
+  .gok .savestatus{margin:0}
+  .gok .savestatus.s-err,.gok .savestatus.s-off{color:#b26b00}
+  @media (max-height:640px){.gk-logo{font-size:30px;margin-top:2px}.gk{gap:9px}.gk-oyna{padding:12px 14px!important}.gk-oyna b{font-size:25px}}
 </style>
 </head>
 <body>
@@ -572,39 +667,56 @@
 </div></div>
 
 <!-- Ana menü -->
-<div id="scrMenu" class="screen hidden"><div class="panel" style="min-width:min(540px,92vw)">
-  <h1>Misket Yarışı</h1>
-  <p class="sub">Merhaba <b id="mName"></b>! <span class="pill">⭐ <span id="mPoints">0</span> puan</span> <span class="pill seri hidden" id="mSeri"></span></p>
-  <div class="row"><span class="lvl">Seviye <span id="mLevel">1</span> <span class="lvlbar"><i id="mLevelBar" style="width:0"></i></span></span></div>
-  <button class="main oyna" id="btnOyna"><span class="oic">▶</span><span class="otx"><b>Oyna</b><small id="btnOynaSub"></small></span></button>
-  <div class="gparkur hidden" id="mGunParkur"></div>
-  <div class="gparkur yenimod hidden" id="mYeniMod"></div>
-  <div class="menu">
-    <button id="btnRace"><span>🏁</span>Yarış<small>Parkur seç ve yarış</small></button>
-    <button id="btnCups"><span>🏆</span>Kupalar<small>3 parkurluk turnuva</small></button>
-    <button id="btnShop"><span>🛒</span>Mağaza<small>Kostüm ve iz satın al</small></button>
-    <button id="btnAch"><span>🏅</span>Başarımlar<small id="mAch">0 / 0</small></button>
-    <button id="btnLider"><span>📊</span>Liderlik<small>En iyiler ve parkur rekorları</small></button>
-    <button id="btnMp"><span>👥</span>Çok Oyunculu<small>Arkadaşlarınla yarış</small></button>
-    <button id="btnGuc" class="wide"><span>⚡</span>Güç Kartları<small>Hangi kart ne işe yarar?</small></button>
+<!-- Ana menü (A · Sade düzen, Gökyüzü paleti): tek ekran, altta sekmeler; kalanlar "Daha" ve "Bugün" panellerinde -->
+<div id="scrMenu" class="screen hidden gok">
+  <div class="gk-scene" aria-hidden="true"><i class="gk-m m1"></i><i class="gk-m m2"></i><i class="gk-m m3"></i></div>
+  <div class="gk">
+    <div class="gk-top">
+      <button class="gk-av" id="mProfil" title="Profil ve ayarlar"><span id="mAvHarf">M</span></button>
+      <span class="gk-who"><b><span id="mName"></span> · Sv <span id="mLevel">1</span></b><span class="gk-lv"><i id="mLevelBar" style="width:0"></i></span></span>
+      <span class="gk-pill" title="Puanın"><svg class="gi" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 3l2.8 6 6.2.6-4.8 4.2 1.4 6.2L12 16.8 6.4 20l1.4-6.2L3 9.6 9.2 9z"/></svg><span id="mPoints">0</span></span>
+    </div>
+    <h1 class="gk-logo">Misket Yarışı</h1>
+    <button class="gk-oyna" id="btnOyna"><span class="pi"><svg class="gi" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M8 5l11 7-11 7z"/></svg></span><span class="otx"><b>Oyna</b><small id="btnOynaSub"></small></span><span class="gk-yz" id="btnOynaYz"></span></button>
+    <div class="gk-duo">
+      <div class="gk-card hidden" id="mGunParkur" data-gp="oyna" role="button" tabindex="0"></div>
+      <button class="gk-card" id="btnMp"><span class="h"><svg class="gi" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 5 5"/></svg>Arkadaşlarla</span><b>Oda kur ya da katıl</b><small>Kodla ya da davet linkiyle</small></button>
+    </div>
+    <div class="gk-row hidden" id="mYeniMod"></div>
+    <button class="gk-row hidden" id="mBugun"></button>
   </div>
-  <div class="row muted" id="mStats" style="font-size:14px;font-weight:700"></div>
+  <nav class="gk-tabs" id="mTabs">
+    <button class="on" data-tab="ana"><svg class="gi" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Ana</span></button>
+    <button id="btnRace" data-tab="parkur"><svg class="gi" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Parkurlar</span></button>
+    <button id="btnShop" data-tab="magaza"><svg class="gi" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8zM9 8a3 3 0 0 1 6 0"/></svg><span>Mağaza</span></button>
+    <button id="btnLider" data-tab="lider"><svg class="gi" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-7"/></svg><span>Sıralama</span></button>
+    <button id="btnDaha" data-tab="daha"><svg class="gi" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Daha</span></button>
+  </nav>
+</div>
+<!-- Daha: profil, hesap, kupalar, başarımlar, güç kartları, ayarlar, ses, dil -->
+<div id="dahaBox" class="overlay sheet gok hidden"><div class="gk-sheet">
+  <div class="gk-sh-head"><span class="gk-av big"><span id="mAvHarf2">M</span></span><span class="gk-who"><b id="mName2"></b><small id="mStats"></small><small class="savestatus" id="saveStatus2"></small></span><button class="gk-x" id="dahaKapat" title="Kapat"><svg class="gi" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="misafir hidden" id="mMisafir">
     <p id="mMisafirTxt"></p>
-    <div class="row"><button class="main" id="mHesap">☁️ Hesap oluştur</button><button id="mGiris">🔑 Giriş yap</button><button class="sm" id="mAdDegis">✏️ Adımı değiştir</button></div>
+    <div class="row"><button class="main" id="mHesap">Hesap oluştur</button><button id="mGiris">Giriş yap</button><button class="sm" id="mAdDegis">Adımı değiştir</button></div>
   </div>
+  <div class="gk-list">
+    <button id="btnCups"><svg class="gi" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8"/></svg><span><b>Kupalar</b><small>3 parkurluk turnuva</small></span></button>
+    <button id="btnAch"><svg class="gi" viewBox="0 0 24 24"><circle cx="12" cy="15" r="5"/><path d="M8.5 11L6 3h4l2 5 2-5h4l-2.5 8"/></svg><span><b>Başarımlar</b><small id="mAch">0 / 0</small></span></button>
+    <button id="btnGuc"><svg class="gi" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span><b>Güç kartları</b><small>Hangi kart ne işe yarar?</small></span></button>
+    <button id="btnNasil"><svg class="gi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/></svg><span><b>Nasıl oynanır</b><small>Kısa rehber</small></span></button>
+    <button id="btnAyar"><svg class="gi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span><b>Oyun ayarları</b><small>Yol seçimi, ipuçları, anlatıcı…</small></span></button>
+  </div>
+  <div class="gk-set">
+    <div class="gk-setrow"><button class="sm" id="btnSound">Ses: Açık</button><label class="volrow" title="Ses seviyesi"><input type="range" class="volSlider" id="volMenu" min="0" max="100" step="5"> <span class="volv"></span></label></div>
+    <div class="gk-setrow"><button class="sm" id="btnGfx">Grafik: Yüksek</button><span class="gk-dil" id="mDil"><button data-dil="tr">TR</button><button data-dil="en">EN</button></span></div>
+    <div class="gk-setrow"><button class="sm" id="btnSwitch"><svg class="gi" viewBox="0 0 24 24"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg>Oyuncu değiştir</button><span id="mHesapAyar" style="display:contents"><button class="sm" id="btnPin">Şifre değiştir</button><button class="sm" id="btnCihaz">Yeni cihaz ekle</button></span></div>
+  </div>
+</div></div>
+<!-- Bugün: giriş ödülü ve günlük görevler -->
+<div id="gorevBox" class="overlay sheet gok hidden"><div class="gk-sheet">
+  <div class="gk-sh-head"><span class="gk-ic"><svg class="gi" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M12 9v12M3 14h18M12 9c-2-4-6-4-6-1.5S12 9 12 9zm0 0c2-4 6-4 6-1.5S12 9 12 9z"/></svg></span><span class="gk-who"><b>Bugün</b><small>Görevleri bitir, ödülleri al</small></span><button class="gk-x" id="gorevKapat" title="Kapat"><svg class="gi" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="gunluk" id="mGunluk"></div>
-  <div class="settings">
-    <button class="sm" id="btnSound">🔊 Ses: Açık</button>
-    <label class="volrow" title="Ses seviyesi">🔉 <input type="range" class="volSlider" id="volMenu" min="0" max="100" step="5"> <span class="volv"></span></label>
-    <button class="sm" id="btnGfx">🖥️ Grafik: Yüksek</button>
-    <button class="sm" id="btnAyar">⚙️ Oyun ayarları</button>
-    <button class="sm" id="btnNasil">❓ Nasıl oynanır</button>
-    <button class="sm" id="btnSwitch">👤 Oyuncu değiştir</button>
-    <span id="mHesapAyar" style="display:contents"><button class="sm" id="btnPin">🔑 Şifre değiştir</button>
-    <button class="sm" id="btnCihaz">📱 Yeni cihaz ekle</button></span>
-  </div>
-  <div class="savestatus" id="saveStatus2"></div>
 </div></div>
 
 <!-- Parkurlar -->
@@ -845,32 +957,32 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=28"></script>
-<script src="js/dil-en.js?v=28"></script>
-<script src="js/dil.js?v=28"></script>
+<script src="js/surum.js?v=29"></script>
+<script src="js/dil-en.js?v=29"></script>
+<script src="js/dil.js?v=29"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=28"></script>
-<script src="varliklar/qrcode.js?v=28"></script>
-<script src="three.min.js?v=28"></script>
-<script src="varliklar/RGBELoader.js?v=28"></script>
+<script src="js/isim.js?v=29"></script>
+<script src="varliklar/qrcode.js?v=29"></script>
+<script src="three.min.js?v=29"></script>
+<script src="varliklar/RGBELoader.js?v=29"></script>
 <script>
   // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
-  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=28"><\/script>');
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=29"><\/script>');
 </script>
-<script src="rapier.js?v=28"></script>
-<script src="js/parcalar.js?v=28"></script>
-<script src="js/parkurlar.js?v=28"></script>
-<script src="js/dunyalar.js?v=28"></script>
-<script src="js/fizik.js?v=28"></script>
-<script src="js/guclar.js?v=28"></script>
-<script src="js/kolay.js?v=28"></script>
-<script src="js/kayit-sistemi.js?v=28"></script>
-<script src="js/magaza.js?v=28"></script>
-<script src="js/ses.js?v=28"></script>
-<script src="js/cevre.js?v=28"></script>
-<script src="js/grafik.js?v=28"></script>
-<script src="js/ag.js?v=28"></script>
-<script src="js/oyun.js?v=28"></script>
+<script src="rapier.js?v=29"></script>
+<script src="js/parcalar.js?v=29"></script>
+<script src="js/parkurlar.js?v=29"></script>
+<script src="js/dunyalar.js?v=29"></script>
+<script src="js/fizik.js?v=29"></script>
+<script src="js/guclar.js?v=29"></script>
+<script src="js/kolay.js?v=29"></script>
+<script src="js/kayit-sistemi.js?v=29"></script>
+<script src="js/magaza.js?v=29"></script>
+<script src="js/ses.js?v=29"></script>
+<script src="js/cevre.js?v=29"></script>
+<script src="js/grafik.js?v=29"></script>
+<script src="js/ag.js?v=29"></script>
+<script src="js/oyun.js?v=29"></script>
 <script>
   // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
   if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

@@ -13,6 +13,7 @@ Telefonda tarayıcı menüsünden **"Ana Ekrana Ekle"** dersen uygulama gibi tam
 - **Mağaza:** renk, desen, forma, gözlük, şapka ve iz (144 ürün). **Kupalar**, **bahis**, **başarımlar**, **seviye**.
 
 ## 🎯 Yeni oyuncu ve tekrar oynama
+- **Ana menü (sade düzen, Gökyüzü renkleri):** tek ekran: yeşil ▶ Oyna (kaldığın parkur, kart modu, yıldızlar), günün parkuru ve arkadaşlarla kartları, "Bugün" satırı (giriş ödülü + görevler), altta Ana · Parkurlar · Mağaza · Sıralama · Daha sekmeleri. Kupalar, başarımlar, güç kartları, ayarlar, ses, dil ve hesap "Daha" panelinde. Başlık yazı tipi Fredoka (`varliklar/font`, SIL OFL). Diğer ekranlar şimdilik koyu temada.
 - **İlk açılış:** rehber sayfaları yerine doğrudan Parkur 1 başlar; yardım yarışın içinde kısa ipuçlarıyla gelir (ilk kartlarda kartlar parlar; ağır çekim yok, yavaşlatıcı kart sanılıyordu). "Nasıl oynanır" menüde durur.
 - **▶ Oyna:** menüdeki büyük düğme, misket seçimini atlayıp kaldığın parkuru başlatır. Menü sade başlar: mağaza/başarımlar/liderlik/günün parkuru 1 yarıştan, kupalar ve bahis 3 yarıştan sonra açılır.
 - **Kolay başlangıç:** Parkur 1–3'te botlar biraz yavaş (ilk yarış kazanılabilsin); güç kartları 5 temel kartla başlar, ilerledikçe açılır (Bomba 3, Duvar 4, Demir 5, Küçült 6, Hayalet 7, Mıknatıs 8, Ters Rüzgâr 9, Işınlanma 10, Yer Değiştir 11. parkurda).

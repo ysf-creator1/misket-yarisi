@@ -287,4 +287,11 @@ window.DIL_EN = {
   'Alttaki çantadan dokun, kart o an etki eder': 'Tap a card in the bag below: it works right then', 'Anladım, başla ▶': 'Got it, start ▶',
   'Biriktir modu': 'Stockpile mode', 'Biriktir modu YENİ': 'Stockpile mode NEW', 'YENİ': 'NEW', 'Kartları çantada sakla, en doğru anda kullan': 'Keep cards in your bag, use them at the perfect moment', 'Dene ▶': 'Try ▶',
   'Biriktir modunu denedin! Sıradaki yarış hangi modda olsun?': 'You tried Stockpile mode! Which mode for the next race?', 'Sıradaki yarışın modu': 'Mode for the next race',
+  // ana menü (sade düzen): sekmeler, Daha ve Bugün panelleri
+  'Oda kur ya da katıl': 'Create or join a room', 'Kodla ya da davet linkiyle': 'With a code or invite link', 'Arkadaşlarla': 'With friends',
+  'Ana': 'Home', 'Daha': 'More', 'Sıralama': 'Ranking', 'Herkes aynı parkurda': 'Everyone on the same track', 'Ödül hazır': 'Reward ready',
+  'Bugün': 'Today', 'Görevleri bitir, ödülleri al': 'Finish tasks, collect rewards', 'Kısa rehber': 'Quick guide', 'Yol seçimi, ipuçları, anlatıcı…': 'Path choice, tips, commentator…',
+  'Profil ve ayarlar': 'Profile and settings', 'Günün sıralaması': "Today's ranking", 'Puanın': 'Your points', 'Sv': 'Lv',
+  'En iyin: {0} sn': 'Your best: {0} s', 'İlk bitirişe +{0#}': 'First finish +{0}', 'Bugün · görevler {0#}/{1#}': 'Today · tasks {0}/{1}',
+  '+{0#} ödülü al': 'Claim +{0}', '{0#}. gün': 'Day {0}', 'Giriş ödülü +{0#} puan': 'Login reward +{0} pts',
 };
