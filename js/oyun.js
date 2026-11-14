@@ -1003,6 +1003,7 @@
     state.player = Kayit.use(name); if (!state.player) return showProfiles();
     state.mode = kartTercih(state.player);
     let ilk = false;
+    const ilkAcilis = !opened;
     if (!opened) { // rapor: oyun açıldı. İlk kez gelen rehber okumadan doğrudan Parkur 1'e girer (rehber menüde "Nasıl oynanır")
       opened = true; const g = Kayit.isGuest(state.player); Kayit.track('acilis', { misafir: g, ad: g ? undefined : state.player.name, mobil: !!window.MOBIL });
       if (!ogrSeen()) { try { localStorage.setItem(OGR_KEY, '1'); } catch (e) { } ilk = (state.player.races || 0) === 0; }
@@ -1012,6 +1013,7 @@
     showMenu();
     if (meydanSor()) return; // meydan okuma linkiyle gelindi
     if (ilk) hizliBasla(1);
+    else if (ilkAcilis) reklamGoster(); // açılışta yeni oyunumuzun tanıtımı (ilk kez gelen önce misketi oynasın)
   }
 
   function showMenu() {
@@ -1754,6 +1756,55 @@
     $('konfeti').innerHTML = Array.from({ length: 70 }, () => `<i style="left:${Math.random() * 100}%;background:${cols[Math.floor(Math.random() * cols.length)]};animation-duration:${2 + Math.random() * 2.5}s;animation-delay:${Math.random() * 0.8}s"></i>`).join('');
     $('kutlama').classList.remove('hidden'); Ses.yeni();
     $('kutlaTamam').onclick = () => { $('kutlama').classList.add('hidden'); $('konfeti').innerHTML = ''; done(); };
+  }
+
+  // ---- yeni oyunumuzun tanıtımı: açılışta menü gelince kısa süre (9 sn) kart; dokununca oyun yeni sekmede açılır ----
+  const RK_URL = 'https://ysf-creator1.github.io/top-rallisi/', RK_SN = 9;
+  let rkAcik = false;
+  function reklamGoster() {
+    if (rkAcik || state.mp || navigator.onLine === false) return;
+    setTimeout(() => {
+      // menüde değilse ya da başka bir pencere açıksa gösterme
+      if (rkAcik || curScreen !== 'scrMenu' || document.querySelector('.overlay:not(.hidden)')) return;
+      rkAcik = true;
+      const box = $('reklamBox'), kart = $('rkKart'), bar = $('rkSure');
+      box.classList.remove('hidden', 'gidiyor'); void box.offsetWidth; box.classList.add('acik');
+      bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)'; bar.style.display = '';
+      requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `transform ${RK_SN}s linear`; bar.style.transform = 'scaleX(0)'; }));
+      let zaman = setTimeout(() => kapat('sure'), RK_SN * 1000);
+      const dur = () => { clearTimeout(zaman); zaman = null; bar.style.display = 'none'; }; // üstüne gelince/dokununca süre durur
+      const yol = $('rkYol'), L = yol.getTotalLength(), t0 = performance.now();
+      const top = $('rkTop'), golge = $('rkGolge'), ip = [$('rkIp'), $('rkIp2')], elL = $('rkElL'), elR = $('rkElR'), yildiz = $('rkYildiz');
+      let raf = 0;
+      const kare = now => { // top halatlarla yolda yukarı taşınır, deliğe düşer, yıldız çıkar, baştan
+        const T = ((now - t0) / 1000) % 5, s0 = L * 0.2;
+        const yuru = Math.min(1, T / 3.4), e = yuru < .5 ? 2 * yuru * yuru : 1 - Math.pow(-2 * yuru + 2, 2) / 2;
+        const s = s0 + (L - s0) * e, p = yol.getPointAtLength(s), q = yol.getPointAtLength(Math.min(L, s + 3));
+        const yon = Math.max(-1, Math.min(1, (q.x - p.x) / 3)), dus = T > 3.4 ? Math.min(1, (T - 3.4) / .35) : 0;
+        const r = 13 * (1 - dus * .75), yl = p.y + 13 + yon * 9, yr = p.y + 13 - yon * 9, yOrta = (yl + yr) / 2 + 9;
+        top.setAttribute('cx', p.x); top.setAttribute('cy', p.y); top.setAttribute('r', r); top.style.opacity = 1 - dus;
+        golge.setAttribute('cx', p.x); golge.setAttribute('cy', p.y + 15); golge.style.opacity = .18 * (1 - dus);
+        const d = `M34 ${yl.toFixed(1)} Q${p.x.toFixed(1)} ${(2 * yOrta - (yl + yr) / 2).toFixed(1)} 286 ${yr.toFixed(1)}`;
+        ip.forEach(el => { el.setAttribute('d', d); el.style.opacity = 1 - dus; });
+        elL.setAttribute('cy', yl); elR.setAttribute('cy', yr); elL.style.opacity = elR.style.opacity = .55 * (1 - dus);
+        const yz = T > 3.6 && T < 4.6 ? Math.sin((T - 3.6) * Math.PI) : 0;
+        yildiz.setAttribute('opacity', yz.toFixed(2)); yildiz.setAttribute('transform', `translate(0 ${(-8 * yz).toFixed(1)})`);
+        raf = requestAnimationFrame(kare);
+      };
+      raf = requestAnimationFrame(kare);
+      function kapat(nasil) {
+        if (!rkAcik) return; rkAcik = false;
+        clearTimeout(zaman); cancelAnimationFrame(raf); removeEventListener('keydown', tus);
+        Kayit.track('reklam', { tikla: nasil === 'tikla', nasil });
+        box.classList.add('gidiyor'); setTimeout(() => box.classList.remove('acik', 'gidiyor') || box.classList.add('hidden'), 250);
+      }
+      const ac = () => { try { window.open(RK_URL, '_blank', 'noopener'); } catch (e) { } kapat('tikla'); };
+      const tus = e => { if (e.key === 'Escape') kapat('carpi'); else if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === kart) { e.preventDefault(); ac(); } };
+      addEventListener('keydown', tus);
+      kart.onclick = e => { if (e.target.closest('#rkKapat')) { e.stopPropagation(); kapat('carpi'); } else ac(); };
+      kart.onpointerenter = kart.onpointerdown = () => { if (zaman) dur(); };
+      box.onclick = e => { if (e.target === box) kapat('disari'); };
+    }, 700);
   }
 
   // ---- ana ekrana ekle daveti (2. yarıştan sonra; 7 günde bir, en fazla 3 kez) ----

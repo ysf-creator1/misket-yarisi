@@ -274,6 +274,9 @@ window.DIL_EN = {
   "{0}, Parkur {1#} ({2}) yarışını {3} sn'de bitirdi. Daha hızlı bitirebilir misin?": '{0} finished Track {1} ({2}) in {3} s. Can you beat it?',
   'Meydan okuma linki kopyalandı: arkadaşına gönder': 'Challenge link copied: send it to a friend', 'Meydan okuma linki:': 'Challenge link:',
   'Ana ekrana ekle': 'Add to Home Screen', 'Misket Yarışı uygulama gibi tam ekran açılsın, tek dokunuşla oyna.': 'Open Marble Race full screen like an app and play with one tap.',
+  // yeni oyun tanıtım kartı
+  "Top Rallisi'yi dene": 'Try Top Rallisi', 'Yeni oyunumuz': 'Our new game', 'Hemen dene': 'Try it now',
+  'Halatları çek, topu parkurda tut, bitiş deliğine ulaştır. Bunu da çok seveceğini düşünüyoruz!': "Pull the ropes, keep the ball on the track and get it into the hole. We think you'll love this one too!",
   'Şimdi değil': 'Not now', 'Ekle': 'Add', 'Anladım': 'Got it', 'Safari\'de alttaki Paylaş ⬆ düğmesine dokun, sonra "Ana Ekrana Ekle"yi seç.': 'In Safari, tap the Share ⬆ button below, then choose "Add to Home Screen".',
   '🔒 {0#}. parkuru açınca': '🔒 unlocks at track {0}',
   // kart modları akışı, Üfle, çanta

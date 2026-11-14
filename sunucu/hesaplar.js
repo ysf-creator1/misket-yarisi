@@ -205,6 +205,7 @@ async function handle(req, res, ip, local) {
       else if (tur === 'ayar' && ['etkile', 'kolay', 'ipucu', 'oto', 'anlatici'].includes(b.ayar)) olay('ayar', { cihaz, ayar: b.ayar, acik: !!b.acik });
       else if (tur === 'meydan') olay('meydan', { cihaz, kabul: !!b.kabul });
       else if (tur === 'anaekran') olay('anaekran', { cihaz, kabul: !!b.kabul });
+      else if (tur === 'reklam') olay('reklam', { cihaz, tikla: !!b.tikla, nasil: ['tikla', 'carpi', 'sure', 'disari'].includes(b.nasil) ? b.nasil : 'diger' }); // açılıştaki Top Rallisi tanıtımı
       // kart modu: oyuncunun seçimi (nerede seçti) ve Biriktir deneme bilgi kartı
       else if (tur === 'mod' && KART_MOD(b.mod)) olay('mod', { cihaz, mod: KART_MOD(b.mod), nerede: ['ilk_secim', 'deneme_sonu', 'sonuc', 'secim', 'ayar'].includes(b.nerede) ? b.nerede : 'diger' });
       else if (tur === 'mod_bilgi') olay('mod_bilgi', { cihaz, yeni: !!b.yeni });

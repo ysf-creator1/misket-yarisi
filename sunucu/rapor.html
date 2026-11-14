@@ -519,6 +519,7 @@ function render() {
         ['Misketi etkileyen yarış', `${num(et.filter(e => e.etki).length)} / ${num(et.length)} · ${pct(et.filter(e => e.etki).length, et.length)}`],
         ['Meydan okuma kabul', `${num(my.filter(e => e.kabul).length)} / ${num(my.length)}`],
         ['Ana ekrana ekledi', `${num(ae.filter(e => e.kabul).length)} / ${num(ae.length)}`],
+        ['Top Rallisi tanıtımına tıkladı', `${num(T('reklam').filter(e => e.tikla).length)} / ${num(T('reklam').length)} · ${pct(T('reklam').filter(e => e.tikla).length, T('reklam').length)}`],
         ['Yarış daveti gönderildi (kişi)', `${num(T('davet').length)} davet · ${num(T('davet').reduce((a, e) => a + (e.kisi || 0), 0))} kişiye`],
         ['Davet kabul / ret', `${num(T('davet_yanit').filter(e => e.kabul).length)} / ${num(T('davet_yanit').filter(e => !e.kabul).length)}`],
         ...Object.keys(ayN).map(k => [`Kapattı: ${esc(AYAD[k] || k)}`, num(ayN[k])]),

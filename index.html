@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>
   // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
-  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=32" as="fetch" crossorigin="anonymous">');
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=33" as="fetch" crossorigin="anonymous">');
 </script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
@@ -741,6 +741,36 @@
   .cv-not{margin:0;font-size:12.5px;color:var(--muted);font-weight:700;text-align:center}
   .cv-diger{align-self:center;background:none!important;border:none!important;color:#2a6fdb!important;font-weight:800;font-size:13px;text-decoration:underline;min-height:0}
   .davet .dv-ic{font-size:52px;line-height:1}
+
+  /* ===== yeni oyun tanıtım kartı (Top Rallisi) ===== */
+  #reklamBox{z-index:60;opacity:0;transition:opacity .25s}
+  #reklamBox.acik{opacity:1}
+  .rk-kart{position:relative;width:min(360px,92vw);border-radius:24px;overflow:hidden;background:#fffdf8;cursor:pointer;
+    box-shadow:0 24px 60px -18px rgba(27,42,71,.6),0 0 0 1px rgba(27,42,71,.06);transform:translateY(40px) scale(.86) rotate(-3deg);opacity:0;outline:none}
+  #reklamBox.acik .rk-kart{animation:rkGel .65s cubic-bezier(.2,1.5,.4,1) forwards}
+  #reklamBox.gidiyor .rk-kart{animation:rkGit .25s ease-in forwards}
+  @keyframes rkGel{to{transform:none;opacity:1}}
+  @keyframes rkGit{from{transform:none;opacity:1}to{transform:translateY(24px) scale(.92);opacity:0}}
+  .rk-kart:hover,.rk-kart:focus-visible{box-shadow:0 28px 64px -16px rgba(27,42,71,.7),0 0 0 3px #2fbf64}
+  .rk-sahne{display:block;width:100%;height:auto;aspect-ratio:320/210}
+  .rk-bulut{animation:rkBulut 9s ease-in-out infinite alternate} .rk-bulut.b2{animation-duration:7s;animation-direction:alternate-reverse}
+  @keyframes rkBulut{to{transform:translateX(18px)}}
+  .rk-bayrak{transform-origin:202px 15px;animation:rkBayrak 1.1s ease-in-out infinite alternate}
+  @keyframes rkBayrak{to{transform:scaleX(.78) skewY(6deg)}}
+  .rk-govde{padding:14px 20px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;color:#1b2a47}
+  .rk-rozet{font-size:12px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:#b4472f;background:#fde7e1;border-radius:99px;padding:4px 11px}
+  .rk-govde h2{margin:2px 0 0;font-family:"Fredoka","Trebuchet MS",system-ui,sans-serif;font-weight:700;font-size:30px;color:#1b2a47;line-height:1.1}
+  .rk-govde p{margin:0;font-size:14.5px;line-height:1.4;color:#566683;font-weight:700;max-width:290px}
+  .rk-dene{margin-top:8px;display:inline-flex;align-items:center;gap:4px;padding:12px 26px;border-radius:14px;font-weight:900;font-size:17px;
+    background:linear-gradient(180deg,#4ad97f,#2fbf64);color:#05301a;box-shadow:0 4px 0 #1f9a4d;animation:rkNabiz 1.6s ease-in-out infinite}
+  .rk-dene svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  @keyframes rkNabiz{50%{transform:scale(1.06)}}
+  .rk-x{position:absolute;top:10px;right:10px;z-index:2;width:34px;height:34px;padding:0!important;border-radius:50%!important;display:grid;place-items:center;
+    background:rgba(255,255,255,.88)!important;border:none!important;box-shadow:0 2px 8px rgba(27,42,71,.25);min-height:0}
+  .rk-x svg{width:16px;height:16px;fill:none;stroke:#1b2a47;stroke-width:2.8;stroke-linecap:round}
+  .rk-x:hover{background:#fff!important}
+  .rk-sure{position:absolute;left:0;bottom:0;height:4px;width:100%;background:#2fbf64;transform-origin:left;opacity:.55}
+  @media (prefers-reduced-motion:reduce){.rk-bulut,.rk-bayrak,.rk-dene{animation:none}#reklamBox.acik .rk-kart{animation-duration:.01s}}
 </style>
 </head>
 <body>
@@ -973,6 +1003,38 @@
   <p class="sub" id="anaEkranTxt">Misket Yarışı uygulama gibi tam ekran açılsın, tek dokunuşla oyna.</p>
   <div class="row"><button id="anaEkranSonra">Şimdi değil</button><button class="main" id="anaEkranEkle">📲 Ekle</button></div>
 </div></div>
+<!-- yeni oyunumuzun tanıtımı (açılışta kısa süre; dokununca oyun açılır) -->
+<div id="reklamBox" class="overlay hidden"><div class="rk-kart" id="rkKart" role="link" tabindex="0" aria-label="Top Rallisi'yi dene">
+  <button class="rk-x" id="rkKapat" aria-label="Kapat" title="Kapat"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <svg class="rk-sahne" viewBox="0 0 320 210" aria-hidden="true">
+    <defs><linearGradient id="rkGok" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c7e2ee"/><stop offset=".62" stop-color="#e4eeea"/><stop offset="1" stop-color="#f4eee1"/></linearGradient>
+      <radialGradient id="rkTopGr" cx=".38" cy=".32" r=".7"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#f2f4f6"/><stop offset="1" stop-color="#c9d1d8"/></radialGradient></defs>
+    <rect width="320" height="210" fill="url(#rkGok)"/>
+    <g class="rk-bulut"><ellipse cx="60" cy="34" rx="22" ry="8" fill="#fff" opacity=".8"/><ellipse cx="74" cy="29" rx="13" ry="8" fill="#fff" opacity=".8"/></g>
+    <g class="rk-bulut b2"><ellipse cx="262" cy="56" rx="18" ry="6" fill="#fff" opacity=".7"/><ellipse cx="272" cy="52" rx="10" ry="6" fill="#fff" opacity=".7"/></g>
+    <path d="M0 150 Q80 118 170 140 T320 128 V210 H0Z" fill="#bfdcae"/>
+    <path d="M0 178 Q110 150 210 172 T320 166 V210 H0Z" fill="#a9d196"/>
+    <path id="rkYol" d="M128 232 C 96 186, 118 152, 168 138 S 232 104, 196 80 S 154 46, 182 34" fill="none" stroke="#3a3f47" stroke-width="35" stroke-linecap="round"/>
+    <path d="M128 232 C 96 186, 118 152, 168 138 S 232 104, 196 80 S 154 46, 182 34" fill="none" stroke="#2b2f36" stroke-width="29" stroke-linecap="round"/>
+    <circle cx="182" cy="34" r="10" fill="#14161a" stroke="#9aa3ad" stroke-width="2.5"/>
+    <line x1="201" y1="44" x2="201" y2="8" stroke="#efe6d2" stroke-width="3" stroke-linecap="round"/>
+    <path class="rk-bayrak" d="M202 9 L226 15 L202 22Z" fill="#ec8a78"/>
+    <circle class="rk-el" id="rkElL" cx="34" cy="150" r="17" fill="#8cb487" opacity=".55"/>
+    <circle class="rk-el" id="rkElR" cx="286" cy="150" r="17" fill="#8cb487" opacity=".55"/>
+    <path id="rkIp" d="M34 150 Q160 160 286 150" fill="none" stroke="#c9ced4" stroke-width="5" stroke-linecap="round"/>
+    <path id="rkIp2" d="M34 150 Q160 160 286 150" fill="none" stroke="#f4f6f8" stroke-width="2" stroke-linecap="round"/>
+    <ellipse id="rkGolge" cx="150" cy="168" rx="12" ry="3" fill="#1b2a47" opacity=".18"/>
+    <circle id="rkTop" cx="150" cy="150" r="13" fill="url(#rkTopGr)" stroke="#b9c2cb" stroke-width=".6"/>
+    <g id="rkYildiz" opacity="0"><path d="M182 6l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" fill="#ffc23d"/></g>
+  </svg>
+  <div class="rk-govde">
+    <span class="rk-rozet">✨ Yeni oyunumuz</span>
+    <h2>Top Rallisi</h2>
+    <p>Halatları çek, topu parkurda tut, bitiş deliğine ulaştır. Bunu da çok seveceğini düşünüyoruz!</p>
+    <span class="rk-dene">Hemen dene <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+  </div>
+  <i class="rk-sure" id="rkSure"></i>
+</div></div>
 <!-- yeni dünya kutlaması -->
 <div id="kutlama" class="overlay hidden"><div class="kutla"><div class="kic" id="kutlaIc">🌍</div><h2 id="kutlaBaslik"></h2><p class="sub" id="kutlaTxt"></p><button class="main" id="kutlaTamam">Harika! ▶</button></div><div id="konfeti"></div></div>
 <!-- duraklatma -->
@@ -1107,32 +1169,32 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=32"></script>
-<script src="js/dil-en.js?v=32"></script>
-<script src="js/dil.js?v=32"></script>
+<script src="js/surum.js?v=33"></script>
+<script src="js/dil-en.js?v=33"></script>
+<script src="js/dil.js?v=33"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=32"></script>
-<script src="varliklar/qrcode.js?v=32"></script>
-<script src="three.min.js?v=32"></script>
-<script src="varliklar/RGBELoader.js?v=32"></script>
+<script src="js/isim.js?v=33"></script>
+<script src="varliklar/qrcode.js?v=33"></script>
+<script src="three.min.js?v=33"></script>
+<script src="varliklar/RGBELoader.js?v=33"></script>
 <script>
   // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
-  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=32"><\/script>');
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=33"><\/script>');
 </script>
-<script src="rapier.js?v=32"></script>
-<script src="js/parcalar.js?v=32"></script>
-<script src="js/parkurlar.js?v=32"></script>
-<script src="js/dunyalar.js?v=32"></script>
-<script src="js/fizik.js?v=32"></script>
-<script src="js/guclar.js?v=32"></script>
-<script src="js/kolay.js?v=32"></script>
-<script src="js/kayit-sistemi.js?v=32"></script>
-<script src="js/magaza.js?v=32"></script>
-<script src="js/ses.js?v=32"></script>
-<script src="js/cevre.js?v=32"></script>
-<script src="js/grafik.js?v=32"></script>
-<script src="js/ag.js?v=32"></script>
-<script src="js/oyun.js?v=32"></script>
+<script src="rapier.js?v=33"></script>
+<script src="js/parcalar.js?v=33"></script>
+<script src="js/parkurlar.js?v=33"></script>
+<script src="js/dunyalar.js?v=33"></script>
+<script src="js/fizik.js?v=33"></script>
+<script src="js/guclar.js?v=33"></script>
+<script src="js/kolay.js?v=33"></script>
+<script src="js/kayit-sistemi.js?v=33"></script>
+<script src="js/magaza.js?v=33"></script>
+<script src="js/ses.js?v=33"></script>
+<script src="js/cevre.js?v=33"></script>
+<script src="js/grafik.js?v=33"></script>
+<script src="js/ag.js?v=33"></script>
+<script src="js/oyun.js?v=33"></script>
 <script>
   // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
   if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
