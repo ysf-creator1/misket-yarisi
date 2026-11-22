@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>
   // menüden önce gereken tek büyük dosya: betiklerle aynı anda inmeye başlasın (file:// açılışta gömülü kopya kullanılır)
-  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=33" as="fetch" crossorigin="anonymous">');
+  if (location.protocol !== 'file:') document.write('<link rel="preload" href="varliklar/doku/gokyuzu-isik.hdr?v=34" as="fetch" crossorigin="anonymous">');
 </script>
 <title>Misket Yarışı</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔴%3C/text%3E%3C/svg%3E">
@@ -720,6 +720,18 @@
     #hud.biriktir #cards{bottom:calc(64px + env(safe-area-inset-bottom))}
   }
   @media (max-height:500px) and (orientation:landscape){ #cards{width:170px} .card .ic{font-size:20px} .bslot{height:40px} }
+  /* kart tüyoları (Biriktir): öneri şeridi, parlayan kart, kartın üstünde "ne zaman" */
+  .card .ne{display:block;margin-top:2px;color:#1f66c9;font-size:10.5px;font-weight:800;line-height:1.2}
+  .gcard .gne{display:block;color:#1f66c9;font-size:11.5px;font-weight:800}
+  #kartTuyo{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;max-width:min(520px,calc(100vw - 16px));padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.97);color:#1b2a47;box-shadow:0 0 0 2px #f5a500,0 8px 18px -8px rgba(15,35,70,.6);font-size:13px;font-weight:800;white-space:nowrap;pointer-events:none;animation:tuyoGir .2s ease-out}
+  #kartTuyo .ti{flex:none;font-size:16px;line-height:1} #kartTuyo b{flex:none} #kartTuyo span:last-child{min-width:0;font-weight:700;color:#3d4c69;overflow:hidden;text-overflow:ellipsis}
+  #hud.kartvar #kartTuyo{display:none} #hud.tuyovar #help{visibility:hidden}
+  .bslot.oner{box-shadow:0 0 0 3px #f5a500,0 0 16px #f5a500;animation:onerNabiz 1.1s ease-in-out infinite}
+  @keyframes tuyoGir{from{opacity:0;margin-bottom:-6px}to{opacity:1;margin-bottom:0}}
+  @keyframes onerNabiz{50%{box-shadow:0 0 0 5px #f5a500,0 0 24px #f5a500}}
+  @media (max-width:760px){ #kartTuyo{bottom:calc(63px + env(safe-area-inset-bottom));font-size:12px;padding:5px 10px} .card .ne{font-size:9.5px} }
+  @media (max-height:500px) and (orientation:landscape){ #kartTuyo{bottom:calc(52px + env(safe-area-inset-bottom));font-size:11.5px} #ipucu:not(.hidden) ~ #kartTuyo{display:none} .card .ne{display:none} }
+  @media (prefers-reduced-motion:reduce){ .bslot.oner{animation:none} }
   /* telefonda yarış listesi: yalnız sıra, renk + sembol (isimler uzun) */
   .mobil #hud .srow .nm{display:none}
   .mobil #stand{width:auto;min-width:0}
@@ -947,6 +959,7 @@
   <div id="help">1 · 2 · 3: güç seç · C: kamera · Esc: çık</div>
   <div id="anlatici" class="hidden"></div>
   <div id="ipucu" class="hidden"></div>
+  <div id="kartTuyo" class="hidden"></div>
   <div id="rakipler" class="hidden"></div>
   <div id="finalBadge" class="hidden"></div>
   <div id="hedefBox" class="box hidden"></div>
@@ -1169,32 +1182,33 @@
     if (l && m && !l.classList.contains('hidden')) m.textContent = 'Bir hata oluştu: ' + (e.message || e) + ' — sayfayı yenile (⌘R).';
   });
 </script>
-<script src="js/surum.js?v=33"></script>
-<script src="js/dil-en.js?v=33"></script>
-<script src="js/dil.js?v=33"></script>
+<script src="js/surum.js?v=34"></script>
+<script src="js/dil-en.js?v=34"></script>
+<script src="js/dil.js?v=34"></script>
 <script src="kayit/kayit.js"></script>
-<script src="js/isim.js?v=33"></script>
-<script src="varliklar/qrcode.js?v=33"></script>
-<script src="three.min.js?v=33"></script>
-<script src="varliklar/RGBELoader.js?v=33"></script>
+<script src="js/isim.js?v=34"></script>
+<script src="varliklar/qrcode.js?v=34"></script>
+<script src="three.min.js?v=34"></script>
+<script src="varliklar/RGBELoader.js?v=34"></script>
 <script>
   // dokular yalnızca index.html doğrudan açıldığında (file://) gömülü dosyadan gelir; normalde varliklar/doku/ klasöründen
-  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=33"><\/script>');
+  if (location.protocol === 'file:') document.write('<script src="varliklar/dokular.js?v=34"><\/script>');
 </script>
-<script src="rapier.js?v=33"></script>
-<script src="js/parcalar.js?v=33"></script>
-<script src="js/parkurlar.js?v=33"></script>
-<script src="js/dunyalar.js?v=33"></script>
-<script src="js/fizik.js?v=33"></script>
-<script src="js/guclar.js?v=33"></script>
-<script src="js/kolay.js?v=33"></script>
-<script src="js/kayit-sistemi.js?v=33"></script>
-<script src="js/magaza.js?v=33"></script>
-<script src="js/ses.js?v=33"></script>
-<script src="js/cevre.js?v=33"></script>
-<script src="js/grafik.js?v=33"></script>
-<script src="js/ag.js?v=33"></script>
-<script src="js/oyun.js?v=33"></script>
+<script src="rapier.js?v=34"></script>
+<script src="js/parcalar.js?v=34"></script>
+<script src="js/parkurlar.js?v=34"></script>
+<script src="js/dunyalar.js?v=34"></script>
+<script src="js/fizik.js?v=34"></script>
+<script src="js/guclar.js?v=34"></script>
+<script src="js/kolay.js?v=34"></script>
+<script src="js/tuyo.js?v=34"></script>
+<script src="js/kayit-sistemi.js?v=34"></script>
+<script src="js/magaza.js?v=34"></script>
+<script src="js/ses.js?v=34"></script>
+<script src="js/cevre.js?v=34"></script>
+<script src="js/grafik.js?v=34"></script>
+<script src="js/ag.js?v=34"></script>
+<script src="js/oyun.js?v=34"></script>
 <script>
   // çevrimdışı önbellek: ikinci açılıştan itibaren dosyalar telefondan gelir (yalnızca https sitesinde)
   if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });

@@ -156,6 +156,17 @@
   let camInit = false;
   const V3 = (p) => new THREE.Vector3(p.x, p.y, p.z);
   function center(r) { const c = new THREE.Vector3(); r.marbles.forEach(m => c.add(V3(m.body.translation()))); return c.multiplyScalar(1 / r.marbles.length); }
+  // çubuklu tamburda arkadan bakınca boru görüşü kapatıyor: yaklaşırken kamera yükselir, daha dik açıyla bakar
+  const TAMBUR_KAM = { once: 5, sonra: 2, geri: 5.2, yuk: 7.2, ileri: 1.4 }, tamburAralik = new WeakMap();
+  function tamburda(track, s) {
+    let A = tamburAralik.get(track);
+    if (!A) {
+      A = [];
+      for (const q of track.samples) { if (q.kind !== 'tambur') continue; const L = A[A.length - 1]; if (L && q.s - L[1] < 3) L[1] = q.s; else A.push([q.s, q.s]); }
+      tamburAralik.set(track, A);
+    }
+    return A.some(([a, b]) => s > a - TAMBUR_KAM.once && s < b + TAMBUR_KAM.sonra);
+  }
   function updateCamera(dt) {
     const r = state.race; if (!r) return;
     const tgt = state.cam === 1 ? r.leader() : r.marbles[state.pick];
@@ -169,7 +180,8 @@
       if (!(nowS < (state.sideUntil || 0))) state.sideSign = 1;
       state.sideUntil = nowS + 1.6;
     }
-    const sideView = nowS < (state.sideUntil || 0) && state.phase !== 'countdown' && state.cam !== 2;
+    const tamburKam = state.phase !== 'countdown' && state.cam !== 2 && !tgt.inZone && tamburda(r.track, tgt.s);
+    const sideView = nowS < (state.sideUntil || 0) && state.phase !== 'countdown' && state.cam !== 2 && !tamburKam;
     if (sideView && !tgt.inZone) {
       const R = sm ? new THREE.Vector3(sm.R[0], 0, sm.R[2]).normalize() : new THREE.Vector3(1, 0, 0);
       // tam yandan değil: yandan ve yukarıdan (duvarların üstünden) bak
@@ -191,12 +203,15 @@
     } else if (tgt.inZone) {
       const z = tgt.inZone, C = new THREE.Vector3(z.c[0], z.c[1], z.c[2]);
       want.copy(C).addScaledVector(fwdS, -z.R * 0.9).add(new THREE.Vector3(0, z.R * 1.5 + 2, 0)); look.copy(C).lerp(P, 0.5);
+    } else if (tamburKam) {
+      want.copy(P).addScaledVector(fwdS, -TAMBUR_KAM.geri).add(new THREE.Vector3(0, TAMBUR_KAM.yuk, 0)); look.copy(P).addScaledVector(fwdS, TAMBUR_KAM.ileri);
     } else {
       want.copy(P).addScaledVector(fwdS, -7.2).add(new THREE.Vector3(0, 3.9, 0)); look.copy(P).addScaledVector(fwdS, 3);
     }
     // yan bakışta yakındaki duvarlar; her zaman: kamerayla misket(ler) arasına giren parçalar (huninin üstündeki yol vb.) saydamlaşır
     const hedef = state.phase === 'countdown' ? null : tgt.inZone ? [P, ...r.marbles.filter(m => m !== tgt && m.inZone === tgt.inZone).slice(0, 3).map(m => m.body.translation())] : [P];
     Grafik.fadeTrack(state.view, sideView && !tgt.inZone ? P : null, dt, hedef);
+    Grafik.fadeTambur(state.view, tamburKam ? P : null, dt);
     if (!camInit) { camPos.copy(want); camLook.copy(look); camInit = true; }
     else { camPos.lerp(want, 1 - Math.exp(-3.5 * dt)); camLook.lerp(look, 1 - Math.exp(-6 * dt)); }
     camera.position.copy(camPos); camera.lookAt(camLook);
@@ -236,7 +251,7 @@
     const W = $('prog').clientWidth - 36;
     for (const m of r.marbles) { const el = $('pd' + m.id); if (el) el.style.left = (18 + Math.max(0, Math.min(1, m.s / fs)) * W) + 'px'; }
     $('timer').textContent = '⏱ ' + r.t.toFixed(1);
-    bagState();
+    bagState(); kartTuyo();
     if (r.started && !r.done) { const idx = S.findIndex(m => m.id === state.pick); if (idx === S.length - 1 && r.t > 8) state.wasLast = true; }
     siraTakip(r, S); etkiUI();
     if (state.meydan && !r.marbles[state.pick].finished) $('hedefBox').classList.toggle('gecti', r.t > state.meydan.hedef);
@@ -255,7 +270,7 @@
     const box = $('cards'), bm = bagMode();
     box.innerHTML = `<div id="cardsHead">${bm ? '🎒 Çantana bir kart seç' : '⚡ Bir güç seç!'}</div>` + cards.map((id, k) => {
       const p = MG.byId[id];
-      return `<button class="card ${p.type}" data-card="${k}"><span class="key">${bm ? OFFER_KEYS[k] : k + 1}</span><span class="ic">${p.icon}</span><span><span class="typ">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'}</span><b>${p.name}</b><small>${p.desc}</small></span></button>`;
+      return `<button class="card ${p.type}" data-card="${k}"><span class="key">${bm ? OFFER_KEYS[k] : k + 1}</span><span class="ic">${p.icon}</span><span><span class="typ">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'}</span><b>${p.name}</b><small>${p.desc}</small>${bm && ayar('ipucu') ? `<span class="ne">⏱ ${MT.NE_ZAMAN[id]}</span>` : ''}</span></button>`;
     }).join('') + '<div id="cardTime"><i style="width:100%"></i></div>';
     box.classList.remove('hidden'); $('hud').classList.add('kartvar');
     Ses.card();
@@ -290,7 +305,31 @@
       const id = state.bag[k], p = id && MG.byId[id];
       h += p ? `<button class="bslot ${p.type}" data-use="${k}" title="${esc(p.desc)}"><span class="key">${k + 1}</span><span class="ic">${p.icon}</span><b>${p.name}</b></button>` : '<div class="bslot empty"></div>';
     }
-    $('bag').innerHTML = h; bagState();
+    $('bag').innerHTML = h; bagState(); tuyoIsaretle();
+  }
+  // kart tüyosu: şu an en işe yarayan kart parlar, çantanın üstünde kısa sebebi yazar (Ayarlar > İpuçları)
+  function tuyoIsaretle() {
+    const t = state.dx && state.dx.tuyo, k = t ? state.bag.indexOf(t.id) : -1;
+    for (const b of $('bag').querySelectorAll('[data-use]')) b.classList.toggle('oner', +b.dataset.use === k);
+  }
+  function tuyoGizle() {
+    state.dx.tuyo = null; $('kartTuyo').classList.add('hidden'); $('hud').classList.remove('tuyovar'); tuyoIsaretle();
+  }
+  function kartTuyo() {
+    const r = state.race, dx = state.dx;
+    const on = bagMode() && ayar('ipucu') && state.phase === 'race' && r.started && !r.done && !r.marbles[state.pick].finished;
+    if (!on) { if (dx.tuyo) tuyoGizle(); return; }
+    if (dx.tuyo && !state.bag.includes(dx.tuyo.id)) tuyoGizle();
+    if (r.t < dx.tuyoT) return;
+    dx.tuyoT = r.t + 0.3;
+    const eski = dx.tuyo, yeni = MT.oner(r, state.pick, state.bag, eski && eski.id);
+    if (!yeni) { if (eski && r.t - dx.tuyoSon > 0.9) tuyoGizle(); return; } // bir anlık değişimde titremesin
+    dx.tuyoSon = r.t;
+    if (eski && eski.id === yeni.id && eski.txt === yeni.txt) return;
+    const p = MG.byId[yeni.id];
+    dx.tuyo = yeni;
+    $('kartTuyo').innerHTML = `<span class="ti">${p.icon}</span><b>${p.name}</b><span>${yeni.txt}</span>`;
+    $('kartTuyo').classList.remove('hidden'); $('hud').classList.add('tuyovar'); tuyoIsaretle();
   }
   // kullanılamayan kart soluk: bekleme süresi, bitişe yakın Yer Değiştir, bitirdin
   function bagState() {
@@ -300,7 +339,7 @@
   }
   function useCard(k) {
     const r = state.race; if (!bagMode() || !state.bag[k]) return;
-    if (r.powers.use(state.pick, k)) { const b = $('bag').querySelector(`[data-use="${k}"]`); if (b) b.classList.add('off'); }
+    if (r.powers.use(state.pick, k)) { const b = $('bag').querySelector(`[data-use="${k}"]`); if (b) b.classList.add('off'); tuyoGizle(); }
   }
   $('bag').addEventListener('click', e => { const b = e.target.closest('[data-use]'); if (b) useCard(+b.dataset.use); });
 
@@ -309,7 +348,7 @@
   const TIER = { 1: 'Sık çıkar', 2: 'Orta', 3: 'Nadir · güçlü' };
   function powerCardsHTML() {
     const pl = state.player, kilit = id => pl && ayar('kolay') && !MK.acikKartlar(pl.unlocked).includes(id) ? MK.KART_ACILIS[id] : 0;
-    const card = p => { const k = kilit(p.id); return `<div class="gcard ${p.type}${k ? ' kilit' : ''}"><span class="gic">${p.icon}</span><span class="gtx"><span class="gtyp">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'} · ${TIER[p.tier]}</span><b>${p.name}</b><small>${p.desc}</small>${k ? `<span class="gkl">🔒 ${k}. parkuru açınca</span>` : ''}</span></div>`; };
+    const card = p => { const k = kilit(p.id); return `<div class="gcard ${p.type}${k ? ' kilit' : ''}"><span class="gic">${p.icon}</span><span class="gtx"><span class="gtyp">${p.type === 'self' ? 'GÜÇLEN' : 'TUZAK'} · ${TIER[p.tier]}</span><b>${p.name}</b><small>${p.desc}</small><span class="gne">⏱ ${MT.NE_ZAMAN[p.id]}</span>${k ? `<span class="gkl">🔒 ${k}. parkuru açınca</span>` : ''}</span></div>`; };
     return `<h3>💪 Güçlen (kendine)</h3><div class="ggrid">${MG.POWERS.filter(p => p.type === 'self').map(card).join('')}</div><h3>🪤 Tuzak (rakiplere)</h3><div class="ggrid">${MG.POWERS.filter(p => p.type === 'attack').map(card).join('')}</div>`;
   }
   function showGucler() { toMenuScene(); $('gucList').innerHTML = powerCardsHTML(); show('scrGuc'); }
@@ -1597,12 +1636,12 @@
   // ---- yarış içi geçici durum ----
   const PERSONA = { saldirgan: ['😈', 'Saldırgan'], temkinli: ['🛡️', 'Temkinli'], dengeli: ['⚖️', 'Dengeli'] };
   function dxReset() {
-    state.dx = { uses: [], hits: {}, blocks: 0, gecis: 0, rank: null, rankCand: null, rankT: 0, lead: null, leadCand: null, leadT: 0, anlatT: -9, son: false, kiyas: false, foto: null, fotoN: 0, fin: [], kartOgret: false, ilkKart: null, catalIpucu: false, gerideT: 0 };
+    state.dx = { uses: [], hits: {}, blocks: 0, gecis: 0, rank: null, rankCand: null, rankT: 0, lead: null, leadCand: null, leadT: 0, anlatT: -9, son: false, kiyas: false, foto: null, fotoN: 0, fin: [], kartOgret: false, ilkKart: null, catalIpucu: false, gerideT: 0, tuyo: null, tuyoT: 0, tuyoSon: 0 };
   }
   dxReset();
   function hudTemizle() {
-    for (const id of ['anlatici', 'ipucu', 'rakipler', 'finalBadge', 'hedefBox', 'yolSec']) $(id).classList.add('hidden');
-    $('gecis').innerHTML = ''; $('hud').classList.remove('kartvar', 'mesajvar'); clearTimeout(ipucuT);
+    for (const id of ['anlatici', 'ipucu', 'kartTuyo', 'rakipler', 'finalBadge', 'hedefBox', 'yolSec']) $(id).classList.add('hidden');
+    $('gecis').innerHTML = ''; $('hud').classList.remove('kartvar', 'mesajvar', 'tuyovar'); clearTimeout(ipucuT);
   }
   // yarış öncesi (giriş animasyonu sırasında): rakipler, dünya finali / günün parkuru, meydan okuma hedefi
   function yarisOncesi() {

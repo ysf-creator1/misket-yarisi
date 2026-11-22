@@ -176,6 +176,18 @@ window.DIL_EN = {
   'Yapışkan Balçık': 'Sticky Slime', 'Rakibin yoluna yapışkan balçık dök': "Pour sticky slime in a rival's way", 'Engel Duvarı': 'Wall', 'Rakibin önüne duvar dik': 'Put a wall in front of a rival',
   'Yavaşlatma': 'Slow Down', 'Yakındaki 2 rakibi 4 sn yavaşlat': 'Slow 2 nearby rivals for 4 s', 'Küçült': 'Shrink', 'Yakındaki 2 rakibi 6 sn küçült': 'Shrink 2 nearby rivals for 6 s',
   'Mıknatıs': 'Magnet', '5 sn öndeki rakibe doğru çekil': 'Get pulled toward the rival ahead for 5 s', 'Yer Değiştir': 'Swap', 'Hemen öndeki rakiple yer değiştir': 'Swap places with the rival just ahead',
+  // kart tüyoları
+  'Rakibe yetişince': 'When catching a rival', 'Önünde duvar varken': 'When a wall is ahead', 'Tuzak gelirken, liderken': 'Trap incoming, or leading',
+  'Duvar görünce': 'When you see a wall', 'Duvar ya da kalabalıkta': 'At walls or in a crowd', 'Rakibin hemen arkasında': 'Right behind a rival',
+  'Öndeki uzaklaşınca': 'When the rival pulls away', 'Rakip hemen öndeyken': 'Rival just ahead', 'İki rakip yakınken': 'Two rivals nearby',
+  'Önünde 2+ rakip varken': '2+ rivals ahead', 'Rakipler toplanınca': 'When rivals bunch up', 'Öndeki çok uzaktayken': 'Rival far ahead',
+  'Üstüne tuzak geliyor, kalkanı aç!': 'Trap incoming, raise your shield!', 'Liderliğini korumak için aç!': 'Use it to protect your lead!',
+  'Önünde duvar var, üstünden atla!': 'Wall ahead, jump over it!', 'Önünde duvar var, içinden geç!': 'Wall ahead, pass through it!', 'Önünde duvar var, kırıp geç!': 'Wall ahead, smash through it!',
+  'Rakibin içinden geçip öne çık!': 'Pass through your rival and lead!', 'Ağırlaş, öndekini itip geç!': 'Get heavy and shove past!', 'Öndekini geçmek için hızlan!': 'Speed up to overtake!',
+  'Işınlan, rakibin önüne geç!': 'Teleport past your rival!', 'Öndeki uzaklaşıyor, ona yetiş!': 'Rival pulling away, catch up!', 'Öndeki rakip uzakta, yerini al!': 'Rival far ahead, take their spot!',
+  'Öndeki rakipleri geri it!': 'Push the rivals ahead back!', 'Rakipler toplandı, tam zamanı!': 'Rivals bunched up, perfect time!', 'Rakip hemen önünde, patlat!': 'Rival just ahead, blow it up!',
+  'İki rakip yakınında, şimdi kullan!': 'Two rivals nearby, use it now!', 'Rakip hemen önünde, şimdi kullan!': 'Rival just ahead, use it now!', 'Rakip hemen önünde, yoluna dök!': 'Rival just ahead, pour it now!', 'Rakip hemen önünde, duvar dik!': 'Rival just ahead, raise a wall!',
+  'Çantan dolu, yeni kart gelmez: bunu kullan!': 'Bag full, no new cards: use this!', 'Bitişe az kaldı, kartını harca!': 'Finish is close, spend your card!',
   'seninle yer değiştirdi!': 'swapped places with you!', 'Önünde rakip yok': 'No rival ahead', 'Yer değişti: {0}': 'Swapped with: {0}',
   'Ters Rüzgâr': 'Headwind', 'Öndekileri 2,5 sn geri it': 'Push those ahead back for 2.5 s', 'Bomba': 'Bomb', 'Rakip kalabalığında patla, sersemlet': 'Explode in a crowd of rivals and stun them',
   // ===== dünyalar =====

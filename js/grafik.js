@@ -559,9 +559,11 @@
   function kinMesh(pr) {
     const g = new THREE.Group();
     if (pr.kind === 'tambur') { // dönen tambur: renkli ve cam çubuklar, uçlarda halka, içte kanatlar
-      const cm = M.paintMetal(pr.color || '#ff006e');
+      const cm = M.paintMetal(pr.color || '#ff006e'), finM = M.paintMetal('#ffd60a');
+      // kamera üstten bakarken saydamlaşabilsin (baştan transparent: geçişte telefon gölgelendirici derlemesin)
+      cm.transparent = finM.transparent = true; g.userData.solid = [cm, finM]; g.userData.fade = 0;
       for (const pt of pr.parts) {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(pt.half[0] * 2, pt.half[1] * 2, pt.half[2] * 2), pt.fin ? M.paintMetal('#ffd60a') : pt.glass ? M.glass : cm);
+        const m = new THREE.Mesh(new THREE.BoxGeometry(pt.half[0] * 2, pt.half[1] * 2, pt.half[2] * 2), pt.fin ? finM : pt.glass ? M.glass : cm);
         m.position.set(pt.p[0], pt.p[1], pt.p[2]); m.quaternion.set(pt.q.x, pt.q.y, pt.q.z, pt.q.w);
         if (!pt.glass) { m.castShadow = true; m.receiveShadow = true; }
         g.add(m);
@@ -631,6 +633,20 @@
       if (!e.fm) { e.fm = e.base.clone(); e.fm.transparent = true; e.fm.depthWrite = false; }
       e.fm.opacity = (e.base.transparent ? e.base.opacity : 1) * (1 - 0.8 * e.f);
       e.mesh.material = e.fm;
+    }
+  };
+  // Tambur: kamera üstten bakarken yakındaki tamburun çubukları ve kanatları saydamlaşır (içindeki misketler görünsün)
+  Grafik.fadeTambur = function (v, P, dt) {
+    if (!v || !v.kins) return;
+    const k = 1 - Math.exp(-9 * dt);
+    for (const g of v.kins) {
+      const pr = g.userData.pr; if (pr.kind !== 'tambur') continue;
+      const R = pr.L / 2 + 5, want = P && (pr.p[0] - P.x) ** 2 + (pr.p[1] - P.y) ** 2 + (pr.p[2] - P.z) ** 2 < R * R ? 1 : 0;
+      if (!want && !g.userData.fade) continue;
+      let f = g.userData.fade + (want - g.userData.fade) * k;
+      if (!want && f < 0.02) f = 0;
+      g.userData.fade = f;
+      for (const m of g.userData.solid) { m.opacity = 1 - 0.72 * f; m.depthWrite = f < 0.05; }
     }
   };
   Grafik.disposeView = function (v) {
