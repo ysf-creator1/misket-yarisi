@@ -321,7 +321,7 @@
         else if (pid === 'demir') { fx.iron = t + 6; fx.safe = t + 6; m.body.setAdditionalMass(mass * 3, true); m._iron = true; }
         else if (pid === 'hayalet') { fx.ghost = t + 4; fx.safe = t + 4; m._ghost = true; this._groups(m); }
         else if (pid === 'miknatis') { fx.magnet = t + 5; fx.safe = t + 5.5; }
-        else if (pid === 'isinlan') { const from = m.body.translation(); ev.from = [from.x, from.y, from.z]; this._teleport(m, 6.5); const to = m.body.translation(); ev.to = [to.x, to.y, to.z]; }
+        else if (pid === 'isinlan') { const from = m.body.translation(); ev.from = [from.x, from.y, from.z]; this._teleport(m, 5.5); const to = m.body.translation(); ev.to = [to.x, to.y, to.z]; }
       } else if (pid === 'takas') {
         const tg = this._swapTarget(m);
         if (!tg) ev.none = true;
@@ -383,7 +383,7 @@
       ev.blocked = !ev.targets.length && ev.blockedIds.length > 0;
     }
 
-    // bomba: öndeki rakibin olduğu yerde patlar; 3,5 m içindeki herkes (kuran, kalkanlı, hayalet hariç) savrulur ve 1 sn sersemler
+    // bomba: öndeki rakibin olduğu yerde patlar; 4 m içindeki herkes (kuran, kalkanlı, hayalet hariç) savrulur ve 1,8 sn sersemler
     // ters rüzgârın hedefleri: öndekiler (40 m), seni geçmek üzere olan yakın kovalayan
     _windList(m) {
       const r = this.race;
@@ -399,11 +399,11 @@
       for (const o of r.marbles) {
         if (o === m || o.finished) continue;
         const p = o.body.translation(), dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, p.y - c.y, dz);
-        if (d > 3.5) continue;
+        if (d > 4) continue;
         if (o.fx.shield > t || o.fx.ghost > t) { ev.blockedIds.push(o.id); continue; }
-        const hl = Math.hypot(dx, dz), ox = hl > 0.2 ? dx / hl : 0, oz = hl > 0.2 ? dz / hl : 0, k = 1 - d / 4.5, om = o.body.mass();
+        const hl = Math.hypot(dx, dz), ox = hl > 0.2 ? dx / hl : 0, oz = hl > 0.2 ? dz / hl : 0, k = 1 - d / 5, om = o.body.mass();
         o.body.applyImpulse({ x: (ox * 3.5 - T[0] * 6) * k * om, y: 5 * k * om, z: (oz * 3.5 - T[2] * 6) * k * om }, true);
-        o.fx.stun = t + 1.5;
+        o.fx.stun = t + 1.8;
         ev.targets.push(o.id);
         this._ignore(m, o, t + 3);
       }
@@ -500,7 +500,7 @@
       }
       // mıknatıs: öndeki en yakın rakibe doğru çekilir (yaklaştıkça içinden geçer); önünde kimse yoksa hafif itiş
       if (fx.magnet > t && T && sp < 13) {
-        const o = this._pullTarget(m), gap = o ? o.s - m.s : 0, a = (o ? 4 + Math.min(3, gap * 0.12) : 2) * mass * dt;
+        const o = this._pullTarget(m), gap = o ? o.s - m.s : 0, a = (o ? 3.5 + Math.min(2.5, gap * 0.1) : 2) * mass * dt;
         m.body.applyImpulse({ x: T[0] * a, y: Math.min(0, T[1]) * a, z: T[2] * a }, true);
         if (o && gap < 3) this._ignore(m, o, t + 0.4);
       }
@@ -546,7 +546,7 @@
           if (up < 0.35 && Math.hypot(dx, dy, dz) < s.r + 0.8) { damp += 5; fx.inSlime = true; }
         }
       }
-      const push = fx.iron > t ? 3.5 : fx.ghost > t ? 2 : 0; // hayalet de hafifçe ileri süzülür
+      const push = fx.iron > t ? 3.5 : fx.ghost > t ? 2.6 : 0; // hayalet de hafifçe ileri süzülür
       if (push && T && sp < 11) m.body.applyImpulse({ x: T[0] * push * mass * dt, y: Math.min(0, T[1]) * push * mass * dt, z: T[2] * push * mass * dt }, true);
       if (damp > 0 && sp > 0.4) { const k = Math.min(0.9, damp * dt); m.body.applyImpulse({ x: -v.x * k * mass, y: -v.y * k * mass * 0.3, z: -v.z * k * mass }, true); }
     }
